@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 const depthPayload = {
-  symbol: "RELIANCE",
+  symbol: "AAPL",
   market: "IN",
   provider_key: "kite",
   as_of: "2026-04-05T12:00:00Z",
@@ -40,22 +40,22 @@ const depthPayload = {
 };
 
 test("dom ladder renders and supports cumulative and auto-center controls", async ({ page }) => {
-  await page.context().route(new RegExp(String.raw`http://127\.0\.0\.1:\d+/api/depth/RELIANCE(?:\?.*)?$`), async (route) => {
+  await page.context().route(new RegExp(String.raw`http://127\.0\.0\.1:\d+/api/depth/AAPL(?:\?.*)?$`), async (route) => {
     await route.fulfill({ json: depthPayload });
   });
 
-  await page.context().route(new RegExp(String.raw`http://127\.0\.0\.1:\d+/api/stocks/RELIANCE(?:\?.*)?$`), async (route) => {
+  await page.context().route(new RegExp(String.raw`http://127\.0\.0\.1:\d+/api/stocks/AAPL(?:\?.*)?$`), async (route) => {
     await route.fulfill({
       json: {
-        ticker: "RELIANCE",
-        symbol: "RELIANCE",
+        ticker: "AAPL",
+        symbol: "AAPL",
         current_price: 100,
         change_pct: 1.25,
       },
     });
   });
 
-  await page.context().route(new RegExp(String.raw`http://127\.0\.0\.1:\d+/api/tape/RELIANCE/recent(?:\?.*)?$`), async (route) => {
+  await page.context().route(new RegExp(String.raw`http://127\.0\.0\.1:\d+/api/tape/AAPL/recent(?:\?.*)?$`), async (route) => {
     await route.fulfill({
       json: {
         trades: [
@@ -66,7 +66,7 @@ test("dom ladder renders and supports cumulative and auto-center controls", asyn
     });
   });
 
-  await page.context().route(new RegExp(String.raw`http://127\.0\.0\.1:\d+/api/tape/RELIANCE/summary(?:\?.*)?$`), async (route) => {
+  await page.context().route(new RegExp(String.raw`http://127\.0\.0\.1:\d+/api/tape/AAPL/summary(?:\?.*)?$`), async (route) => {
     await route.fulfill({
       json: {
         total_volume: 325,

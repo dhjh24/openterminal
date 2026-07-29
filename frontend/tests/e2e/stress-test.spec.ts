@@ -30,7 +30,7 @@ const predefinedScenarios = [
   },
   {
     id: "inr_depreciation",
-    name: "INR Depreciation 10%",
+    name: "USD Strength 10%",
     description: "Currency stress, capital outflows",
     severity: "medium",
     shocks: { equity: -0.08, fx_inr: -0.1, volatility: 0.2 },
@@ -119,7 +119,7 @@ test("stress test tab renders scenarios and runs predefined plus custom analysis
       by_holding: [
         { symbol: "AAPL", sector: "Technology", weight: 0.35, current_value: 18000, impact_pct: custom ? -0.18 : -0.29, impact_value: custom ? -3240 : -5220, new_value: 14760 },
         { symbol: "JPM", sector: "Financials", weight: 0.25, current_value: 12800, impact_pct: custom ? -0.12 : -0.23, impact_value: custom ? -1536 : -2944, new_value: 9856 },
-        { symbol: "RELIANCE.NS", sector: "Energy", weight: 0.28, current_value: 336000, impact_pct: custom ? -0.05 : -0.11, impact_value: custom ? -16800 : -36960, new_value: 299040 },
+        { symbol: "AAPL", sector: "Energy", weight: 0.28, current_value: 336000, impact_pct: custom ? -0.05 : -0.11, impact_value: custom ? -16800 : -36960, new_value: 299040 },
         { symbol: "XOM", sector: "Energy", weight: 0.12, current_value: 10350, impact_pct: custom ? 0.01 : -0.03, impact_value: custom ? 104 : -310, new_value: 10040 },
       ],
       by_sector: [
@@ -130,7 +130,7 @@ test("stress test tab renders scenarios and runs predefined plus custom analysis
       worst_holdings: [
         { symbol: "AAPL", sector: "Technology", current_value: 18000, impact_pct: custom ? -0.18 : -0.29, impact_value: custom ? -3240 : -5220 },
         { symbol: "JPM", sector: "Financials", current_value: 12800, impact_pct: custom ? -0.12 : -0.23, impact_value: custom ? -1536 : -2944 },
-        { symbol: "RELIANCE.NS", sector: "Energy", current_value: 336000, impact_pct: custom ? -0.05 : -0.11, impact_value: custom ? -16800 : -36960 },
+        { symbol: "AAPL", sector: "Energy", current_value: 336000, impact_pct: custom ? -0.05 : -0.11, impact_value: custom ? -16800 : -36960 },
         { symbol: "XOM", sector: "Energy", current_value: 10350, impact_pct: custom ? 0.01 : -0.03, impact_value: custom ? 104 : -310 },
       ],
     };

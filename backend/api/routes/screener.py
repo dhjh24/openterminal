@@ -20,6 +20,7 @@ from backend.equity.screener_v2 import FactorEngine, FactorSpec
 from backend.models import SavedFormulaORM
 from backend.services.screener_scan_service import FMPScreenerAdapter, NSEScreenerAdapter, merge_scan_rows
 from backend.services.materialized_store import load_screener_df, upsert_screener_rows
+from backend.shared.market_profile import is_india_exchange, is_us_only
 
 router = APIRouter()
 DATA_DIR = Path(__file__).resolve().parents[3] / "data"
@@ -84,7 +85,9 @@ class ScreenerScanSort(BaseModel):
 
 
 class ScreenerScanRequest(BaseModel):
-    markets: list[str] = Field(default_factory=lambda: ["NSE", "NYSE", "NASDAQ"])
+    markets: list[str] = Field(
+        default_factory=lambda: ["NYSE", "NASDAQ"] if is_us_only() else ["NSE", "NYSE", "NASDAQ"]
+    )
     filters: list[ScreenerScanFilter] = Field(default_factory=list)
     sort: ScreenerScanSort = Field(default_factory=lambda: ScreenerScanSort(field="market_cap", order="desc"))
     limit: int = Field(default=100, ge=1, le=500)
@@ -100,8 +103,10 @@ class ScreenerScanRequest(BaseModel):
                 continue
             if market_upper not in SCAN_ALLOWED_MARKETS:
                 raise ValueError(f"Unsupported market '{market}'.")
+            if is_us_only() and (market_upper in {"IN", "INDIA"} or is_india_exchange(market_upper)):
+                raise ValueError(f"Market '{market}' is not available under MARKET_PROFILE=US.")
             normalized.append(market_upper)
-        return normalized or ["NSE", "NYSE", "NASDAQ"]
+        return normalized or (["NYSE", "NASDAQ"] if is_us_only() else ["NSE", "NYSE", "NASDAQ"])
 
 
 class CustomFormulaRunRequest(BaseModel):
@@ -172,7 +177,7 @@ SCAN_FIELD_MAP: dict[str, list[str]] = {
 }
 SCAN_ALLOWED_FIELDS = set(SCAN_FIELD_MAP.keys())
 SCAN_ALLOWED_OPS = {"gte", "gt", "lte", "lt", "eq", "neq", "in", "contains"}
-SCAN_ALLOWED_MARKETS = {"NSE", "NYSE", "NASDAQ"}
+SCAN_ALLOWED_MARKETS = {"NYSE", "NASDAQ"} if is_us_only() else {"NSE", "NYSE", "NASDAQ"}
 US_SCREENER_SEED = [
     "AAPL",
     "MSFT",
@@ -507,12 +512,12 @@ async def run_screener(request: ScreenerRunRequest) -> ScreenerRunResponse:
 
 @router.post("/screener/scan")
 async def run_multimarket_scan(request: ScreenerScanRequest) -> dict[str, Any]:
-    markets = request.markets or ["NSE", "NYSE", "NASDAQ"]
+    markets = request.markets or (["NYSE", "NASDAQ"] if is_us_only() else ["NSE", "NYSE", "NASDAQ"])
 
     warnings: list[dict[str, str]] = []
 
     rows: list[dict[str, Any]] = []
-    if "NSE" in markets:
+    if "NSE" in markets and not is_us_only():
         nse_adapter = NSEScreenerAdapter(
             hydrate_rows=_hydrate_missing_screener_rows,
             load_universe=_load_universe,

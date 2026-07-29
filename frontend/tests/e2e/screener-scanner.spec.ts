@@ -31,7 +31,7 @@ test("screener run and scanner alert flow renders", async ({ page }) => {
               name: "20D High Breakout + RVOL",
               category: "technical",
               query: "Market Capitalization > 500",
-              universe: "NSE:NIFTY200",
+              universe: "NASDAQ:SP500",
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString(),
             },
@@ -51,8 +51,8 @@ test("screener run and scanner alert flow renders", async ({ page }) => {
         count: 1,
         results: [
           {
-            ticker: "RELIANCE",
-            company: "RELIANCE INDUSTRIES",
+            ticker: "AAPL",
+            company: "AAPL INDUSTRIES",
             sector: "Energy",
             market_cap: 1500000,
             pe: 25.4,
@@ -89,5 +89,5 @@ test("screener run and scanner alert flow renders", async ({ page }) => {
   await queryRunButton.click();
 
   await expect(page.getByText("Results", { exact: true })).toBeVisible();
-  await expect(page.getByText("RELIANCE").first()).toBeVisible();
+  await expect(page.getByText("AAPL").first()).toBeVisible();
 });

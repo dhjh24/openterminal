@@ -124,12 +124,11 @@ export function TickerTape() {
     const payload = (marketStatus ?? {}) as Record<string, unknown>;
     const mapNum = (k: string) => (Number.isFinite(Number(payload[k])) ? Number(payload[k]) : null);
     return [
-      { key: "NIFTY50", symbol: "NIFTY", label: "NIFTY 50", market: "NSE", price: mapNum("nifty50"), change: null, changePct: mapNum("nifty50Pct") },
-      { key: "SENSEX", symbol: "SENSEX", label: "SENSEX", market: "BSE", price: mapNum("sensex"), change: null, changePct: mapNum("sensexPct") },
-      { key: "USDINR", symbol: "USDINR", label: "USD/INR", market: "FX", price: mapNum("usdInr"), change: null, changePct: mapNum("usdInrPct") },
       { key: "SPX", symbol: "SPX", label: "S&P 500", market: "NASDAQ", price: mapNum("sp500"), change: null, changePct: mapNum("sp500Pct") },
       { key: "IXIC", symbol: "IXIC", label: "NASDAQ", market: "NASDAQ", price: mapNum("nasdaq"), change: null, changePct: mapNum("nasdaqPct") },
       { key: "DJI", symbol: "DJI", label: "DOW", market: "NYSE", price: mapNum("dowjones"), change: null, changePct: mapNum("dowjonesPct") },
+      { key: "RUT", symbol: "RUT", label: "Russell 2000", market: "NYSE", price: mapNum("russell2000"), change: null, changePct: mapNum("russell2000Pct") },
+      { key: "VIX", symbol: "VIX", label: "VIX", market: "CBOE", price: mapNum("vix"), change: null, changePct: mapNum("vixPct") },
       { key: "FTSE", symbol: "FTSE", label: "FTSE 100", market: "LSE", price: mapNum("ftse100"), change: null, changePct: mapNum("ftse100Pct") },
       { key: "DAX", symbol: "DAX", label: "DAX", market: "XETRA", price: mapNum("dax"), change: null, changePct: mapNum("daxPct") },
       { key: "NIKKEI", symbol: "N225", label: "Nikkei 225", market: "JPX", price: mapNum("nikkei225"), change: null, changePct: mapNum("nikkei225Pct") },

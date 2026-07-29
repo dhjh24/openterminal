@@ -15,7 +15,7 @@ def _build_client() -> TestClient:
 def test_tape_recent_returns_trade_rows() -> None:
     client = _build_client()
 
-    response = client.get("/api/tape/RELIANCE/recent")
+    response = client.get("/api/tape/NASDAQ:AAPL/recent")
 
     assert response.status_code == 200
     payload = response.json()
@@ -31,7 +31,7 @@ def test_tape_recent_returns_trade_rows() -> None:
 def test_tape_recent_side_values_are_constrained() -> None:
     client = _build_client()
 
-    response = client.get("/api/tape/RELIANCE/recent", params={"limit": 50})
+    response = client.get("/api/tape/NASDAQ:AAPL/recent", params={"limit": 50})
 
     assert response.status_code == 200
     payload = response.json()
@@ -42,7 +42,7 @@ def test_tape_recent_side_values_are_constrained() -> None:
 def test_tape_summary_returns_expected_fields() -> None:
     client = _build_client()
 
-    response = client.get("/api/tape/RELIANCE/summary")
+    response = client.get("/api/tape/NASDAQ:AAPL/summary")
 
     assert response.status_code == 200
     payload = response.json()
@@ -53,7 +53,7 @@ def test_tape_summary_returns_expected_fields() -> None:
 def test_tape_recent_limit_is_applied() -> None:
     client = _build_client()
 
-    response = client.get("/api/tape/RELIANCE/recent", params={"limit": 10})
+    response = client.get("/api/tape/NASDAQ:AAPL/recent", params={"limit": 10})
 
     assert response.status_code == 200
     payload = response.json()

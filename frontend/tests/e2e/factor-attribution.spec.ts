@@ -36,13 +36,13 @@ test("factor attribution tab renders and period selection reloads data", async (
   let lastFactorPeriod = "1Y";
 
   await page.context().route(new RegExp(String.raw`http://127\.0\.0\.1:\d+/api/risk/summary(?:\?.*)?$`), async (route) => {
-    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ewma_vol: 0.15, beta: 1.02, marginal_contribution: { RELIANCE: 0.12 } }) });
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ewma_vol: 0.15, beta: 1.02, marginal_contribution: { AAPL: 0.12 } }) });
   });
   await page.context().route(new RegExp(String.raw`http://127\.0\.0\.1:\d+/api/risk/exposures(?:\?.*)?$`), async (route) => {
-    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ pca_factors: [{ factor: "PC1", variance_explained: 0.62 }], loadings: { RELIANCE: [0.81] } }) });
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ pca_factors: [{ factor: "PC1", variance_explained: 0.62 }], loadings: { AAPL: [0.81] } }) });
   });
   await page.context().route(new RegExp(String.raw`http://127\.0\.0\.1:\d+/api/risk/correlation(?:\?.*)?$`), async (route) => {
-    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ assets: ["RELIANCE"], matrix: [[1]] }) });
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ assets: ["AAPL"], matrix: [[1]] }) });
   });
   await page.context().route(new RegExp(String.raw`http://127\.0\.0\.1:\d+/api/risk/sector-concentration(?:\?.*)?$`), async (route) => {
     await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ sectors: { Energy: 100 }, industries: { Refining: 100 } }) });

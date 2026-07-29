@@ -11,9 +11,11 @@ from backend.adapters.registry import get_adapter_registry
 from backend.api.deps import fetch_stock_snapshot_coalesced
 from backend.core.models import SearchResponse, SearchResult
 from backend.shared.market_classifier import market_classifier
+from backend.shared.market_guard import assert_exchange_allowed
+from backend.shared.market_profile import DEFAULT_EXCHANGE, is_us_only
 
 router = APIRouter()
-DATA_PATH = Path(__file__).resolve().parents[3] / "data" / "nse_equity_symbols_eq.csv"
+DATA_PATH = Path(__file__).resolve().parents[3] / "data" / "sample_tickers.txt"
 _TICKER_LIKE_RE = re.compile(r"^[\^A-Za-z][A-Za-z0-9._=-]{0,12}$")
 
 GLOBAL_INDICES = [
@@ -56,13 +58,14 @@ async def _get_rows() -> List[Dict[str, str]]:
         return _SEARCH_CACHE
 
 @router.get("/search", response_model=SearchResponse)
-async def search(q: str = Query(default=""), market: str = Query(default="NSE")) -> SearchResponse:
+async def search(q: str = Query(default=""), market: str = Query(default=DEFAULT_EXCHANGE)) -> SearchResponse:
     query = q.strip().lower()
     if not query:
         return SearchResponse(query=q, results=[])
 
-    _market = market if isinstance(market, str) else "NSE"
-    selected_market = _market.strip().upper() or "NSE"
+    _market = market if isinstance(market, str) else DEFAULT_EXCHANGE
+    selected_market = _market.strip().upper() or DEFAULT_EXCHANGE
+    assert_exchange_allowed(selected_market)
     rows = await _get_rows()
     matches: List[SearchResult] = []
     seen: set[str] = set()
@@ -76,23 +79,26 @@ async def search(q: str = Query(default=""), market: str = Query(default="NSE"))
 
     # Check global indices first
     for gi in GLOBAL_INDICES:
+        if is_us_only() and (gi.exchange or "").upper() in {"NSE", "BSE"}:
+            continue
         if query in gi.ticker.lower() or query in gi.name.lower():
             _append_match(gi)
 
-    # Simple search
-    for row in rows:
-        ticker = (row.get("Symbol") or row.get("SYMBOL") or row.get("symbol") or "").upper()
-        name = row.get("Company Name") or row.get("NAME OF COMPANY") or row.get("name") or ticker
+    if not is_us_only():
+        # Simple search against local NSE universe
+        for row in rows:
+            ticker = (row.get("Symbol") or row.get("SYMBOL") or row.get("symbol") or "").upper()
+            name = row.get("Company Name") or row.get("NAME OF COMPANY") or row.get("name") or ticker
 
-        # Check startswith for ticker for higher relevance match
-        t_low = ticker.lower()
-        n_low = name.lower()
+            # Check startswith for ticker for higher relevance match
+            t_low = ticker.lower()
+            n_low = name.lower()
 
-        if query in t_low or query in n_low:
-            _append_match(SearchResult(ticker=ticker, name=name, exchange="NSE"))
+            if query in t_low or query in n_low:
+                _append_match(SearchResult(ticker=ticker, name=name, exchange="NSE"))
 
-        if len(matches) >= 12:
-            break
+            if len(matches) >= 12:
+                break
 
     # If no local NSE match, still allow direct symbol queries (e.g. AAPL, TSLA).
     if not matches and _TICKER_LIKE_RE.match(q.strip()):

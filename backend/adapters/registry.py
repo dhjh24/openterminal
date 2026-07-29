@@ -9,11 +9,34 @@ import yaml
 from backend.adapters.base import DataAdapter
 from backend.adapters.alpaca import AlpacaAdapter
 from backend.adapters.crypto import CryptoDataAdapter
-from backend.adapters.kite import KiteAdapter
 from backend.adapters.mock import MockDataAdapter
 from backend.adapters.yahoo import YahooFinanceAdapter
 from backend.adapters.us_options_adapter import USOptionsAdapter
 from backend.core.failover import FailoverSlot, call_with_failover
+from backend.shared.market_profile import is_india_exchange, is_us_only
+
+
+def _build_factory() -> dict[str, Any]:
+    return {
+        "alpaca": lambda: AlpacaAdapter(),
+        "yahoo": lambda: YahooFinanceAdapter(),
+        "us_options": lambda: USOptionsAdapter(),
+        "crypto": lambda: CryptoDataAdapter(),
+        "mock": lambda: MockDataAdapter(),
+    }
+
+
+_US_DEFAULT_CONFIG: dict[str, Any] = {
+    "default": {"primary": "yahoo", "fallback": ["alpaca"]},
+    "exchanges": {
+        "NASDAQ": {"primary": "yahoo", "fallback": ["alpaca"]},
+        "NYSE": {"primary": "yahoo", "fallback": ["alpaca"]},
+        "AMEX": {"primary": "yahoo", "fallback": ["alpaca"]},
+        "CME": {"primary": "yahoo", "fallback": []},
+        "CBOE": {"primary": "yahoo", "fallback": []},
+        "CRYPTO": {"primary": "crypto", "fallback": ["yahoo"]},
+    },
+}
 
 
 @dataclass
@@ -24,47 +47,51 @@ class AdapterChain:
 
 class AdapterRegistry:
     def __init__(self, config_path: Path | None = None, *, failure_threshold: int = 3, cooldown_seconds: int = 30) -> None:
-        self.config_path = config_path or (Path(__file__).resolve().parents[2] / "config" / "adapters.yaml")
+        self.config_path = config_path or (Path(__file__).resolve().parents[1] / "config" / "adapters.yaml")
         self._config = self._load_config()
         self._instances: dict[str, DataAdapter] = {}
         self._slots: dict[str, FailoverSlot] = {}
         self.failure_threshold = failure_threshold
         self.cooldown_seconds = cooldown_seconds
-        self._factory = {
-            "alpaca": lambda: AlpacaAdapter(),
-            "kite": lambda: KiteAdapter(),
-            "yahoo": lambda: YahooFinanceAdapter(),
-            "us_options": lambda: USOptionsAdapter(),
-            "crypto": lambda: CryptoDataAdapter(),
-            "mock": lambda: MockDataAdapter(),
-        }
+        self._factory = _build_factory()
 
     def _load_config(self) -> dict[str, Any]:
         if not self.config_path.exists():
-            return {
-                "default": {"primary": "kite", "fallback": ["yahoo"]},
-                "exchanges": {
-                    "NSE": {"primary": "kite", "fallback": ["yahoo"]},
-                    "BSE": {"primary": "kite", "fallback": ["yahoo"]},
-                    "NASDAQ": {"primary": "alpaca", "fallback": ["yahoo"]},
-                    "NYSE": {"primary": "alpaca", "fallback": ["yahoo"]},
-                    "AMEX": {"primary": "alpaca", "fallback": ["yahoo"]},
-                    "CRYPTO": {"primary": "crypto", "fallback": ["yahoo"]},
-                },
+            return _US_DEFAULT_CONFIG
+        loaded = yaml.safe_load(self.config_path.read_text(encoding="utf-8")) or {}
+        if is_us_only():
+            exchanges = loaded.get("exchanges") or {}
+            filtered = {
+                ex: row
+                for ex, row in exchanges.items()
+                if not is_india_exchange(str(ex))
             }
-        return yaml.safe_load(self.config_path.read_text(encoding="utf-8")) or {}
+            loaded["exchanges"] = filtered
+            default = loaded.get("default") or {}
+            primary = str(default.get("primary") or "yahoo").strip().lower()
+            if primary == "kite":
+                primary = "yahoo"
+            fallback = [str(x).strip().lower() for x in (default.get("fallback") or []) if str(x).strip().lower() != "kite"]
+            loaded["default"] = {"primary": primary, "fallback": fallback or ["alpaca"]}
+        return loaded
+
+    def _reject_india_exchange(self, exchange: str) -> None:
+        if is_us_only() and is_india_exchange(exchange):
+            raise ValueError(f"Exchange '{exchange}' is not available under MARKET_PROFILE=US")
 
     def _chain_for_exchange(self, exchange: str) -> AdapterChain:
         ex = exchange.strip().upper()
+        self._reject_india_exchange(ex)
         exchanges = self._config.get("exchanges", {})
-        row = exchanges.get(ex) or self._config.get("default") or {"primary": "kite", "fallback": ["yahoo"]}
-        primary = str(row.get("primary") or "kite").strip().lower()
+        default_primary = "yahoo"
+        row = exchanges.get(ex) or self._config.get("default") or {"primary": default_primary, "fallback": ["yahoo"]}
+        primary = str(row.get("primary") or default_primary).strip().lower()
         fallback = [str(x).strip().lower() for x in (row.get("fallback") or []) if str(x).strip()]
-        if ex in {"NASDAQ", "NYSE", "AMEX"}:
-            if primary != "alpaca":
-                primary = "alpaca"
+        if is_us_only() and primary == "kite":
+            primary = "yahoo"
+            fallback = [x for x in fallback if x != "kite"]
             if "yahoo" not in fallback:
-                fallback.append("yahoo")
+                fallback.insert(0, "yahoo")
         return AdapterChain(primary=primary, fallback=fallback)
 
     def _instance(self, key: str) -> DataAdapter:
@@ -109,6 +136,7 @@ class AdapterRegistry:
         return slots
 
     async def invoke(self, exchange: str, method: str, *args: Any, **kwargs: Any) -> Any:
+        self._reject_india_exchange(exchange.strip().upper())
         try:
             return await call_with_failover(
                 self._slots_for_exchange(exchange),
@@ -130,6 +158,7 @@ class AdapterRegistry:
         default_row = self._config.get("default") or {}
         keys.add(str(default_row.get("primary") or "").strip().lower())
         keys.update(str(item).strip().lower() for item in (default_row.get("fallback") or []) if str(item).strip())
+        keys.discard("kite")
         for key in sorted(k for k in keys if k):
             try:
                 snapshot[key] = self._slot(key).snapshot()

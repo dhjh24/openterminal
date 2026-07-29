@@ -105,21 +105,11 @@ def _stable_id(market: str, symbol: str, period_end: str, report_type: str) -> s
 
 @router.get("/reports/bulk-deals")
 async def bulk_deals() -> Dict[str, Any]:
-    fetcher = await get_unified_fetcher()
-    try:
-        data = await fetcher.nse.get_bulk_deals()
-        return data
-    except Exception as e:
-        return {"error": str(e), "data": []}
+    return {"error": "unsupported_market", "data": []}
 
 @router.get("/reports/block-deals")
 async def block_deals() -> Dict[str, Any]:
-    fetcher = await get_unified_fetcher()
-    try:
-        data = await fetcher.nse.get_block_deals()
-        return data
-    except Exception as e:
-        return {"error": str(e), "data": []}
+    return {"error": "unsupported_market", "data": []}
 
 import random
 
@@ -127,26 +117,14 @@ import random
 async def market_status() -> Dict[str, Any]:
     fetcher = await get_unified_fetcher()
 
-    # Concurrent tasks for speed
-    nse_market_task = fetcher.nse.get_market_status()
-    nse_indices_task = fetcher.nse.get_index_quote("NIFTY 50")
-    yahoo_quotes_task = fetcher.yahoo.get_quotes(
-        ["^NSEI", "^BSESN", "^GSPC", "^IXIC", "^DJI", "^FTSE", "^GDAXI", "^N225", "^HSI", "INRUSD=X", "USDINR=X", "BTC-USD", "ETH-USD"]
+    yahoo_quotes = await fetcher.yahoo.get_quotes(
+        ["^GSPC", "^IXIC", "^DJI", "^FTSE", "^GDAXI", "^N225", "^HSI", "USDINR=X", "BTC-USD", "ETH-USD", "GC=F", "SI=F", "CL=F"]
     )
+    if isinstance(yahoo_quotes, Exception):
+        yahoo_quotes = []
 
-    results = await asyncio.gather(
-        nse_market_task,
-        nse_indices_task,
-        yahoo_quotes_task,
-        return_exceptions=True,
-    )
-
-    nse_market_raw = results[0] if not isinstance(results[0], Exception) else {}
-    indices_payload = results[1] if not isinstance(results[1], Exception) else {}
-    yahoo_quotes = results[2] if not isinstance(results[2], Exception) else []
-
-    nifty, nifty_pct = _extract_index_metrics(indices_payload, {"NIFTY 50", "NIFTY50", "NIFTY"})
-    sensex, sensex_pct = _extract_index_metrics(indices_payload, {"SENSEX", "BSE SENSEX"})
+    nifty, nifty_pct = None, None
+    sensex, sensex_pct = None, None
 
     yahoo_map: dict[str, dict[str, Any]] = {}
     for item in yahoo_quotes:
@@ -155,14 +133,10 @@ async def market_status() -> Dict[str, Any]:
 
     # Fallback Logic
     if nifty is None:
-        q = yahoo_map.get("^NSEI", {})
-        nifty = _to_float(q.get("regularMarketPrice"))
-        nifty_pct = _to_float(q.get("regularMarketChangePercent"))
+        nifty, nifty_pct = None, None
 
     if sensex is None:
-        q = yahoo_map.get("^BSESN", {})
-        sensex = _to_float(q.get("regularMarketPrice"))
-        sensex_pct = _to_float(q.get("regularMarketChangePercent"))
+        sensex, sensex_pct = None, None
 
     sp500 = _to_float(yahoo_map.get("^GSPC", {}).get("regularMarketPrice"))
     sp500_pct = _to_float(yahoo_map.get("^GSPC", {}).get("regularMarketChangePercent"))
@@ -198,8 +172,8 @@ async def market_status() -> Dict[str, Any]:
     crude_pct = _to_float(yahoo_map.get("CL=F", {}).get("regularMarketChangePercent"))
 
     # Final Mock Fallback
-    if nifty is None: nifty, nifty_pct = 22450.0 + random.uniform(-10, 10), random.uniform(-0.5, 0.5)
-    if sensex is None: sensex, sensex_pct = 73800.0 + random.uniform(-30, 30), random.uniform(-0.4, 0.4)
+    if nifty is None: nifty, nifty_pct = None, None
+    if sensex is None: sensex, sensex_pct = None, None
     if sp500 is None: sp500, sp500_pct = 5100.0 + random.uniform(-2, 2), random.uniform(-0.2, 0.2)
     if nasdaq is None: nasdaq, nasdaq_pct = 16000.0 + random.uniform(-10, 10), random.uniform(-0.3, 0.3)
     if dow is None: dow, dow_pct = 39000.0 + random.uniform(-20, 20), random.uniform(-0.2, 0.2)
@@ -213,7 +187,7 @@ async def market_status() -> Dict[str, Any]:
     if silver is None: silver, silver_pct = 23.5 + random.uniform(-0.1, 0.1), random.uniform(-0.2, 0.2)
     if crude is None: crude, crude_pct = 78.0 + random.uniform(-0.5, 0.5), random.uniform(-0.3, 0.3)
 
-    market_state = nse_market_raw.get("marketState", []) if isinstance(nse_market_raw, dict) else []
+    market_state: list[Any] = []
 
     return {
         "marketState": market_state,

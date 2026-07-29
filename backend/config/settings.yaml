@@ -2,7 +2,7 @@ app:
   name: "OpenTerminalUI API"
   version: "0.6.0"
   environment: "local"
-  default_exchange_suffix: ".NS"
+  default_exchange_suffix: ""
   # LM Studio hosted Gemma model used for news sentiment & emotion analysis.
   lm_studio_base_url: "http://localhost:1234/v1"
   lm_studio_model: "google/gemma-4-26b-a4b"

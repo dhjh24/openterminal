@@ -41,30 +41,24 @@ def test_scan_rejects_invalid_filter_operator() -> None:
 
 
 def test_scan_merges_markets_applies_filters_and_sorts(monkeypatch) -> None:
-    async def _fake_nse_fetch(self, _warnings):
-        return [
-            {"ticker": "INFY", "symbol": "INFY", "exchange": "NSE", "market": "NSE", "country": "IN", "market_cap": 1200, "sector": "Technology"},
-            {"ticker": "ITC", "symbol": "ITC", "exchange": "NSE", "market": "NSE", "country": "IN", "market_cap": 800, "sector": "Consumer"},
-        ]
-
     async def _fake_fmp_fetch(self, _markets):
         return [
             {"ticker": "AAPL", "symbol": "AAPL", "exchange": "NASDAQ", "market": "NASDAQ", "country": "US", "market_cap": 2500, "sector": "Technology"},
             {"ticker": "MSFT", "symbol": "MSFT", "exchange": "NASDAQ", "market": "NASDAQ", "country": "US", "market_cap": 2000, "sector": "Technology"},
+            {"ticker": "JPM", "symbol": "JPM", "exchange": "NYSE", "market": "NYSE", "country": "US", "market_cap": 1800, "sector": "Financial"},
         ]
 
-    monkeypatch.setattr(screener.NSEScreenerAdapter, "fetch", _fake_nse_fetch)
     monkeypatch.setattr(screener.FMPScreenerAdapter, "fetch", _fake_fmp_fetch)
 
     client = _build_client()
     response = client.post(
         "/api/screener/scan",
         json={
-            "markets": ["NSE", "NASDAQ"],
+            "markets": ["NYSE", "NASDAQ"],
             "filters": [
                 {"field": "market_cap", "op": "gte", "value": 1000},
                 {"field": "sector", "op": "contains", "value": "tech"},
-                {"field": "exchange", "op": "in", "value": ["NSE", "NASDAQ"]},
+                {"field": "exchange", "op": "in", "value": ["NYSE", "NASDAQ"]},
             ],
             "sort": {"field": "market_cap", "order": "desc"},
             "limit": 2,

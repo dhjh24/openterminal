@@ -106,7 +106,7 @@ export const COMMAND_FUNCTIONS: CommandFunctionSpec[] = [
   { code: "CH", label: "Chart Workstation", description: "Open chart workstation with active symbol", securityScoped: true, aliases: ["WORKSTATION"] },
   { code: "FA", label: "Financial Analysis", description: "Open financials tab", securityScoped: true, aliases: ["FIN", "FUNDAMENTALS"] },
   { code: "NEWS", label: "News", description: "Open news (global or ticker-specific)", aliases: ["N"] },
-  { code: "OPT", label: "Options", description: "Open options / F&O view", securityScoped: true, aliases: ["OPTIONS"] },
+  { code: "OPT", label: "Options", description: "Open options / Options & Futures view", securityScoped: true, aliases: ["OPTIONS"] },
   { code: "ALERT", label: "Alerts", description: "Open symbol alert workflows", securityScoped: true, aliases: ["ALERTS", "AL"] },
   { code: "EST", label: "Estimates", description: "Open analyst estimates tab", securityScoped: true, aliases: ["ESTIMATES"] },
   { code: "PEER", label: "Peers", description: "Open peers comparison tab", securityScoped: true, aliases: ["PEERS"] },

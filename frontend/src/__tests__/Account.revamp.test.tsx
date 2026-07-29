@@ -173,14 +173,14 @@ describe("AccountPage revamp", () => {
     fireEvent.change(screen.getByLabelText("First Name"), { target: { value: "Jordan" } });
     fireEvent.change(screen.getByLabelText("Last Name"), { target: { value: "Lee" } });
     fireEvent.change(screen.getByLabelText("Display Name"), { target: { value: "Jordan Lee" } });
-    fireEvent.change(screen.getByLabelText("Location"), { target: { value: "Mumbai, IN" } });
+    fireEvent.change(screen.getByLabelText("Location"), { target: { value: "New York, US" } });
     fireEvent.change(screen.getByLabelText("Desk Focus"), { target: { value: "Global Macro" } });
     fireEvent.change(screen.getByLabelText("Trading Style"), { target: { value: "systematic" } });
     fireEvent.change(screen.getByLabelText("Notification Mode"), { target: { value: "quiet" } });
     fireEvent.change(screen.getByLabelText("Security Tier"), { target: { value: "standard" } });
-    fireEvent.change(screen.getByLabelText("Preferred Country"), { target: { value: "IN" } });
-    fireEvent.change(screen.getByLabelText("Preferred Exchange"), { target: { value: "BSE" } });
-    fireEvent.change(screen.getByLabelText("Default Currency"), { target: { value: "INR" } });
+    fireEvent.change(screen.getByLabelText("Preferred Country"), { target: { value: "US" } });
+    fireEvent.change(screen.getByLabelText("Preferred Exchange"), { target: { value: "NASDAQ" } });
+    fireEvent.change(screen.getByLabelText("Default Currency"), { target: { value: "USD" } });
     fireEvent.change(screen.getByLabelText("Webhook URL"), { target: { value: "https://hooks.example.dev/macro" } });
 
     fireEvent.click(screen.getByRole("button", { name: "Save account details" }));
@@ -194,7 +194,7 @@ describe("AccountPage revamp", () => {
         firstName: "Jordan",
         lastName: "Lee",
         displayName: "Jordan Lee",
-        location: "Mumbai, IN",
+        location: "New York, US",
         deskFocus: "Global Macro",
         tradingStyle: "systematic",
         notificationMode: "quiet",
@@ -203,9 +203,9 @@ describe("AccountPage revamp", () => {
     );
     expect(storedConnection).toEqual(
       expect.objectContaining({
-        preferredCountry: "IN",
-        preferredExchange: "BSE",
-        defaultCurrency: "INR",
+        preferredCountry: "US",
+        preferredExchange: "NASDAQ",
+        defaultCurrency: "USD",
       }),
     );
     expect(storedAggregators).toEqual(
@@ -213,9 +213,9 @@ describe("AccountPage revamp", () => {
         webhookUrl: "https://hooks.example.dev/macro",
       }),
     );
-    expect(setSelectedCountrySpy).toHaveBeenCalledWith("IN");
-    expect(setSelectedMarketSpy).toHaveBeenCalledWith("BSE");
-    expect(setDisplayCurrencySpy).toHaveBeenCalledWith("INR");
+    expect(setSelectedCountrySpy).toHaveBeenCalledWith("US");
+    expect(setSelectedMarketSpy).toHaveBeenCalledWith("NASDAQ");
+    expect(setDisplayCurrencySpy).toHaveBeenCalledWith("USD");
     expect(await screen.findByText("Account details saved.")).toBeInTheDocument();
   });
 

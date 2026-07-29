@@ -68,7 +68,7 @@ const NAV_CARD_SECTIONS: Array<{ title: string; cards: NavCard[] }> = [
     title: "MARKETS",
     cards: [
       { label: "Equity", to: "/equity/stocks", badge: "M1" },
-      { label: "F&O", to: "/fno", badge: "FO" },
+      { label: "Options & Futures", to: "/fno", badge: "FO" },
       { label: "Crypto", to: "/equity/crypto", badge: "CR" },
       { label: "Economics", to: "/equity/economics", badge: "EC" },
       { label: "Yield Curve", to: "/equity/yield-curve", badge: "YC" },
@@ -86,7 +86,7 @@ const NAV_CARD_SECTIONS: Array<{ title: string; cards: NavCard[] }> = [
       { label: "Strategy", to: "/fno/strategy", badge: "STR" },
       { label: "PCR", to: "/fno/pcr", badge: "PCR" },
       { label: "Options Flow", to: "/fno/flow", badge: "FLW" },
-      { label: "F&O Heatmap", to: "/fno/heatmap", badge: "FHM" },
+      { label: "Options & Futures Heatmap", to: "/fno/heatmap", badge: "FHM" },
       { label: "Expiry", to: "/fno/expiry", badge: "EXP" },
     ],
   },
@@ -152,10 +152,10 @@ const NAV_CARD_SECTIONS: Array<{ title: string; cards: NavCard[] }> = [
 ];
 
 const INITIAL_MARKET_ROWS: MarketRow[] = [
-  { symbol: "^NSEI", label: "NIFTY 50", ltp: 0, chg: 0, chgPct: 0, flash: null },
-  { symbol: "^BSESN", label: "SENSEX", ltp: 0, chg: 0, chgPct: 0, flash: null },
-  { symbol: "^IXIC", label: "NASDAQ", ltp: 0, chg: 0, chgPct: 0, flash: null },
   { symbol: "^GSPC", label: "S&P 500", ltp: 0, chg: 0, chgPct: 0, flash: null },
+  { symbol: "^DJI", label: "DOW", ltp: 0, chg: 0, chgPct: 0, flash: null },
+  { symbol: "^IXIC", label: "NASDAQ", ltp: 0, chg: 0, chgPct: 0, flash: null },
+  { symbol: "^RUT", label: "Russell 2000", ltp: 0, chg: 0, chgPct: 0, flash: null },
   { symbol: "GC=F", label: "GOLD", ltp: 0, chg: 0, chgPct: 0, flash: null },
   { symbol: "SI=F", label: "SILVER", ltp: 0, chg: 0, chgPct: 0, flash: null },
   { symbol: "CL=F", label: "CRUDE OIL", ltp: 0, chg: 0, chgPct: 0, flash: null },
@@ -164,9 +164,9 @@ const INITIAL_MARKET_ROWS: MarketRow[] = [
 const MARKET_PULSE_SYMBOLS = INITIAL_MARKET_ROWS.map((row) => row.symbol);
 
 const FALLBACK_PERFORMANCE_POINTS = [
-  24300000, 24200000, 24400000, 24500000, 24450000, 24680000, 24720000, 24610000, 24790000, 24840000,
-  24770000, 24890000, 24950000, 24810000, 24780000, 24910000, 25030000, 24980000, 25120000, 25190000,
-  25150000, 25230000, 25310000, 25280000, 25390000, 25470000, 25420000, 25510000, 25590000, 25670000,
+  243000, 242000, 244000, 245000, 244500, 246800, 247200, 246100, 247900, 248400,
+  247700, 248900, 249500, 248100, 247800, 249100, 250300, 249800, 251200, 251900,
+  251500, 252300, 253100, 252800, 253900, 254700, 254200, 255100, 255900, 256700,
 ];
 
 const EMPTY_SNAPSHOT: DashboardSnapshot = {
@@ -184,7 +184,7 @@ const EMPTY_SNAPSHOT: DashboardSnapshot = {
 };
 
 function formatPrice(value: number): string {
-  return value.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function formatPercent(value: number | null, digits = 2): string {
@@ -192,15 +192,15 @@ function formatPercent(value: number | null, digits = 2): string {
   return `${value >= 0 ? "+" : ""}${value.toFixed(digits)}%`;
 }
 
-function formatInr(value: number | null): string {
-  if (value == null || !Number.isFinite(value)) return "INR --";
-  return `INR ${value.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
+function formatUsd(value: number | null): string {
+  if (value == null || !Number.isFinite(value)) return "USD --";
+  return `USD ${value.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
 }
 
-function formatSignedInr(value: number | null): string {
-  if (value == null || !Number.isFinite(value)) return "INR --";
+function formatSignedUsd(value: number | null): string {
+  if (value == null || !Number.isFinite(value)) return "USD --";
   const sign = value >= 0 ? "+" : "-";
-  return `${sign}INR ${Math.abs(value).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
+  return `${sign}USD ${Math.abs(value).toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
 }
 
 function formatCompactDateLabel(date: string): string {
@@ -267,7 +267,7 @@ export function HomePage() {
       fetchPortfolio(),
       fetchWatchlist(),
       fetchBacktestV1Presets(),
-      fetchChainSummary("NIFTY"),
+      fetchChainSummary("SPY"),
       fetchPortfolioBenchmarkOverlay(),
     ]);
 
@@ -596,7 +596,7 @@ export function HomePage() {
       },
       {
         id: "fno",
-        label: "F&O",
+        label: "Options & Futures",
         value: `${snapshot.fnoSignal}${snapshot.fnoPcr != null ? ` | ${snapshot.fnoPcr.toFixed(2)}` : ""}`,
         tone: getSystemTone(snapshot.fnoSignal),
       },
@@ -728,13 +728,13 @@ export function HomePage() {
                 <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
                   <MetricCard
                     label="Net Liquidation"
-                    value={formatInr(snapshot.equityValue)}
+                    value={formatUsd(snapshot.equityValue)}
                     tone={getMetricTone(snapshot.equityPnl)}
                     delta={
                       snapshot.equityPnl == null
                         ? undefined
                         : {
-                            label: `${formatSignedInr(snapshot.equityPnl)} (${formatPercent(equityPnlPct)})`,
+                            label: `${formatSignedUsd(snapshot.equityPnl)} (${formatPercent(equityPnlPct)})`,
                             tone: getMetricTone(snapshot.equityPnl),
                           }
                     }
@@ -789,7 +789,7 @@ export function HomePage() {
                     />
 
                     <MetricCard
-                      label="F&O Regime"
+                      label="Options & Futures Regime"
                       value={snapshot.fnoSignal}
                       tone={getSignalTone(snapshot.fnoSignal)}
                       details={[
@@ -810,7 +810,7 @@ export function HomePage() {
                       value={`${snapshot.watchlistCount} Symbols`}
                       tone={snapshot.watchlistCount > 0 ? "accent" : "neutral"}
                       delta={{
-                        label: `${snapshot.watchlistDerivativesCount} F&O linked`,
+                        label: `${snapshot.watchlistDerivativesCount} Options & Futures linked`,
                         tone: snapshot.watchlistDerivativesCount > 0 ? "up" : "neutral",
                       }}
                       details={[
@@ -851,7 +851,7 @@ export function HomePage() {
                     points={performanceSeries}
                     benchmarkPoints={benchmarkSeries}
                     ariaLabel="Portfolio HQ chart"
-                    valueFormatter={(value) => formatInr(value)}
+                    valueFormatter={(value) => formatUsd(value)}
                   />
                 </div>
               </div>

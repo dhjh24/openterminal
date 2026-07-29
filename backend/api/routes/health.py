@@ -13,7 +13,6 @@ router = APIRouter()
 async def _probe(name: str, coro) -> dict[str, Any]:
     started = time.perf_counter()
     try:
-        # Await the coroutine provided
         await coro
         return {
             "name": name,
@@ -32,31 +31,15 @@ async def _probe(name: str, coro) -> dict[str, Any]:
 async def datasource_health() -> dict[str, Any]:
     fetcher = await get_unified_fetcher()
 
-    # Define checks using actual async methods from new clients
-    checks_map = []
+    checks_map = [
+        _probe("yahoo", fetcher.yahoo.get_quotes(["AAPL"])),
+    ]
 
-    # NSE: get_market_status (lightweight)
-    checks_map.append(_probe("nse", fetcher.nse.get_market_status()))
-
-    # Yahoo: get_quotes (lightweight)
-    checks_map.append(_probe("yahoo", fetcher.yahoo.get_quotes(["RELIANCE.NS"])))
-
-    # FMP: if key exists
     if fetcher.fmp.api_key:
-        checks_map.append(_probe("fmp", fetcher.fmp.get_quote("RELIANCE")))
+        checks_map.append(_probe("fmp", fetcher.fmp.get_quote("AAPL")))
 
-    # Finnhub: if key exists
     if fetcher.finnhub.api_key:
-        checks_map.append(_probe("finnhub", fetcher.finnhub.get_company_profile("RELIANCE")))
-
-    # Kite Connect: configuration check (session-based API; auth token required for remote probes)
-    if fetcher.kite.api_key:
-        checks_map.append(
-            _probe(
-                "kite_config",
-                asyncio.sleep(0, result={"configured": fetcher.kite.is_configured}),
-            )
-        )
+        checks_map.append(_probe("finnhub", fetcher.finnhub.get_company_profile("AAPL")))
 
     results = await asyncio.gather(*checks_map)
 

@@ -1,21 +1,25 @@
 default:
-  primary: kite
+  primary: yahoo
   fallback:
-    - yahoo
+    - alpaca
 
 exchanges:
-  NSE:
-    primary: kite
-    fallback:
-      - yahoo
-  BSE:
-    primary: kite
-    fallback:
-      - yahoo
   NASDAQ:
     primary: yahoo
-    fallback: []
+    fallback:
+      - alpaca
   NYSE:
+    primary: yahoo
+    fallback:
+      - alpaca
+  AMEX:
+    primary: yahoo
+    fallback:
+      - alpaca
+  CME:
+    primary: yahoo
+    fallback: []
+  CBOE:
     primary: yahoo
     fallback: []
   CRYPTO:

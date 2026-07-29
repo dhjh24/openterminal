@@ -10,9 +10,8 @@ from backend.adapters.base import OHLCV, QuoteResponse
 from backend.adapters.registry import get_adapter_registry
 from backend.core.finnhub_client import FinnhubClient
 from backend.core.fmp_client import FMPClient
-from backend.core.kite_client import KiteClient
-from backend.core.nse_client import NSEClient
 from backend.core.yahoo_client import YahooClient
+from backend.shared.market_profile import DEFAULT_EXCHANGE, is_us_only
 from backend.shared.market_classifier import market_classifier
 from backend.services.orderbook_service import service as orderbook_service
 from backend.api.schemas.market_data import MarketDepth, DepthLevel
@@ -129,42 +128,33 @@ async def _adapter_exchange_and_symbol(symbol: str) -> tuple[str, str]:
     if _is_yahoo_native_symbol(normalized):
         return "", normalized
     classification = await market_classifier.classify(normalized)
-    return classification.exchange or "NSE", normalized
+    default_exchange = DEFAULT_EXCHANGE if is_us_only() else "NSE"
+    return classification.exchange or default_exchange, normalized
 
 @dataclass
 class UnifiedFetcher:
-    nse: NSEClient
     yahoo: YahooClient
     fmp: FMPClient
     finnhub: FinnhubClient
-    kite: KiteClient
 
     @classmethod
     def build_default(cls) -> "UnifiedFetcher":
         return cls(
-            nse=NSEClient(),
             yahoo=YahooClient(),
             fmp=FMPClient(),
             finnhub=FinnhubClient(),
-            kite=KiteClient(),
         )
 
     async def startup(self) -> None:
-        # NSE client initializes sessions on demand, others do too
         pass
 
     async def shutdown(self) -> None:
         await asyncio.gather(
-            self.nse.close(),
             self.yahoo.close(),
             self.fmp.close(),
             self.finnhub.close(),
-            self.kite.close(),
             return_exceptions=True,
         )
-
-    def _has_kite_live(self) -> bool:
-        return bool(self.kite.api_key and self.kite.resolve_access_token())
 
     def _has_yahoo_fundamentals(self, y_fund: Any) -> bool:
         if not isinstance(y_fund, dict) or not y_fund:
@@ -213,28 +203,6 @@ class UnifiedFetcher:
             except Exception as e:
                 logger.debug("Adapter quote failed for %s via %s: %s", symbol, exchange, e)
 
-        cls = await market_classifier.classify(symbol)
-        kite_token = self.kite.resolve_access_token()
-
-        if cls.country_code == "IN" and self.kite.api_key and kite_token:
-            try:
-                instrument = f"NSE:{symbol}"
-                data = await self.kite.get_quote(kite_token, [instrument])
-                qmap = data.get("data") if isinstance(data, dict) else None
-                if isinstance(qmap, dict) and isinstance(qmap.get(instrument), dict):
-                    return qmap[instrument]
-            except Exception as e:
-                logger.debug(f"Kite quote failed for {symbol}: {e}")
-
-        # 2. NSE
-        if cls.country_code == "IN":
-            try:
-                data = await self.nse.get_quote_equity(symbol)
-                if data and "priceInfo" in data:
-                    return data
-            except Exception as e:
-                 logger.debug(f"NSE quote failed for {symbol}: {e}")
-
         try:
             yahoo_sym = await market_classifier.yfinance_symbol(symbol)
             data = await self.yahoo.get_quotes([yahoo_sym])
@@ -260,9 +228,6 @@ class UnifiedFetcher:
         quote_payload = await self.fetch_quote(symbol)
         price, change_pct, price_source = _extract_quote_price(quote_payload)
 
-        # Launch parallel requests
-        nse_task = self.nse.get_quote_equity(symbol) if cls.country_code == "IN" else asyncio.sleep(0, result={})
-        nse_trade_task = self.nse.get_trade_info(symbol) if cls.country_code == "IN" else asyncio.sleep(0, result={})
         yahoo_summary_task = self.yahoo.get_quote_summary(
             ysym, ["financialData", "summaryDetail", "defaultKeyStatistics", "assetProfile"]
         )
@@ -271,11 +236,12 @@ class UnifiedFetcher:
         finnhub_task = self.finnhub.get_company_profile(symbol)
 
         results = await asyncio.gather(
-            nse_task, nse_trade_task, yahoo_summary_task, yahoo_quotes_task, fmp_task, finnhub_task,
+            yahoo_summary_task, yahoo_quotes_task, fmp_task, finnhub_task,
             return_exceptions=True,
         )
 
-        nse_q, nse_t, yahoo_summary, yahoo_quotes, fmp_q, finnhub_p = results
+        nse_q, nse_t = {}, {}
+        yahoo_summary, yahoo_quotes, fmp_q, finnhub_p = results
 
         # Helpers
         def _get_val(obj, *keys):
@@ -326,7 +292,8 @@ class UnifiedFetcher:
                        yq.get("longName") or \
                        fq.get("name") or \
                        fp.get("name")
-        exchange = _get_val(nq, "info", "exchange") or _get_val(nq, "metadata", "exchange") or cls.exchange or "NSE"
+        default_exchange = DEFAULT_EXCHANGE if is_us_only() else "NSE"
+        exchange = _get_val(nq, "info", "exchange") or _get_val(nq, "metadata", "exchange") or cls.exchange or default_exchange
         country_code = cls.country_code
         indices: list[str] = []
         idx_meta = _get_val(nq, "metadata", "index")
@@ -381,11 +348,9 @@ class UnifiedFetcher:
             "market_status": cls.market_status,
             "indices": indices,
             "details": {
-                "nse": bool(nq),
                 "yahoo": bool(ys),
                 "fmp": bool(fq),
                 "finnhub": bool(fp),
-                "kite": price_source in {"adapter", "nse"} and cls.country_code == "IN",
                 "price_source": price_source,
             },
         }
@@ -461,97 +426,34 @@ class UnifiedFetcher:
         return records
 
     async def fetch_shareholding(self, ticker: str) -> Dict[str, Any]:
+        from backend.equity.services.shareholding import ShareholdingService
+
         symbol = ticker.strip().upper()
-        raw: Dict[str, Any] = {}
-        history: list[dict[str, float | str]] = []
-        warning: str | None = None
-
-        try:
-            raw = await self.nse.get_corp_info(symbol)
-        except Exception as exc:
-            warning = f"NSE shareholding unavailable: {exc}"
-
-        def _extract_patterns(payload: Dict[str, Any]) -> list[dict[str, Any]]:
-            candidates = [
-                payload.get("shareholdingPatterns"),
-                payload.get("shareHoldingPatterns"),
-                payload.get("shareholding"),
-                payload.get("shareHolding"),
-            ]
-            for cand in candidates:
-                if isinstance(cand, list):
-                    return [x for x in cand if isinstance(x, dict)]
-                if isinstance(cand, dict):
-                    for key in ("data", "patterns", "history", "records"):
-                        inner = cand.get(key)
-                        if isinstance(inner, list):
-                            return [x for x in inner if isinstance(x, dict)]
-            return []
-
-        patterns = _extract_patterns(raw)
-        for item in patterns:
-            date = item.get("date") or item.get("asOnDate") or item.get("period") or item.get("quarter") or ""
-            promoter = _to_float(item.get("promoter")) or _to_float(item.get("promoterHolding")) or 0.0
-            fii = _to_float(item.get("fii")) or _to_float(item.get("foreignInstitution")) or _to_float(item.get("fiiHolding")) or 0.0
-            dii = _to_float(item.get("dii")) or _to_float(item.get("domesticInstitution")) or _to_float(item.get("diiHolding")) or 0.0
-            public = _to_float(item.get("public")) or _to_float(item.get("nonInstitution")) or _to_float(item.get("publicHolding")) or 0.0
-            if date:
-                history.append(
-                    {
-                        "date": str(date),
-                        "promoter": promoter,
-                        "fii": fii,
-                        "dii": dii,
-                        "public": public,
-                    }
-                )
-
-        # Fallback: Yahoo major holders snapshot (single point, not historical trend).
-        if not history:
-            try:
-                ysym = await market_classifier.yfinance_symbol(symbol)
-                ysum = await self.yahoo.get_quote_summary(ysym, ["majorHoldersBreakdown"])
-                mh = ysum.get("majorHoldersBreakdown", {}) if isinstance(ysum, dict) else {}
-                insiders = _to_float((mh.get("heldPercentInsiders") or {}).get("raw") if isinstance(mh.get("heldPercentInsiders"), dict) else mh.get("heldPercentInsiders"))
-                institutions = _to_float((mh.get("heldPercentInstitutions") or {}).get("raw") if isinstance(mh.get("heldPercentInstitutions"), dict) else mh.get("heldPercentInstitutions"))
-                promoter = (insiders or 0.0) * 100.0
-                fii = (institutions or 0.0) * 100.0
-                dii = 0.0
-                public = max(0.0, 100.0 - promoter - fii - dii)
-                if insiders is not None or institutions is not None:
-                    history.append(
-                        {
-                            "date": "Latest",
-                            "promoter": promoter,
-                            "fii": fii,
-                            "dii": dii,
-                            "public": public,
-                        }
-                    )
-                    warning = (warning + " | " if warning else "") + "Showing Yahoo holders snapshot fallback"
-            except Exception as exc:
-                warning = (warning + " | " if warning else "") + f"Yahoo holders fallback unavailable: {exc}"
-
-        # Last-resort deterministic fallback so UI sections still render.
-        if not history:
+        pattern = await ShareholdingService().get_shareholding(symbol)
+        payload = pattern.model_dump() if hasattr(pattern, "model_dump") else pattern.dict()
+        history = []
+        for row in payload.get("historical") or []:
+            if not isinstance(row, dict):
+                continue
             history.append(
                 {
-                    "date": "Latest",
-                    "promoter": 0.0,
-                    "fii": 0.0,
-                    "dii": 0.0,
-                    "public": 100.0,
+                    "date": str(row.get("quarter") or row.get("date") or "Latest"),
+                    "promoter": _to_float(row.get("promoter")) or 0.0,
+                    "fii": _to_float(row.get("fii")) or 0.0,
+                    "dii": _to_float(row.get("dii")) or 0.0,
+                    "public": _to_float(row.get("public")) or 0.0,
                 }
             )
-            warning = (warning + " | " if warning else "") + "Using default fallback distribution"
-
-        payload = {"ticker": symbol, "history": history, "raw": raw}
-        if warning:
-            payload["warning"] = warning
-        return payload
+        return {
+            "ticker": symbol,
+            "history": history,
+            "warning": payload.get("warning"),
+            "error": payload.get("error"),
+            "message": payload.get("message"),
+        }
 
     async def fetch_corporate_actions(self, ticker: str) -> Dict[str, Any]:
-        return await self.nse.get_corp_info(ticker.strip().upper())
+        return {"symbol": ticker.strip().upper(), "actions": [], "source": "unavailable"}
 
     async def fetch_analyst_consensus(self, ticker: str) -> Dict[str, Any]:
         # Finnhub is good for this
@@ -593,67 +495,6 @@ class UnifiedFetcher:
     async def fetch_depth(self, ticker: str, levels: int = 10) -> MarketDepth:
         symbol = ticker.strip().upper()
         cls = await market_classifier.classify(symbol)
-        kite_token = self.kite.resolve_access_token()
-
-        # 1. Kite (Real-time depth for India)
-        if cls.country_code == "IN" and self.kite.api_key and kite_token:
-            try:
-                instrument = f"NSE:{symbol}"
-                data = await self.kite.get_quote(kite_token, [instrument])
-                qmap = data.get("data") if isinstance(data, dict) else None
-                if isinstance(qmap, dict) and isinstance(qmap.get(instrument), dict):
-                    kq = qmap[instrument]
-                    depth = kq.get("depth", {})
-                    bids = [
-                        DepthLevel(price=_to_float(d.get("price")) or 0.0, size=int(d.get("quantity") or 0), orders=int(d.get("orders") or 0))
-                        for d in depth.get("buy", [])
-                    ]
-                    asks = [
-                        DepthLevel(price=_to_float(d.get("price")) or 0.0, size=int(d.get("quantity") or 0), orders=int(d.get("orders") or 0))
-                        for d in depth.get("sell", [])
-                    ]
-                    if bids or asks:
-                        return MarketDepth(
-                            symbol=symbol,
-                            market="IN",
-                            as_of=datetime.now(timezone.utc),
-                            bids=bids[:levels],
-                            asks=asks[:levels],
-                            total_bid_quantity=sum(b.size for b in bids),
-                            total_ask_quantity=sum(a.size for a in asks),
-                        )
-            except Exception as e:
-                logger.debug(f"Kite depth failed for {symbol}: {e}")
-
-        # 2. NSE (Snapshot depth)
-        if cls.country_code == "IN":
-            try:
-                data = await self.nse.get_quote_equity(symbol)
-                # NSE depth is often in 'marketDeptOrderBook' -> 'bid' / 'ask'
-                if data and "marketDeptOrderBook" in data:
-                    md = data["marketDeptOrderBook"]
-                    bids = [
-                        DepthLevel(price=_to_float(d.get("price")) or 0.0, size=int(d.get("quantity") or 0))
-                        for d in md.get("bid", [])
-                    ]
-                    asks = [
-                        DepthLevel(price=_to_float(d.get("price")) or 0.0, size=int(d.get("quantity") or 0))
-                        for d in md.get("ask", [])
-                    ]
-                    if bids or asks:
-                         return MarketDepth(
-                            symbol=symbol,
-                            market="IN",
-                            as_of=datetime.now(timezone.utc),
-                            bids=bids[:levels],
-                            asks=asks[:levels],
-                            total_bid_quantity=sum(b.size for b in bids),
-                            total_ask_quantity=sum(a.size for a in asks),
-                        )
-            except Exception as e:
-                logger.debug(f"NSE depth failed for {symbol}: {e}")
-
-        # 3. Fallback to Synthetic
         snap = orderbook_service.get_snapshot(symbol, market_hint=cls.country_code, levels=levels)
         return MarketDepth(
             symbol=symbol,

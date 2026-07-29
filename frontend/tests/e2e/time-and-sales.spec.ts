@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 test("time and sales page and security hub tape tab render", async ({ page }) => {
   const chartPayload = {
-    symbol: "RELIANCE",
+    symbol: "AAPL",
     interval: "1d",
     bars: 2,
     data: [
@@ -12,26 +12,26 @@ test("time and sales page and security hub tape tab render", async ({ page }) =>
     meta: { warnings: [] },
   };
 
-  await page.context().route(new RegExp(String.raw`http://127\.0\.0\.1:\d+/api/stocks/RELIANCE(?:\?.*)?$`), async (route) => {
+  await page.context().route(new RegExp(String.raw`http://127\.0\.0\.1:\d+/api/stocks/AAPL(?:\?.*)?$`), async (route) => {
     await route.fulfill({
       json: {
-        ticker: "RELIANCE",
-        symbol: "RELIANCE",
+        ticker: "AAPL",
+        symbol: "AAPL",
         current_price: 2500,
         change_pct: 1.2,
       },
     });
   });
 
-  await page.context().route(new RegExp(String.raw`http://127\.0\.0\.1:\d+/api/v3/chart/RELIANCE(?:\?.*)?$`), async (route) => {
+  await page.context().route(new RegExp(String.raw`http://127\.0\.0\.1:\d+/api/v3/chart/AAPL(?:\?.*)?$`), async (route) => {
     await route.fulfill({ json: chartPayload });
   });
 
-  await page.context().route(new RegExp(String.raw`http://127\.0\.0\.1:\d+/api/chart/RELIANCE(?:\?.*)?$`), async (route) => {
+  await page.context().route(new RegExp(String.raw`http://127\.0\.0\.1:\d+/api/chart/AAPL(?:\?.*)?$`), async (route) => {
     await route.fulfill({ json: chartPayload });
   });
 
-  await page.context().route(new RegExp(String.raw`http://127\.0\.0\.1:\d+/api/tape/RELIANCE/recent(?:\?.*)?$`), async (route) => {
+  await page.context().route(new RegExp(String.raw`http://127\.0\.0\.1:\d+/api/tape/AAPL/recent(?:\?.*)?$`), async (route) => {
     await route.fulfill({
       json: {
         trades: [
@@ -42,7 +42,7 @@ test("time and sales page and security hub tape tab render", async ({ page }) =>
     });
   });
 
-  await page.context().route(new RegExp(String.raw`http://127\.0\.0\.1:\d+/api/tape/RELIANCE/summary(?:\?.*)?$`), async (route) => {
+  await page.context().route(new RegExp(String.raw`http://127\.0\.0\.1:\d+/api/tape/AAPL/summary(?:\?.*)?$`), async (route) => {
     await route.fulfill({
       json: {
         total_volume: 325,
@@ -67,7 +67,7 @@ test("time and sales page and security hub tape tab render", async ({ page }) =>
   await expect(buyRows.first()).toBeVisible();
   await expect(page.locator('[data-side="sell"]')).toHaveCount(0);
 
-  await page.goto("/equity/security?ticker=RELIANCE", { waitUntil: "domcontentloaded" });
+  await page.goto("/equity/security?ticker=AAPL", { waitUntil: "domcontentloaded" });
   await expect(page.getByRole("tab", { name: "Tape" })).toBeVisible();
   await page.getByRole("tab", { name: "Tape" }).click();
   await expect(page.getByText("Time & Sales")).toBeVisible();

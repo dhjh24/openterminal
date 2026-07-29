@@ -179,12 +179,12 @@ function computePortfolioTrend(
   });
 }
 
-function formatCompactInr(value: number): string {
+function formatCompactUsd(value: number): string {
   const abs = Math.abs(value);
-  if (abs >= 1e7) return `INR ${(value / 1e7).toFixed(2)}Cr`;
-  if (abs >= 1e5) return `INR ${(value / 1e5).toFixed(2)}L`;
-  if (abs >= 1e3) return `INR ${(value / 1e3).toFixed(1)}K`;
-  return `INR ${value.toFixed(0)}`;
+  if (abs >= 1e9) return `USD ${(value / 1e9).toFixed(2)}B`;
+  if (abs >= 1e6) return `USD ${(value / 1e6).toFixed(2)}M`;
+  if (abs >= 1e3) return `USD ${(value / 1e3).toFixed(1)}K`;
+  return `USD ${value.toFixed(0)}`;
 }
 
 function formatPctValue(value: number | null | undefined, digits = 2): string {
@@ -363,11 +363,11 @@ export function PortfolioPage() {
       );
       setPortfolioTrend(computePortfolioTrend(res.items, Object.fromEntries(chartEntries)));
       const [riskRes, corrRes, divRes, taxRes, benchRes] = await Promise.all([
-        fetchPortfolioRiskMetrics({ benchmark: "NIFTY50", risk_free_rate: 0.06 }).catch(() => null),
+        fetchPortfolioRiskMetrics({ benchmark: "SPY", risk_free_rate: 0.05 }).catch(() => null),
         fetchPortfolioCorrelation({ window: 60 }).catch(() => null),
         fetchPortfolioDividends({ days: 180 }).catch(() => null),
         fetchTaxLots().catch(() => null),
-        fetchPortfolioBenchmarkOverlay({ benchmark: "NIFTY50" }).catch(() => null),
+        fetchPortfolioBenchmarkOverlay({ benchmark: "SPY" }).catch(() => null),
       ]);
       setRiskMetrics(riskRes);
       setCorrelation(corrRes);
@@ -1069,7 +1069,7 @@ export function PortfolioPage() {
                         width={88}
                         tickCount={6}
                         domain={yAxisDomain}
-                        tickFormatter={(value: number) => formatCompactInr(value)}
+                        tickFormatter={(value: number) => formatCompactUsd(value)}
                       />
                       <YAxis
                         yAxisId="return"
@@ -1210,7 +1210,7 @@ export function PortfolioPage() {
                     <th className="px-2 py-1 text-left">Flag</th>
                     <th className="px-2 py-1 text-left">Ticker</th>
                     <th className="px-2 py-1 text-left">Next Earnings</th>
-                    <th className="px-2 py-1 text-left">F&O</th>
+                    <th className="px-2 py-1 text-left">Options & Futures</th>
                     <th className="px-2 py-1 text-right">Qty</th>
                     <th className="px-2 py-1 text-right">Avg Buy</th>
                     <th className="px-2 py-1 text-left">Sector</th>

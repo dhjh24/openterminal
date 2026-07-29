@@ -12,7 +12,6 @@ import httpx
 import yfinance as yf
 
 from backend.db.ohlcv_cache import get_ohlcv_cache
-from backend.services.instrument_map import get_instrument_map_service
 from backend.shared.market_classifier import market_classifier
 
 logger = logging.getLogger(__name__)
@@ -67,9 +66,28 @@ class ChartDataProvider:
         self._cache = get_ohlcv_cache()
 
     async def resolve_market(self, symbol: str, market_hint: str | None = None) -> tuple[MarketType, str, str]:
+        from backend.shared.market_profile import DEFAULT_EXCHANGE, is_us_only
+
         raw = (symbol or "").strip().upper()
         if not raw:
             return ("US", "", "")
+
+        if is_us_only():
+            if ":" in raw:
+                exchange, ticker = raw.split(":", 1)
+                exchange = exchange.strip().upper()
+                ticker = ticker.strip().upper()
+                if exchange in IN_EXCHANGES:
+                    return ("US", ticker, ticker)
+                return ("US", ticker, ticker)
+            if raw.endswith(".NS") or raw.endswith(".BO"):
+                base = raw.rsplit(".", 1)[0]
+                return ("US", base, base)
+            hint = (market_hint or "").strip().upper()
+            if hint in IN_EXCHANGES:
+                return ("US", raw, raw)
+            return ("US", raw, raw)
+
         if ":" in raw:
             exchange, ticker = raw.split(":", 1)
             exchange = exchange.strip().upper()
@@ -267,31 +285,7 @@ class ChartDataProvider:
         start: datetime | None,
         end: datetime | None,
     ) -> list[OHLCVBar]:
-        bars = await self._run_provider_step(
-            provider_name="kite",
-            ticker=ticker,
-            fetch_coro=self._kite_historical(base_symbol, ticker, interval, start, end),
-        )
-        if bars:
-            return bars
-        if self.fmp_key:
-            bars = await self._run_provider_step(
-                provider_name="fmp",
-                ticker=ticker,
-                fetch_coro=self._fmp_historical(base_symbol, ticker, interval, start, end),
-            )
-            if bars:
-                return bars
-        if self.finnhub_key:
-            bars = await self._run_provider_step(
-                provider_name="finnhub",
-                ticker=ticker,
-                fetch_coro=self._finnhub_candles(base_symbol, ticker, interval, start, end),
-            )
-            if bars:
-                return bars
-        logger.debug("Falling back to yfinance historical for %s after IN waterfall miss", ticker)
-        return await self._yfinance_ohlcv(base_symbol, ticker, interval, period, start, end, market="IN")
+        return []
 
     async def _us_ohlcv(
         self,
@@ -600,79 +594,6 @@ class ChartDataProvider:
                 )
             except Exception:
                 continue
-        return out
-
-    async def _kite_historical(
-        self,
-        base_symbol: str,
-        ticker: str,
-        interval: str,
-        start: datetime | None,
-        end: datetime | None,
-    ) -> list[OHLCVBar]:
-        from backend.api.deps import get_unified_fetcher
-
-        fetcher = await get_unified_fetcher()
-        kite = fetcher.kite
-        access_token = kite.resolve_access_token()
-        if not kite.api_key or not access_token:
-            return []
-
-        exchange = "BSE" if ticker.endswith(".BO") else "NSE"
-        instrument_map = get_instrument_map_service()
-        mapping = await instrument_map.resolve_many([f"{exchange}:{base_symbol}"])
-        instrument_token = mapping.get(f"{exchange}:{base_symbol}")
-        if not instrument_token:
-            return []
-
-        kite_interval_map = {
-            "1m": "minute",
-            "5m": "5minute",
-            "15m": "15minute",
-            "30m": "30minute",
-            "1h": "60minute",
-            "1d": "day",
-        }
-        kite_interval = kite_interval_map.get(interval)
-        if not kite_interval:
-            return []
-
-        _end = end or datetime.now(timezone.utc)
-        _start = start or (_end - timedelta(days=60 if interval != "1d" else 365))
-        payload = await kite.get_historical_data(access_token, int(instrument_token), _start, _end, kite_interval)
-        rows = payload.get("data") if isinstance(payload, dict) else []
-        if not isinstance(rows, list):
-            return []
-        out: list[OHLCVBar] = []
-        for row in rows:
-            if not isinstance(row, dict):
-                continue
-            dt = row.get("date")
-            if isinstance(dt, str):
-                parsed = _parse_iso_dt(dt)
-                dt = parsed if parsed else None
-            elif isinstance(dt, datetime):
-                dt = _utc_dt(dt)
-            else:
-                dt = None
-            if not dt:
-                continue
-            try:
-                out.append(
-                    OHLCVBar(
-                        timestamp=dt,
-                        open=float(row["open"]),
-                        high=float(row["high"]),
-                        low=float(row["low"]),
-                        close=float(row["close"]),
-                        volume=float(row.get("volume", 0) or 0),
-                        symbol=base_symbol,
-                        market="IN",
-                    )
-                )
-            except Exception:
-                continue
-        out.sort(key=lambda b: b.timestamp)
         return out
 
 

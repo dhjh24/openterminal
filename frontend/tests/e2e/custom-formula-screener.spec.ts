@@ -91,7 +91,7 @@ test("custom formula screener validates, runs, and saves formulas", async ({ pag
         count: 2,
         results: [
           {
-            symbol: "RELIANCE",
+            symbol: "AAPL",
             name: "Reliance Industries",
             sector: "Energy",
             computed_value: 45.2,
@@ -101,7 +101,7 @@ test("custom formula screener validates, runs, and saves formulas", async ({ pag
             market_cap: 1990000,
           },
           {
-            symbol: "INFY",
+            symbol: "GOOGL",
             name: "Infosys",
             sector: "Technology",
             computed_value: 38.1,
@@ -126,7 +126,7 @@ test("custom formula screener validates, runs, and saves formulas", async ({ pag
 
   await page.getByRole("button", { name: /^Run$/ }).last().click();
   await expect(page.getByText("Computed Value (pe * pb)")).toBeVisible();
-  await expect(page.getByText("RELIANCE", { exact: true })).toBeVisible();
+  await expect(page.getByText("AAPL", { exact: true })).toBeVisible();
 
   await formulaEditor.fill("pe * pb");
   await page.getByRole("button", { name: "Save Formula" }).click();

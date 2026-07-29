@@ -36,17 +36,23 @@ async def call_tool_for(
 def build_mcp_server(registry: ToolRegistry | None = None) -> Server:
     """Build an MCP server backed by the existing agent tool registry."""
     reg = registry or build_default_registry()
-    server = Server(SERVER_NAME)
 
-    @server.list_tools()
-    async def _list() -> list[types.Tool]:
-        return list_tools_for(reg)
+    async def _list_tools(
+        _ctx: Any, _params: types.PaginatedRequestParams | None
+    ) -> types.ListToolsResult:
+        return types.ListToolsResult(tools=list_tools_for(reg))
 
-    @server.call_tool()
-    async def _call(name: str, arguments: dict[str, Any] | None) -> list[types.TextContent]:
-        return await call_tool_for(reg, name, arguments)
+    async def _call_tool(
+        _ctx: Any, params: types.CallToolRequestParams
+    ) -> types.CallToolResult:
+        content = await call_tool_for(reg, params.name, params.arguments)
+        return types.CallToolResult(content=content)
 
-    return server
+    return Server(
+        SERVER_NAME,
+        on_list_tools=_list_tools,
+        on_call_tool=_call_tool,
+    )
 
 
 async def run_stdio() -> None:

@@ -14,7 +14,7 @@ import {
 import { TerminalBadge } from "../../components/terminal/TerminalBadge";
 import { TerminalPanel } from "../../components/terminal/TerminalPanel";
 import { fetchOptionsFlow, fetchOptionsFlowSummary } from "../api/fnoApi";
-import { formatIndianCompact, type OptionsFlowItem } from "../types/fno";
+import { formatIndianCompact, optionTypeLabel, type OptionsFlowItem } from "../types/fno";
 
 type SortKey = "time" | "heat" | "premium";
 type TypeFilter = "ALL" | "CE" | "PE";
@@ -277,12 +277,12 @@ export function OptionsFlowPage() {
                         <td className="px-3 py-2">{formatTs(flow.timestamp)}</td>
                         <td className="px-3 py-2 font-medium text-terminal-text">{flow.symbol}</td>
                         <td className="px-3 py-2 text-terminal-muted">{flow.expiry}</td>
-                        <td className="px-3 py-2">{flow.strike.toLocaleString("en-IN")}</td>
+                        <td className="px-3 py-2">{flow.strike.toLocaleString("en-US")}</td>
                         <td className="px-3 py-2">
-                          <TerminalBadge variant={flow.option_type === "CE" ? "success" : "danger"}>{flow.option_type}</TerminalBadge>
+                          <TerminalBadge variant={flow.option_type === "CE" ? "success" : "danger"}>{optionTypeLabel(flow.option_type)}</TerminalBadge>
                         </td>
-                        <td className="px-3 py-2">{flow.volume.toLocaleString("en-IN")}</td>
-                        <td className="px-3 py-2">{flow.oi_change.toLocaleString("en-IN")}</td>
+                        <td className="px-3 py-2">{flow.volume.toLocaleString("en-US")}</td>
+                        <td className="px-3 py-2">{flow.oi_change.toLocaleString("en-US")}</td>
                         <td className="px-3 py-2">{formatPremium(flow.premium_value)}</td>
                         <td className="px-3 py-2">{flow.implied_vol.toFixed(2)}</td>
                         <td className="px-3 py-2">

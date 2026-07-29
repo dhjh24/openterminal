@@ -11,10 +11,10 @@ vi.mock("../api/client", () => ({
     trades: [
       {
         date: "2026-04-02",
-        symbol: "RELIANCE",
-        name: "Reliance Industries",
-        insider_name: "Mukesh D Ambani",
-        designation: "Chairman",
+        symbol: "AAPL",
+        name: "Apple Inc",
+        insider_name: "Tim Cook",
+        designation: "CEO",
         type: "buy",
         quantity: 2500,
         price: 2800,
@@ -26,8 +26,8 @@ vi.mock("../api/client", () => ({
   fetchTopInsiderBuyers: vi.fn(async () => ({
     buyers: [
       {
-        symbol: "RELIANCE",
-        name: "Reliance Industries",
+        symbol: "AAPL",
+        name: "Apple Inc",
         total_value: 15_000_000,
         trade_count: 3,
         avg_price: 2825,
@@ -38,8 +38,8 @@ vi.mock("../api/client", () => ({
   fetchTopInsiderSellers: vi.fn(async () => ({
     sellers: [
       {
-        symbol: "TCS",
-        name: "Tata Consultancy Services",
+        symbol: "MSFT",
+        name: "Microsoft Corporation",
         total_value: 9_000_000,
         trade_count: 2,
         avg_price: 4100,
@@ -50,14 +50,14 @@ vi.mock("../api/client", () => ({
   fetchInsiderClusterBuys: vi.fn(async () => ({
     clusters: [
       {
-        symbol: "RELIANCE",
-        name: "Reliance Industries",
+        symbol: "AAPL",
+        name: "Apple Inc",
         insider_count: 3,
         total_value: 18_000_000,
         insiders: [
-          { name: "Mukesh D Ambani", designation: "Chairman", value: 7_000_000, date: "2026-04-02" },
-          { name: "Sandeep Batra", designation: "Executive Director", value: 6_000_000, date: "2026-04-01" },
-          { name: "Keki M Mistry", designation: "Independent Director", value: 5_000_000, date: "2026-03-30" },
+          { name: "Tim Cook", designation: "CEO", value: 7_000_000, date: "2026-04-02" },
+          { name: "Luca Maestri", designation: "CFO", value: 6_000_000, date: "2026-04-01" },
+          { name: "Jeff Williams", designation: "COO", value: 5_000_000, date: "2026-03-30" },
         ],
       },
     ],

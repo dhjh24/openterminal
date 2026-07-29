@@ -55,10 +55,10 @@ function formatCompact(value: number): string {
   }).format(value);
 }
 
-function formatCurrency(value: number, market: HeatmapMarket): string {
+function formatCurrency(value: number): string {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency: market === "IN" ? "INR" : "USD",
+    currency: "USD",
     maximumFractionDigits: 2,
   }).format(value);
 }
@@ -119,7 +119,7 @@ function buildTreemap(groups: HeatmapGroup[], width: number, height: number): Tr
 export function MarketHeatmapPage() {
   const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const [market, setMarket] = useState<HeatmapMarket>("IN");
+  const market: HeatmapMarket = "US";
   const [period, setPeriod] = useState<HeatmapPeriod>("1d");
   const [group, setGroup] = useState<HeatmapGroupBy>("sector");
   const [sizeBy, setSizeBy] = useState<HeatmapSizeBy>("market_cap");
@@ -181,16 +181,7 @@ export function MarketHeatmapPage() {
         <div className="flex flex-wrap items-center gap-3 rounded border border-terminal-border bg-terminal-bg/40 px-3 py-3 text-xs">
           <div className="flex items-center gap-2">
             <span className="text-terminal-muted">Market</span>
-            {(["IN", "US"] as const).map((value) => (
-              <button
-                key={value}
-                type="button"
-                onClick={() => setMarket(value)}
-                className={`rounded border px-2 py-1 ${market === value ? "border-terminal-accent bg-terminal-accent/15 text-terminal-accent" : "border-terminal-border text-terminal-muted hover:text-terminal-text"}`}
-              >
-                {value}
-              </button>
-            ))}
+            <span className="rounded border border-terminal-accent bg-terminal-accent/15 px-2 py-1 text-terminal-accent">US</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-terminal-muted">Period</span>
@@ -381,7 +372,7 @@ export function MarketHeatmapPage() {
                   <span className="text-terminal-muted">Industry</span>
                   <span>{tooltip.item.industry}</span>
                   <span className="text-terminal-muted">Price</span>
-                  <span>{formatCurrency(tooltip.item.price, market)}</span>
+                  <span>{formatCurrency(tooltip.item.price)}</span>
                   <span className="text-terminal-muted">Change</span>
                   <span>{tooltip.item.change_pct >= 0 ? "+" : ""}{tooltip.item.change_pct.toFixed(2)}%</span>
                   <span className="text-terminal-muted">Volume</span>

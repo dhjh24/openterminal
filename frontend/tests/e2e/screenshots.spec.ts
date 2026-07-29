@@ -9,7 +9,7 @@ const OUT_DIR = path.resolve(HERE, "..", "..", "..", "assets", "screenshots");
 
 const PAGES: Array<{ name: string; url: string; settle?: number }> = [
   { name: "home", url: "/" },
-  { name: "stock-detail", url: "/equity/security?ticker=RELIANCE" },
+  { name: "stock-detail", url: "/equity/security?ticker=AAPL" },
   { name: "news-sentiment", url: "/equity/news" },
   { name: "screener", url: "/equity/screener" },
   { name: "backtesting", url: "/backtesting" },

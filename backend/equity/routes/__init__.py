@@ -5,8 +5,8 @@ from fastapi import APIRouter
 from backend.api.routes import (
     admin, backtest, backtests, chart, crypto, data,
     commodities, depth, export, forex, fundamentals, health, hotlists, indicators,
-    kite, news, emotion, ai_insights, paper, peers, plugins, portfolio, quotes,
-    screener, scripting, search, shareholding, stocks,
+    news, emotion, ai_insights, paper, peers, plugins, portfolio, quotes,
+    screener, scripting, search, stocks,
     stream, valuation, options, audit, data_layer, governance, patterns,
     user_layouts, portfolios,
     ops, risk,
@@ -48,7 +48,6 @@ equity_router.include_router(news.router, prefix="/api", tags=["news"])
 equity_router.include_router(emotion.router, prefix="/api", tags=["emotion"])
 equity_router.include_router(ai_insights.router, prefix="/api", tags=["ai-insights"])
 equity_router.include_router(health.router, prefix="/api", tags=["health"])
-equity_router.include_router(kite.router, prefix="/api", tags=["kite"])
 equity_router.include_router(admin.router, prefix="/api", tags=["admin"])
 equity_router.include_router(stream.router, prefix="/api", tags=["stream"])
 equity_router.include_router(indicators.router, prefix="/api", tags=["indicators"])
@@ -61,7 +60,6 @@ equity_router.include_router(patterns.router, tags=["patterns"])
 equity_router.include_router(paper.router, prefix="/api", tags=["paper"])
 equity_router.include_router(portfolios.router, prefix="/api", tags=["portfolios"])
 equity_router.include_router(scripting.router, prefix="/api", tags=["scripting"])
-equity_router.include_router(shareholding.router, prefix="/api", tags=["shareholding"])
 equity_router.include_router(options.router)
 equity_router.include_router(data_layer.router, prefix="/api", tags=["data-layer"])
 equity_router.include_router(risk.router, prefix="/api", tags=["risk"])

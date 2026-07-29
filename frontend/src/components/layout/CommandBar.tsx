@@ -85,7 +85,7 @@ function looksLikeTickerToken(token?: string) {
 function mapSymbolSearchMarket(exchange?: string, countryCode?: string) {
   const normalizedExchange = String(exchange ?? "").trim().toUpperCase();
   const normalizedCountry = String(countryCode ?? "").trim().toUpperCase();
-  return normalizedExchange === "NSE" || normalizedExchange === "BSE" || normalizedCountry === "IN" ? "NSE" : "NASDAQ";
+  return "NASDAQ";
 }
 
 function formatPreviewPrice(value: number | null) {
@@ -417,7 +417,7 @@ export function CommandBar({ onExecute }: Props) {
             .filter(Boolean)
             .join(" - "),
           command: security.symbol,
-          market: security.market === "IN" ? "NSE" : "NASDAQ",
+          market: "NASDAQ",
           price: security.lastPrice ?? null,
           score: 600 - idx,
         });
@@ -680,7 +680,7 @@ export function CommandBar({ onExecute }: Props) {
 
   const submitSuggestion = (suggestion: CommandSuggestion) => {
     if (suggestion.kind === "ticker" && suggestion.market) {
-      useSettingsStore.getState().setSelectedMarket(suggestion.market === "NSE" ? "NSE" : "NASDAQ");
+      useSettingsStore.getState().setSelectedMarket(suggestion.market === "NYSE" ? "NYSE" : "NASDAQ");
     }
     void submitCommand(suggestion.command);
   };

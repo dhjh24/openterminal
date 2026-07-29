@@ -26,7 +26,7 @@ test("options flow page renders summary, filters, heat bars, and row expansion",
     flows: [
       {
         timestamp: "2026-04-05T10:30:00+00:00",
-        symbol: "NIFTY",
+        symbol: "SPY",
         expiry: "2026-04-30",
         strike: 22500,
         option_type: "CE",
@@ -53,7 +53,7 @@ test("options flow page renders summary, filters, heat bars, and row expansion",
       },
       {
         timestamp: "2026-04-05T10:20:00+00:00",
-        symbol: "NIFTY",
+        symbol: "SPY",
         expiry: "2026-04-30",
         strike: 22400,
         option_type: "PE",
@@ -80,7 +80,7 @@ test("options flow page renders summary, filters, heat bars, and row expansion",
       },
       {
         timestamp: "2026-04-05T10:10:00+00:00",
-        symbol: "BANKNIFTY",
+        symbol: "QQQ",
         expiry: "2026-05-07",
         strike: 48500,
         option_type: "CE",
@@ -115,8 +115,8 @@ test("options flow page renders summary, filters, heat bars, and row expansion",
     bullish_pct: 65.59,
     bearish_pct: 34.41,
     top_symbols: [
-      { symbol: "NIFTY", premium: 780500000, flow_count: 2 },
-      { symbol: "BANKNIFTY", premium: 289000000, flow_count: 1 },
+      { symbol: "SPY", premium: 780500000, flow_count: 2 },
+      { symbol: "QQQ", premium: 289000000, flow_count: 1 },
     ],
     premium_by_hour: [
       { hour: "2026-04-05T09:00:00+00:00", bullish: 120000000, bearish: 64000000 },
@@ -143,7 +143,7 @@ test("options flow page renders summary, filters, heat bars, and row expansion",
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify({ symbol: "NIFTY", expiries: ["2026-04-30", "2026-05-07"] }),
+        body: JSON.stringify({ symbol: "SPY", expiries: ["2026-04-30", "2026-05-07"] }),
       });
       return;
     }

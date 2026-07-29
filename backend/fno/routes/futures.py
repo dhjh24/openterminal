@@ -123,17 +123,6 @@ async def get_futures_chain(underlying: str) -> dict[str, Any]:
 
     instruments = [f"{row.exchange}:{row.tradingsymbol}" for row in rows]
     quotes_by_instrument: dict[str, dict[str, Any]] = {}
-    if instruments:
-        fetcher = await get_unified_fetcher()
-        kite_token = fetcher.kite.resolve_access_token()
-        if fetcher.kite.api_key and kite_token:
-            try:
-                payload = await fetcher.kite.get_quote(kite_token, instruments)
-                data = payload.get("data") if isinstance(payload, dict) else {}
-                if isinstance(data, dict):
-                    quotes_by_instrument = {str(k): v for k, v in data.items() if isinstance(v, dict)}
-            except Exception:
-                quotes_by_instrument = {}
 
     contracts: list[dict[str, Any]] = []
     ws_symbols: list[str] = []

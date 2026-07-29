@@ -476,9 +476,7 @@ export function CockpitDashboard() {
   const focusRisk = (riskSummaryQuery.data ?? {}) as Record<string, unknown>;
   const peerMetrics = peerQuery.data?.metrics ?? [];
   const chartPoints = historyQuery.data?.data ?? [];
-  const currency =
-    stock?.classification?.currency ||
-    (selectedMarket === "NSE" || selectedMarket === "BSE" ? "INR" : "USD");
+  const currency = stock?.classification?.currency || "USD";
   const currentPrice = asNumber(stock?.current_price ?? stockRecord.current_price);
   const changePct = pctValue(stock?.change_pct ?? stockRecord.change_pct);
   const week52Low = asNumber(stock?.fifty_two_week_low ?? stockRecord["52w_low"] ?? stockRecord.low_52_week);
@@ -695,24 +693,9 @@ export function CockpitDashboard() {
                 <button
                   type="button"
                   onClick={() => setSelectedCountry("US")}
-                  className={`rounded-sm border px-2 py-1 text-[11px] uppercase tracking-wide ${
-                    selectedMarket === "NASDAQ" || selectedMarket === "NYSE"
-                      ? "border-terminal-accent bg-terminal-accent/15 text-terminal-accent"
-                      : "border-terminal-border bg-terminal-bg/60 text-terminal-muted hover:text-terminal-text"
-                  }`}
+                  className="rounded-sm border border-terminal-accent bg-terminal-accent/15 px-2 py-1 text-[11px] uppercase tracking-wide text-terminal-accent"
                 >
                   US
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSelectedCountry("IN")}
-                  className={`rounded-sm border px-2 py-1 text-[11px] uppercase tracking-wide ${
-                    selectedMarket === "NSE" || selectedMarket === "BSE"
-                      ? "border-terminal-accent bg-terminal-accent/15 text-terminal-accent"
-                      : "border-terminal-border bg-terminal-bg/60 text-terminal-muted hover:text-terminal-text"
-                  }`}
-                >
-                  India
                 </button>
                 {quickFocusSymbols.map((symbol) => (
                   <button

@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { DenseTable, type DenseTableColumn } from "../components/terminal/DenseTable";
 
 type HotlistType = "gainers" | "losers" | "most_active" | "52w_high" | "52w_low" | "gap_up" | "gap_down" | "unusual_volume";
-type HotlistMarket = "IN" | "US";
+type HotlistMarket = "US";
 
 type HotlistItem = {
   symbol: string;
@@ -38,11 +38,9 @@ const HOTLIST_TABS: Array<{ id: HotlistType; label: string }> = [
   { id: "unusual_volume", label: "Unusual Volume" },
 ];
 
-function isMarketHours(market: HotlistMarket): boolean {
-  const locale = market === "IN" ? "en-IN" : "en-US";
-  const tz = market === "IN" ? "Asia/Kolkata" : "America/New_York";
-  const parts = new Intl.DateTimeFormat(locale, {
-    timeZone: tz,
+function isMarketHours(): boolean {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
     weekday: "short",
     hour: "2-digit",
     minute: "2-digit",
@@ -53,7 +51,6 @@ function isMarketHours(market: HotlistMarket): boolean {
   const hour = Number(parts.find((part) => part.type === "hour")?.value ?? "0");
   const minute = Number(parts.find((part) => part.type === "minute")?.value ?? "0");
   const mins = hour * 60 + minute;
-  if (market === "IN") return mins >= 555 && mins <= 930;
   return mins >= 570 && mins <= 960;
 }
 
@@ -72,7 +69,7 @@ function toRow(item: HotlistItem, index: number): HotlistRow {
 
 export function HotlistsPage() {
   const navigate = useNavigate();
-  const [market, setMarket] = useState<HotlistMarket>("IN");
+  const market: HotlistMarket = "US";
   const [listType, setListType] = useState<HotlistType>("gainers");
   const [rows, setRows] = useState<HotlistRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -113,7 +110,7 @@ export function HotlistsPage() {
     };
 
     void load();
-    const pollMs = isMarketHours(market) ? 5_000 : 60_000;
+    const pollMs = isMarketHours() ? 5_000 : 60_000;
     const timer = window.setInterval(() => {
       void load();
     }, pollMs);
@@ -183,21 +180,8 @@ export function HotlistsPage() {
             </button>
           ))}
         </div>
-        <div className="inline-flex items-center gap-1 rounded border border-terminal-border bg-terminal-panel p-1 text-[10px] uppercase tracking-[0.12em]">
-          <button
-            type="button"
-            className={`rounded px-2 py-1 ${market === "IN" ? "bg-terminal-accent/20 text-terminal-accent" : "text-terminal-muted hover:text-terminal-text"}`}
-            onClick={() => setMarket("IN")}
-          >
-            IN
-          </button>
-          <button
-            type="button"
-            className={`rounded px-2 py-1 ${market === "US" ? "bg-terminal-accent/20 text-terminal-accent" : "text-terminal-muted hover:text-terminal-text"}`}
-            onClick={() => setMarket("US")}
-          >
-            US
-          </button>
+        <div className="rounded border border-terminal-border bg-terminal-panel px-2 py-1 text-[10px] uppercase tracking-[0.12em] text-terminal-accent">
+          US
         </div>
       </div>
 

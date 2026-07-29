@@ -53,15 +53,15 @@ vi.mock("../store/settingsStore", () => ({
   useSettingsStore: (
     selector: (state: {
       selectedMarket: string;
-      displayCurrency: "INR" | "USD";
+      displayCurrency: "USD";
       realtimeMode: "polling" | "ws";
       newsAutoRefresh: boolean;
       newsRefreshSec: number;
     }) => unknown,
   ) =>
     selector({
-      selectedMarket: "NSE",
-      displayCurrency: "INR",
+      selectedMarket: "NASDAQ",
+      displayCurrency: "USD",
       realtimeMode: "polling",
       newsAutoRefresh: true,
       newsRefreshSec: 60,
@@ -124,7 +124,7 @@ describe("HomePage mission-control revamp", () => {
     } as any);
 
     vi.mocked(fetchPortfolioBenchmarkOverlay).mockResolvedValue({
-      benchmark: "NIFTY50",
+      benchmark: "SPY",
       alpha: 0.02,
       tracking_error: 0.12,
       equity_curve: [
@@ -158,10 +158,10 @@ describe("HomePage mission-control revamp", () => {
     ] as any);
 
     vi.mocked(fetchQuotesBatch).mockResolvedValue({
-      market: "NSE",
+      market: "NASDAQ",
       quotes: [
-        { symbol: "^NSEI", last: 22450.25, change: 145.1, changePct: 0.65, ts: "2026-03-11T12:00:00.000Z" },
-        { symbol: "^BSESN", last: 73900.12, change: -120.2, changePct: -0.16, ts: "2026-03-11T12:00:00.000Z" },
+        { symbol: "^GSPC", last: 5245.25, change: 45.1, changePct: 0.65, ts: "2026-03-11T12:00:00.000Z" },
+        { symbol: "^DJI", last: 38900.12, change: -120.2, changePct: -0.16, ts: "2026-03-11T12:00:00.000Z" },
         { symbol: "^IXIC", last: 18340.22, change: 88.4, changePct: 0.48, ts: "2026-03-11T12:00:00.000Z" },
       ],
     });
@@ -180,12 +180,12 @@ describe("HomePage mission-control revamp", () => {
       expect(fetchPortfolio).toHaveBeenCalledTimes(1);
       expect(fetchWatchlist).toHaveBeenCalledTimes(1);
       expect(fetchBacktestV1Presets).toHaveBeenCalledTimes(1);
-      expect(fetchChainSummary).toHaveBeenCalledWith("NIFTY");
+      expect(fetchChainSummary).toHaveBeenCalledWith("SPY");
       expect(fetchPortfolioBenchmarkOverlay).toHaveBeenCalledTimes(1);
       expect(fetchLatestNews).toHaveBeenCalledWith(15);
       expect(fetchQuotesBatch).toHaveBeenCalledWith(
-        ["^NSEI", "^BSESN", "^IXIC", "^GSPC", "GC=F", "SI=F", "CL=F"],
-        "NSE",
+        ["^GSPC", "^DJI", "^IXIC", "^RUT", "GC=F", "SI=F", "CL=F"],
+        "NASDAQ",
       );
     });
 
@@ -195,9 +195,9 @@ describe("HomePage mission-control revamp", () => {
     expect(screen.getByRole("region", { name: "System Health" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Launch Matrix" })).toBeInTheDocument();
 
-    const equityValueLabel = `INR ${2480000..toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
+    const equityValueLabel = `USD ${2480000..toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
     expect(screen.getAllByText(equityValueLabel).length).toBeGreaterThan(0);
-    expect(screen.getByText("+INR 1,70,000 (+7.36%)")).toBeInTheDocument();
+    expect(screen.getByText("+USD 170,000 (+7.36%)")).toBeInTheDocument();
     expect(screen.getByText("RBI signals steady liquidity support for domestic markets")).toBeInTheDocument();
     expect(screen.getByText("Bullish 87%")).toBeInTheDocument();
 

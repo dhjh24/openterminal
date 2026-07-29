@@ -30,7 +30,7 @@ except Exception:
 
 @dataclass
 class MarketDataFetcher:
-    default_exchange_suffix: str = ".NS"
+    default_exchange_suffix: str = ""
     request_timeout_seconds: int = 4
 
     _consecutive_failures: int = 0

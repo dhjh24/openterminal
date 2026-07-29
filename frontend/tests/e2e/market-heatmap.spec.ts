@@ -13,7 +13,7 @@ test("market heatmap renders, drills, and navigates", async ({ page }) => {
         total_value: 580,
         data: [
           {
-            symbol: "RELIANCE",
+            symbol: "AAPL",
             name: "Reliance Industries",
             sector: "Energy",
             industry: "Integrated Oil & Gas",
@@ -37,7 +37,7 @@ test("market heatmap renders, drills, and navigates", async ({ page }) => {
             value: 90,
           },
           {
-            symbol: "INFY",
+            symbol: "GOOGL",
             name: "Infosys",
             sector: "Technology",
             industry: "IT Services",
@@ -49,7 +49,7 @@ test("market heatmap renders, drills, and navigates", async ({ page }) => {
             value: 140,
           },
           {
-            symbol: "TCS",
+            symbol: "MSFT",
             name: "Tata Consultancy Services",
             sector: "Technology",
             industry: "IT Services",
@@ -69,7 +69,7 @@ test("market heatmap renders, drills, and navigates", async ({ page }) => {
             value: 330,
             children: [
               {
-                symbol: "RELIANCE",
+                symbol: "AAPL",
                 name: "Reliance Industries",
                 sector: "Energy",
                 industry: "Integrated Oil & Gas",
@@ -101,7 +101,7 @@ test("market heatmap renders, drills, and navigates", async ({ page }) => {
             value: 250,
             children: [
               {
-                symbol: "INFY",
+                symbol: "GOOGL",
                 name: "Infosys",
                 sector: "Technology",
                 industry: "IT Services",
@@ -113,7 +113,7 @@ test("market heatmap renders, drills, and navigates", async ({ page }) => {
                 value: 140,
               },
               {
-                symbol: "TCS",
+                symbol: "MSFT",
                 name: "Tata Consultancy Services",
                 sector: "Technology",
                 industry: "IT Services",
@@ -147,10 +147,10 @@ test("market heatmap renders, drills, and navigates", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Energy", exact: true })).toBeVisible();
 
   await context.unroute(/http:\/\/127\.0\.0\.1:\d+\/api\/heatmap\/treemap(?:\?.*)?$/);
-  await context.route(/http:\/\/127\.0\.0\.1:\d+\/api\/stocks\/RELIANCE(?:\?.*)?$/, async (route) => {
+  await context.route(/http:\/\/127\.0\.0\.1:\d+\/api\/stocks\/AAPL(?:\?.*)?$/, async (route) => {
     await route.fulfill({
       json: {
-        ticker: "RELIANCE",
+        ticker: "AAPL",
         name: "Reliance Industries",
         current_price: 2950,
         change_pct: 2.15,
@@ -159,5 +159,5 @@ test("market heatmap renders, drills, and navigates", async ({ page }) => {
   });
 
   await page.locator('[data-testid="heatmap-rect"]').first().click();
-  await expect(page).toHaveURL(/\/equity\/security\/RELIANCE$/);
+  await expect(page).toHaveURL(/\/equity\/security\/AAPL$/);
 });

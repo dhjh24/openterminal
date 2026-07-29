@@ -19,6 +19,8 @@ from backend.core.technicals import compute_indicator
 from backend.models import ChartDrawing, ChartTemplate, User
 from backend.services.footprint_aggregator import FootprintAggregator, serialize_footprint_candle
 from backend.services.volume_profile_service import compute_volume_profile, parse_period_to_days
+from backend.shared.market_guard import assert_exchange_allowed
+from backend.shared.market_profile import DEFAULT_EXCHANGE, is_us_only
 
 try:
     from backend.adapters.registry import get_adapter_registry
@@ -74,12 +76,13 @@ async def get_volume_profile(
     symbol: str,
     period: str = Query(default="20d"),
     bins: int = Query(default=50, ge=10, le=200),
-    market: str = Query(default="NSE"),
+    market: str = Query(default=DEFAULT_EXCHANGE),
     mode: str = Query(default="fixed"),
     lookback_bars: int = Query(default=300, ge=50, le=5000),
 ) -> Dict[str, Any]:
     period = _coerce_query_str(period, "20d")
-    market = _coerce_query_str(market, "NSE").upper()
+    market = _coerce_query_str(market, DEFAULT_EXCHANGE).upper()
+    assert_exchange_allowed(market)
     mode = _coerce_query_str(mode, "fixed").lower()
     bins = _coerce_query_int(bins, 50)
     lookback_bars = _coerce_query_int(lookback_bars, 300)
@@ -203,11 +206,12 @@ async def get_footprint(
     symbol: str,
     timeframe: str = Query(default="5m"),
     bars: int = Query(default=50, ge=1, le=500),
-    market: str = Query(default="NSE"),
+    market: str = Query(default=DEFAULT_EXCHANGE),
     price_granularity: float = Query(default=0.5, gt=0.0),
 ) -> Dict[str, Any]:
     timeframe = _coerce_query_str(timeframe, "5m").lower()
-    market = _coerce_query_str(market, "NSE").upper()
+    market = _coerce_query_str(market, DEFAULT_EXCHANGE).upper()
+    assert_exchange_allowed(market)
     bars = _coerce_query_int(bars, 50)
     if not math.isfinite(price_granularity) or price_granularity <= 0:
         raise HTTPException(status_code=400, detail="price_granularity must be greater than 0")
@@ -475,6 +479,8 @@ async def get_chart(
     # `Query(...)` sentinel objects in parameters.
     if not isinstance(market, str):
         market = None
+    if market:
+        assert_exchange_allowed(market)
     if not isinstance(interval, str):
         interval = "1d"
     interval = interval.strip().lower() or "1d"
@@ -528,7 +534,7 @@ async def get_chart(
         }
 
     if not market:
-        market = "NSE"
+        market = DEFAULT_EXCHANGE if is_us_only() else "NSE"
     currency = "INR" if (market or "").upper() in {"NSE", "BSE"} else "USD"
     key = cache_instance.build_key("chart", ticker.upper(), {"i": interval, "r": range, "m": (market or "").upper()})
     cached = await cache_instance.get(key)

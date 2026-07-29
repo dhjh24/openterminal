@@ -23,16 +23,16 @@ const LINKS = [
   { to: "/fno/about", label: "About", key: "F9" },
 ] as const;
 
-const POPULAR_FNO_INDICES = ["NIFTY", "BANKNIFTY", "FINNIFTY", "MIDCPNIFTY", "NIFTYNXT50"] as const;
+const POPULAR_FNO_INDICES = ["SPY", "QQQ", "IWM", "DIA", "SPX", "VIX"] as const;
 const FNO_SYMBOL_KEY = "fno:selectedSymbol";
 
-function FnoRightRail({ symbol, expiry, expiries, market }: { symbol: string; expiry: string; expiries: string[]; market: "NSE" | "US" }) {
+function FnoRightRail({ symbol, expiry, expiries, market }: { symbol: string; expiry: string; expiries: string[]; market: "US" }) {
   const location = useLocation();
 
   return (
     <aside className="hidden xl:flex h-full w-72 shrink-0 flex-col border-l border-terminal-border bg-terminal-panel">
       <div className="border-b border-terminal-border px-3 py-2">
-        <div className="ot-type-panel-title text-terminal-accent">F&O Context</div>
+        <div className="ot-type-panel-title text-terminal-accent">Options & Futures Context</div>
         <div className="ot-type-panel-subtitle text-terminal-muted">Derivatives workspace navigation</div>
       </div>
       <div className="flex-1 space-y-2 overflow-auto p-2">
@@ -74,7 +74,7 @@ function FnoRightRail({ symbol, expiry, expiries, market }: { symbol: string; ex
           </div>
         </TerminalPanel>
 
-        <TerminalPanel title="F&O Modules" subtitle="Workspace sections" bodyClassName="space-y-1">
+        <TerminalPanel title="Options & Futures Modules" subtitle="Workspace sections" bodyClassName="space-y-1">
           {LINKS.map((link) => (
             <NavLink
               key={link.to}
@@ -112,26 +112,21 @@ export function FnoLayout() {
   const [symbol, setSymbol] = useState<string>(() => {
     try {
       const raw = localStorage.getItem(FNO_SYMBOL_KEY);
-      const value = (raw || "NIFTY").trim().toUpperCase();
-      return value || "NIFTY";
+      const value = (raw || "SPY").trim().toUpperCase();
+      return value || "SPY";
     } catch {
-      return "NIFTY";
+      return "SPY";
     }
   });
   const [expiry, setExpiry] = useState<string>("");
-  const [market, setMarket] = useState<"NSE" | "US">("NSE");
+  const [market, setMarket] = useState<"US">("US");
   const symbolUniverse = useMemo(() => new Set((DEFAULT_FNO_SYMBOLS as readonly string[]).map((s) => s.toUpperCase())), []);
   const setSelectedCountry = useSettingsStore((s) => s.setSelectedCountry);
 
   useEffect(() => {
-    if (symbol.endsWith(".NS") || symbolUniverse.has(symbol)) {
-      setMarket("NSE");
-      setSelectedCountry("IN");
-    } else if (/^[A-Z]{1,5}$/.test(symbol)) {
-      setMarket("US");
-      setSelectedCountry("US");
-    }
-  }, [symbol, symbolUniverse, setSelectedCountry]);
+    setMarket("US");
+    setSelectedCountry("US");
+  }, [symbol, setSelectedCountry]);
 
   useEffect(() => {
     try {
@@ -152,7 +147,7 @@ export function FnoLayout() {
       setSymbol(incoming);
       return;
     }
-    setSymbol("NIFTY");
+    setSymbol("SPY");
   }, [searchParams, symbolUniverse]);
 
   const expiryQuery = useQuery({
@@ -230,12 +225,12 @@ export function FnoLayout() {
             <div className="text-[11px]">
               <span className="mb-1 block uppercase tracking-wide text-terminal-muted">Universe</span>
               <div className="rounded border border-terminal-border bg-terminal-bg px-2 py-1 text-xs">
-                {market} F&O
+                {market} Options & Futures
               </div>
             </div>
           </div>
           <div className="mt-2 flex flex-wrap items-center gap-1">
-            <span className="mr-1 text-[10px] uppercase tracking-wide text-terminal-muted">Popular Indices</span>
+            <span className="mr-1 text-[10px] uppercase tracking-wide text-terminal-muted">Popular Underlyings</span>
             {POPULAR_FNO_INDICES.map((idx) => (
               <button
                 key={idx}

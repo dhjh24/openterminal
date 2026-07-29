@@ -10,38 +10,37 @@ from backend.shared.market_calendar import (
     next_market_open,
 )
 
-IST = ZoneInfo("Asia/Kolkata")
 ET = ZoneInfo("America/New_York")
 
 
-class TestNSE:
+class TestNASDAQ:
     def test_open_during_session(self):
-        dt = datetime(2026, 2, 18, 10, 30, tzinfo=IST)
-        assert is_market_open("NSE", dt) is True
+        dt = datetime(2026, 2, 18, 11, 0, tzinfo=ET)
+        assert is_market_open("NASDAQ", dt) is True
 
     def test_closed_before_open(self):
-        dt = datetime(2026, 2, 18, 9, 14, tzinfo=IST)
-        assert is_market_open("NSE", dt) is False
+        dt = datetime(2026, 2, 18, 9, 14, tzinfo=ET)
+        assert is_market_open("NASDAQ", dt) is False
 
     def test_closed_at_boundary(self):
-        dt = datetime(2026, 2, 18, 15, 30, tzinfo=IST)
-        assert is_market_open("NSE", dt) is False
+        dt = datetime(2026, 2, 18, 16, 0, tzinfo=ET)
+        assert is_market_open("NASDAQ", dt) is False
 
     def test_open_at_boundary(self):
-        dt = datetime(2026, 2, 18, 9, 15, tzinfo=IST)
-        assert is_market_open("NSE", dt) is True
+        dt = datetime(2026, 2, 18, 9, 30, tzinfo=ET)
+        assert is_market_open("NASDAQ", dt) is True
 
     def test_closed_saturday(self):
-        dt = datetime(2026, 2, 21, 10, 30, tzinfo=IST)
-        assert is_market_open("NSE", dt) is False
+        dt = datetime(2026, 2, 21, 11, 0, tzinfo=ET)
+        assert is_market_open("NASDAQ", dt) is False
 
     def test_closed_sunday(self):
-        dt = datetime(2026, 2, 22, 10, 30, tzinfo=IST)
-        assert is_market_open("NSE", dt) is False
+        dt = datetime(2026, 2, 22, 11, 0, tzinfo=ET)
+        assert is_market_open("NASDAQ", dt) is False
 
-    def test_republic_day_holiday(self):
-        dt = datetime(2026, 1, 26, 10, 30, tzinfo=IST)
-        assert is_market_open("NSE", dt) is False
+    def test_mlk_day_holiday(self):
+        dt = datetime(2026, 1, 19, 11, 0, tzinfo=ET)
+        assert is_market_open("NASDAQ", dt) is False
 
 
 class TestNYSE:
@@ -76,14 +75,14 @@ class TestCME:
 
 class TestNextMarketOpen:
     def test_next_open_from_after_hours(self):
-        dt = datetime(2026, 2, 18, 18, 0, tzinfo=IST)
-        nxt = next_market_open("NSE", dt)
+        dt = datetime(2026, 2, 18, 18, 0, tzinfo=ET)
+        nxt = next_market_open("NASDAQ", dt)
         assert nxt.date().isoformat() == "2026-02-19"
-        assert nxt.time() == time(9, 15)
+        assert nxt.time() == time(9, 30)
 
     def test_next_open_from_friday_evening(self):
-        dt = datetime(2026, 2, 20, 18, 0, tzinfo=IST)
-        nxt = next_market_open("NSE", dt)
+        dt = datetime(2026, 2, 20, 18, 0, tzinfo=ET)
+        nxt = next_market_open("NASDAQ", dt)
         assert nxt.weekday() == 0
 
     def test_unknown_exchange_raises(self):

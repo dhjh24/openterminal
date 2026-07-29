@@ -96,7 +96,7 @@ function makeSlot(): ChartSlot {
     id: makeId(),
     ticker: null,
     companyName: null,
-    market: "IN",
+    market: "US",
     timeframe: "1D",
     chartType: "candle",
     indicators: [],
@@ -120,7 +120,7 @@ function normalizeSlot(slot: Partial<ChartSlot> | undefined): ChartSlot {
     companyName: typeof (slot as any)?.companyName === "string" && (slot as any).companyName.trim()
       ? (slot as any).companyName.trim()
       : null,
-    market: slot?.market === "US" ? "US" : "IN",
+    market: slot?.market === "IN" ? "US" : slot?.market === "US" ? "US" : "US",
     timeframe: (slot?.timeframe as ChartSlotTimeframe) ?? "1D",
     chartType: (slot?.chartType as ChartSlotType) ?? "candle",
     indicators: normalizeIndicators((slot as any)?.indicators),
@@ -161,8 +161,8 @@ export const useChartWorkstationStore = create<ChartWorkstationState>()((set) =>
               ...sl,
               ticker,
               companyName: typeof companyName === "string" ? (companyName.trim() || null) : (ticker ? sl.companyName ?? null : null),
-              market,
-              extendedHours: { ...sl.extendedHours, enabled: market === "US" },
+              market: market === "IN" ? "US" : market === "US" ? "US" : "US",
+              extendedHours: { ...sl.extendedHours, enabled: true },
             }
           : sl,
       ),

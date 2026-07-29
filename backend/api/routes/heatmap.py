@@ -9,6 +9,8 @@ from typing import Any, Literal
 from fastapi import APIRouter, HTTPException, Query
 
 from backend.adapters.registry import get_adapter_registry
+from backend.shared.market_guard import assert_exchange_allowed
+from backend.shared.market_profile import is_us_only
 
 router = APIRouter()
 
@@ -161,11 +163,13 @@ def _cache_key(market: str, group: str, period: str, size_by: str) -> str:
 
 @router.get("/treemap")
 async def heatmap_treemap(
-    market: MarketCode = Query(default="IN"),
+    market: MarketCode = Query(default="US" if is_us_only() else "IN"),
     group: GroupBy = Query(default="sector"),
     period: PeriodCode = Query(default="1d"),
     size_by: SizeBy = Query(default="market_cap"),
 ) -> dict[str, Any]:
+    if is_us_only() and market == "IN":
+        assert_exchange_allowed("NSE")
     key = _cache_key(market, group, period, size_by)
     cached = _CACHE.get(key)
     now = time.time()

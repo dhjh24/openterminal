@@ -1,8 +1,7 @@
-export type CountryCode = "IN" | "US";
+export type CountryCode = "US";
 
-export type MarketCode = "NSE" | "BSE" | "NYSE" | "NASDAQ";
+export type MarketCode = "NYSE" | "NASDAQ" | "AMEX" | "CBOE" | "CME";
 
 export const COUNTRY_MARKETS: Record<CountryCode, MarketCode[]> = {
-  IN: ["NSE", "BSE"],
-  US: ["NYSE", "NASDAQ"],
+  US: ["NASDAQ", "NYSE", "AMEX", "CBOE", "CME"],
 };

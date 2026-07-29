@@ -9,7 +9,7 @@ test("portfolio lab e2e: create portfolio -> run -> report and create blend", as
   const accessToken = makeJwt({ sub: "e2e-user", email: "e2e@example.com", role: "trader", exp: Math.floor(Date.now() / 1000) + 3600 });
   const refreshToken = makeJwt({ exp: Math.floor(Date.now() / 1000) + 7200 });
 
-  const portfolios = [{ id: "pf_1", name: "Core Portfolio", description: "", tags: ["core"], benchmark_symbol: "NIFTY50", start_date: "2025-01-01", end_date: "2025-12-31", rebalance_frequency: "WEEKLY", weighting_method: "RISK_PARITY", created_at: "2026-02-20" }];
+  const portfolios = [{ id: "pf_1", name: "Core Portfolio", description: "", tags: ["core"], benchmark_symbol: "SPY", start_date: "2025-01-01", end_date: "2025-12-31", rebalance_frequency: "WEEKLY", weighting_method: "RISK_PARITY", created_at: "2026-02-20" }];
   const blends = [{ id: "blend_1", name: "Balanced Blend", strategies_json: [{ model_key: "sma_crossover", weight: 0.5 }, { model_key: "mean_reversion", weight: 0.5 }], blend_method: "WEIGHTED_SUM_RETURNS" }];
 
   await page.route("**/api/portfolio-lab/**", async (route) => {
@@ -41,7 +41,7 @@ test("portfolio lab e2e: create portfolio -> run -> report and create blend", as
     if (url.includes("/portfolio-lab/portfolios/") && method === "GET" && !url.includes("/run")) {
       const id = url.split("/portfolio-lab/portfolios/")[1].split("?")[0];
       const portfolio = portfolios.find((p) => p.id === id) || portfolios[0];
-      await route.fulfill({ json: { ...portfolio, universe_json: { tickers: ["RELIANCE", "TCS"] }, constraints_json: { max_weight: 0.25 }, runs: [{ run_id: "pr_1", portfolio_id: portfolio.id, blend_id: "blend_1", status: "succeeded", started_at: "2026-02-20", finished_at: "2026-02-20", error: null }] } });
+      await route.fulfill({ json: { ...portfolio, universe_json: { tickers: ["AAPL", "MSFT"] }, constraints_json: { max_weight: 0.25 }, runs: [{ run_id: "pr_1", portfolio_id: portfolio.id, blend_id: "blend_1", status: "succeeded", started_at: "2026-02-20", finished_at: "2026-02-20", error: null }] } });
       return;
     }
     if (url.includes("/portfolio-lab/portfolios/") && url.endsWith("/run") && method === "POST") {
@@ -63,24 +63,24 @@ test("portfolio lab e2e: create portfolio -> run -> report and create blend", as
           exposure: [{ date: "2025-01-01", value: 1.0 }],
           leverage: [{ date: "2025-01-01", value: 1.0 }],
           returns: [{ date: "2025-01-01", return: 0.0 }, { date: "2025-01-02", return: 0.012 }],
-          weights_over_time: [{ date: "2025-01-01", weights: { RELIANCE: 0.5, TCS: 0.5 } }],
+          weights_over_time: [{ date: "2025-01-01", weights: { AAPL: 0.5, MSFT: 0.5 } }],
           turnover_series: [{ date: "2025-01-01", turnover: 0.2 }],
-          contribution_series: [{ date: "2025-01-01", RELIANCE: 0.005, TCS: 0.004 }],
+          contribution_series: [{ date: "2025-01-01", AAPL: 0.005, MSFT: 0.004 }],
           rolling_sharpe_30: [{ date: "2025-01-02", value: 1.2 }],
           rolling_sharpe_90: [{ date: "2025-01-02", value: 1.0 }],
           rolling_volatility: [{ date: "2025-01-02", value: 0.18 }],
           monthly_returns: [{ year: 2025, month: 1, return_pct: 2.2 }],
         },
         tables: {
-          top_contributors: [{ asset: "RELIANCE", contribution: 0.03 }],
-          top_detractors: [{ asset: "TCS", contribution: -0.01 }],
+          top_contributors: [{ asset: "AAPL", contribution: 0.03 }],
+          top_detractors: [{ asset: "MSFT", contribution: -0.01 }],
           worst_drawdowns: [{ date: "2025-01-02", drawdown: -0.01 }],
           rebalance_log: [{ date: "2025-01-01", turnover: 0.2 }],
-          latest_weights: [{ asset: "RELIANCE", weight: 0.5 }, { asset: "TCS", weight: 0.5 }],
+          latest_weights: [{ asset: "AAPL", weight: 0.5 }, { asset: "MSFT", weight: 0.5 }],
         },
         matrices: {
-          correlation: { labels: ["RELIANCE", "TCS"], values: [[1, 0.4], [0.4, 1]], cluster_order: [0, 1] },
-          labels: ["RELIANCE", "TCS"],
+          correlation: { labels: ["AAPL", "MSFT"], values: [[1, 0.4], [0.4, 1]], cluster_order: [0, 1] },
+          labels: ["AAPL", "MSFT"],
           cluster_order: [0, 1],
         },
       } });

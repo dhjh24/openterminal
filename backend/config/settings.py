@@ -86,6 +86,8 @@ class AppSettings(BaseModel):
     openrouter_api_key: str | None = None
     price_cache_ttl_seconds: int = 60
     fundamentals_cache_ttl_seconds: int = 1800
+    market_profile: str = "US"
+    us_risk_free_rate: float = 4.5
 
 
 def _workspace_root() -> Path:
@@ -365,6 +367,15 @@ def get_settings() -> AppSettings:
             _env("OPENTERMINALUI_FUNDAMENTALS_CACHE_TTL_SECONDS")
             or _env("OPENSCREENS_FUNDAMENTALS_CACHE_TTL_SECONDS", "TRADE_SCREENS_FUNDAMENTALS_CACHE_TTL_SECONDS")
             or str(cache_cfg.get("fundamentals_ttl_seconds", 1800))
+        ),
+        market_profile=(
+            _env("MARKET_PROFILE", "OPENTERMINALUI_MARKET_PROFILE")
+            or app_cfg.get("market_profile", "US")
+            or "US"
+        ).strip().upper(),
+        us_risk_free_rate=float(
+            _env("US_RISK_FREE_RATE", "OPENTERMINALUI_US_RISK_FREE_RATE")
+            or app_cfg.get("us_risk_free_rate", 4.5)
         ),
     )
     sqlite_path = _sqlite_path_from_url(settings.sqlite_url)

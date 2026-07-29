@@ -9,6 +9,7 @@ from fastapi import APIRouter, HTTPException, Query
 
 from backend.adapters.registry import get_adapter_registry
 from backend.api.deps import get_unified_fetcher
+from backend.shared.market_guard import assert_exchange_allowed
 
 router = APIRouter()
 
@@ -104,6 +105,7 @@ async def get_quotes(
     symbols: str = Query(..., description="Comma-separated symbols, e.g. RELIANCE,TCS"),
 ) -> dict[str, Any]:
     market_code = market.strip().upper()
+    assert_exchange_allowed(market_code)
     if market_code not in SUPPORTED_MARKETS:
         raise HTTPException(status_code=400, detail=f"Unsupported market: {market_code}")
 
@@ -190,72 +192,4 @@ async def get_quotes(
         all_quotes.extend(local_quotes)
         return {"market": market_code, "quotes": all_quotes}
 
-    local_quotes = []
-
-    # --- India local symbols: Kite (primary) ---
-    kite_token = fetcher.kite.resolve_access_token()
-    if fetcher.kite.api_key and kite_token:
-        instruments = [f"{market_code}:{symbol}" for symbol in local_syms]
-        try:
-            data = await fetcher.kite.get_quote(kite_token, instruments)
-            quote_map = data.get("data") if isinstance(data, dict) else {}
-            if isinstance(quote_map, dict):
-                for instrument, symbol in zip(instruments, local_syms):
-                    row = quote_map.get(instrument)
-                    if not isinstance(row, dict):
-                        continue
-                    last = _to_float(row.get("last_price"))
-                    if last is None:
-                        continue
-                    ohlc = row.get("ohlc") if isinstance(row.get("ohlc"), dict) else {}
-                    prev_close = _to_float(ohlc.get("close"))
-                    change = (last - prev_close) if prev_close else None
-                    change_pct = ((change / prev_close) * 100.0) if (change is not None and prev_close) else None
-                    local_quotes.append(
-                        {
-                            "symbol": symbol,
-                            "last": last,
-                            "change": change if change is not None else 0.0,
-                            "changePct": change_pct if change_pct is not None else 0.0,
-                            "ts": now_iso,
-                        }
-                    )
-        except Exception:
-            pass
-
-    # --- India local symbols: Yahoo fallback (with .NS / .BO suffix) ---
-    if not local_quotes:
-        suffix = ".NS" if market_code == "NSE" else ".BO"
-        yahoo_symbols = [f"{symbol}{suffix}" for symbol in local_syms]
-        try:
-            rows = await fetcher.yahoo.get_quotes(yahoo_symbols)
-            for row in rows:
-                if not isinstance(row, dict):
-                    continue
-                raw_symbol = str(row.get("symbol") or "").upper()
-                symbol = raw_symbol.replace(".NS", "").replace(".BO", "")
-                if symbol not in local_syms:
-                    continue
-                last = _to_float(row.get("regularMarketPrice"))
-                if last is None:
-                    continue
-                change = _to_float(row.get("regularMarketChange"))
-                change_pct = _to_float(row.get("regularMarketChangePercent"))
-                epoch = row.get("regularMarketTime")
-                ts_iso = now_iso
-                if isinstance(epoch, (int, float)) and epoch > 0:
-                    ts_iso = datetime.fromtimestamp(epoch, tz=timezone.utc).isoformat()
-                local_quotes.append(
-                    {
-                        "symbol": symbol,
-                        "last": last,
-                        "change": change if change is not None else 0.0,
-                        "changePct": change_pct if change_pct is not None else 0.0,
-                        "ts": ts_iso,
-                    }
-                )
-        except Exception:
-            pass
-
-    all_quotes.extend(local_quotes)
     return {"market": market_code, "quotes": all_quotes}

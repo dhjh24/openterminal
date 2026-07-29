@@ -14,19 +14,16 @@ import { useSettingsStore } from "../store/settingsStore";
 import { useStockStore } from "../store/stockStore";
 import { terminalColors } from "../theme/terminal";
 
-type NewsRegion = "IN" | "US";
+type NewsRegion = "US";
 
-// Region-scoped query used for the default (non-ticker) feed so the headlines match the
-// market selected in the header instead of always showing a generic global feed.
+// US-only profile: default feed is always United States market news.
 const REGION_QUERY: Record<NewsRegion, string> = {
-  IN: "India stock market Sensex Nifty NSE BSE",
   US: "US stock market Wall Street Nasdaq S&P 500",
 };
-const REGION_LABEL: Record<NewsRegion, string> = { IN: "India", US: "United States" };
+const REGION_LABEL: Record<NewsRegion, string> = { US: "United States" };
 
-function regionForMarket(market: string): NewsRegion {
-  const code = (market || "").trim().toUpperCase();
-  return code === "NSE" || code === "BSE" || code === "IN" ? "IN" : "US";
+function regionForMarket(_market: string): NewsRegion {
+  return "US";
 }
 import { NewsSentimentOverview } from "./news/NewsSentimentOverview";
 
@@ -190,13 +187,6 @@ async function loadTickerContextNews(ticker: string, companyName: string, market
   const searchTerms = Array.from(
     new Set([companyName, `${symbol} stock`, symbol].map((v) => v.trim()).filter((v) => v.length >= 2)),
   );
-  if (marketCode === "NSE" || marketCode === "BSE") {
-    searchTerms.unshift(
-      `${symbol} ${marketCode} India stock`,
-      `${companyName} ${marketCode}`.trim(),
-    );
-  }
-
   for (const term of searchTerms) {
     try {
       const searched = await searchLatestNews(term, limit);
@@ -440,7 +430,7 @@ export function NewsPage() {
             <div className="min-w-0">
               <div className="mb-2 flex flex-wrap items-center gap-2">
                 <TerminalBadge variant="accent">News & Sentiment</TerminalBadge>
-                <TerminalBadge variant="info">{region === "IN" ? "🇮🇳 India" : "🇺🇸 United States"}</TerminalBadge>
+                <TerminalBadge variant="info">🇺🇸 United States</TerminalBadge>
                 <TerminalBadge variant="neutral">
                   {isTickerMode && (tickerDisplay || currentTicker) ? tickerDisplay || currentTicker : `${REGION_LABEL[region]} market feed`}
                 </TerminalBadge>
@@ -451,7 +441,7 @@ export function NewsPage() {
               <p className="mt-2 max-w-3xl font-sans text-sm leading-6 text-terminal-muted">
                 {isTickerMode && (tickerDisplay || currentTicker)
                   ? `Sentiment-scored headlines for ${tickerDisplay || currentTicker}, refreshed live.`
-                  : `Sentiment-scored ${REGION_LABEL[region]} market headlines, refreshed live. Switch the market in the header to change the region.`}
+                  : `Sentiment-scored ${REGION_LABEL[region]} market headlines, refreshed live.`}
               </p>
               <div className="mt-2 text-[10px] text-terminal-muted">
                 Source: {newsQuery.data?.sourceMode || "-"} {newsQuery.data?.searchTerm ? `(${newsQuery.data.searchTerm})` : ""} | Refreshed: {new Date(lastRefreshMs).toLocaleTimeString()}
