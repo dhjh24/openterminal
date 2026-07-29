@@ -28,10 +28,10 @@ export function SettingsPage() {
   const setNewsRefreshSec = useSettingsStore((s) => s.setNewsRefreshSec);
 
   const [alerts, setAlerts] = useState<AlertRule[]>([]);
-  const [ticker, setTicker] = useState("RELIANCE");
+  const [ticker, setTicker] = useState("AAPL");
   const [alertType, setAlertType] = useState("price");
   const [condition, setCondition] = useState("above");
-  const [threshold, setThreshold] = useState(3000);
+  const [threshold, setThreshold] = useState(200);
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [scheduled, setScheduled] = useState<ScheduledReport[]>([]);
@@ -62,7 +62,6 @@ export function SettingsPage() {
       <TerminalPanel title="UI Settings" subtitle="Dense terminal defaults">
         <div className="grid grid-cols-1 gap-2 lg:grid-cols-6">
           <TerminalInput as="select" value={selectedCountry} onChange={(e) => setSelectedCountry(e.target.value as CountryCode)}>
-            <option value="IN">IN</option>
             <option value="US">US</option>
           </TerminalInput>
           <TerminalInput as="select" value={selectedMarket} onChange={(e) => setSelectedMarket(e.target.value as MarketCode)}>
@@ -72,8 +71,7 @@ export function SettingsPage() {
               </option>
             ))}
           </TerminalInput>
-          <TerminalInput as="select" value={displayCurrency} onChange={(e) => setDisplayCurrency(e.target.value as "INR" | "USD")} title="Display currency">
-            <option value="INR">INR</option>
+          <TerminalInput as="select" value={displayCurrency} onChange={(e) => setDisplayCurrency(e.target.value as "USD")} title="Display currency">
             <option value="USD">USD</option>
           </TerminalInput>
           <TerminalInput as="select" value={realtimeMode} onChange={(e) => setRealtimeMode(e.target.value as "polling" | "ws")}>

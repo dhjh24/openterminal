@@ -33,7 +33,7 @@ vi.mock("../realtime/useQuotesStream", () => ({
   useQuotesStore: (selector: (state: { ticksByToken: Record<string, { ltp?: number; change_pct?: number; volume?: number }> }) => unknown) =>
     selector({
       ticksByToken: {
-        "NSE:AAPL": {
+        "NASDAQ:AAPL": {
           ltp: 123.45,
           change_pct: 1.25,
           volume: 1200,
@@ -45,7 +45,7 @@ vi.mock("../realtime/useQuotesStream", () => ({
 vi.mock("../store/settingsStore", () => ({
   useSettingsStore: (selector: (state: { selectedMarket: string }) => unknown) =>
     selector({
-      selectedMarket: "NSE",
+      selectedMarket: "NASDAQ",
     }),
 }));
 

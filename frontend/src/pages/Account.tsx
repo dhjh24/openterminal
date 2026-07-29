@@ -29,12 +29,10 @@ const INPUT_CLASS_NAME =
   "mt-1 w-full rounded-sm border border-terminal-border bg-terminal-bg px-2 py-1.5 text-xs text-terminal-text outline-none transition-colors focus:border-terminal-accent";
 
 const COUNTRY_NAME: Record<CountryCode, string> = {
-  IN: "India",
   US: "United States",
 };
 
 const COUNTRY_DEFAULT_EXCHANGE: Record<CountryCode, MarketCode> = {
-  IN: "NSE",
   US: "NASDAQ",
 };
 
@@ -114,7 +112,7 @@ function buildDefaultProfile(): AccountProfile {
 function buildDefaultConnected(
   selectedCountry: CountryCode,
   selectedMarket: MarketCode,
-  displayCurrency: "INR" | "USD",
+  displayCurrency: "USD",
 ): AccountConnectionSettings {
   return {
     brokerName: "Primary Broker",
@@ -818,7 +816,6 @@ export function AccountPage() {
                 value={connected.preferredCountry}
                 onChange={(event) => updateConnected("preferredCountry", event.target.value as CountryCode)}
               >
-                <option value="IN">IN - India</option>
                 <option value="US">US - United States</option>
               </select>
             </label>
@@ -845,7 +842,6 @@ export function AccountPage() {
                   updateConnected("defaultCurrency", event.target.value as AccountConnectionSettings["defaultCurrency"])
                 }
               >
-                <option value="INR">INR</option>
                 <option value="USD">USD</option>
               </select>
             </label>

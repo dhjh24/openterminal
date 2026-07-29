@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 
 import type { StrikeData } from "../types/fno";
-import { formatIndianCompact } from "../types/fno";
+import { formatUsCompact, optionTypeLabel } from "../types/fno";
 import { useDisplayCurrency } from "../../hooks/useDisplayCurrency";
 
 type SortKey = "strike" | "ce_oi" | "ce_oi_change" | "pe_oi" | "pe_oi_change";
@@ -90,13 +90,24 @@ export function OptionChainTable({ rows, atmStrike }: Props) {
                   <th className="px-2 py-2 text-right">Delta</th>
                 </>
               )}
+              <th className="px-2 py-2 text-right" colSpan={showGreeks ? 6 : 6}>Calls</th>
+              <th className="px-2 py-2 text-center cursor-pointer" onClick={() => onSort("strike")}>Strike</th>
+              <th className="px-2 py-2 text-left" colSpan={showGreeks ? 6 : 6}>Puts</th>
+            </tr>
+            <tr className="border-b border-terminal-border text-[10px] uppercase tracking-wide text-terminal-muted">
+              {showGreeks && (
+                <>
+                  <th className="px-2 py-2 text-right">Theta</th>
+                  <th className="px-2 py-2 text-right">Delta</th>
+                </>
+              )}
               <th className="px-2 py-2 text-right">OI</th>
               <th className="px-2 py-2 text-right cursor-pointer" onClick={() => onSort("ce_oi_change")}>?OI</th>
               <th className="px-2 py-2 text-right">Vol</th>
               <th className="px-2 py-2 text-right">IV</th>
-              <th className="px-2 py-2 text-right">LTP</th>
+              <th className="px-2 py-2 text-right">Last</th>
               <th className="px-2 py-2 text-center cursor-pointer" onClick={() => onSort("strike")}>Strike</th>
-              <th className="px-2 py-2 text-left">LTP</th>
+              <th className="px-2 py-2 text-left">Last</th>
               <th className="px-2 py-2 text-left">IV</th>
               <th className="px-2 py-2 text-left">Vol</th>
               <th className="px-2 py-2 text-left cursor-pointer" onClick={() => onSort("pe_oi_change")}>?OI</th>
@@ -126,9 +137,9 @@ export function OptionChainTable({ rows, atmStrike }: Props) {
                       </td>
                     </>
                   )}
-                  <td className="px-2 py-1 text-right tabular-nums">{formatIndianCompact(Number(row.ce?.oi || 0))}</td>
-                  <td className={`px-2 py-1 text-right tabular-nums ${ceDoi >= 0 ? "text-terminal-pos" : "text-terminal-neg"}`}>{ceDoi >= 0 ? "+" : ""}{formatIndianCompact(ceDoi)}</td>
-                  <td className="px-2 py-1 text-right tabular-nums">{formatIndianCompact(Number(row.ce?.volume || 0))}</td>
+                  <td className="px-2 py-1 text-right tabular-nums">{formatUsCompact(Number(row.ce?.oi || 0))}</td>
+                  <td className={`px-2 py-1 text-right tabular-nums ${ceDoi >= 0 ? "text-terminal-pos" : "text-terminal-neg"}`}>{ceDoi >= 0 ? "+" : ""}{formatUsCompact(ceDoi)}</td>
+                  <td className="px-2 py-1 text-right tabular-nums">{formatUsCompact(Number(row.ce?.volume || 0))}</td>
                   <td className="px-2 py-1 text-right tabular-nums">{Number(row.ce?.iv || 0).toFixed(2)}</td>
                   <td className="px-2 py-1 text-right tabular-nums">
                     <button
@@ -148,9 +159,9 @@ export function OptionChainTable({ rows, atmStrike }: Props) {
                     </button>
                   </td>
                   <td className="px-2 py-1 text-left tabular-nums">{Number(row.pe?.iv || 0).toFixed(2)}</td>
-                  <td className="px-2 py-1 text-left tabular-nums">{formatIndianCompact(Number(row.pe?.volume || 0))}</td>
-                  <td className={`px-2 py-1 text-left tabular-nums ${peDoi >= 0 ? "text-terminal-pos" : "text-terminal-neg"}`}>{peDoi >= 0 ? "+" : ""}{formatIndianCompact(peDoi)}</td>
-                  <td className="px-2 py-1 text-left tabular-nums">{formatIndianCompact(Number(row.pe?.oi || 0))}</td>
+                  <td className="px-2 py-1 text-left tabular-nums">{formatUsCompact(Number(row.pe?.volume || 0))}</td>
+                  <td className={`px-2 py-1 text-left tabular-nums ${peDoi >= 0 ? "text-terminal-pos" : "text-terminal-neg"}`}>{peDoi >= 0 ? "+" : ""}{formatUsCompact(peDoi)}</td>
+                  <td className="px-2 py-1 text-left tabular-nums">{formatUsCompact(Number(row.pe?.oi || 0))}</td>
                   {showGreeks && (
                     <>
                       <td className={`px-2 py-1 text-left tabular-nums ${getDeltaColor(row.pe?.greeks?.delta || 0)}`}>
@@ -175,7 +186,7 @@ export function OptionChainTable({ rows, atmStrike }: Props) {
 
       {selectedLeg && (
         <div className="border-t border-terminal-border bg-terminal-bg px-3 py-2 text-xs">
-          Add to Strategy: <span className="text-terminal-accent">{selectedLeg.side} {selectedLeg.strike}</span> @ {formatDisplayMoney(selectedLeg.ltp)}
+          Add to Strategy: <span className="text-terminal-accent">{optionTypeLabel(selectedLeg.side)} {selectedLeg.strike}</span> @ {formatDisplayMoney(selectedLeg.ltp)}
           <button
             className="ml-3 rounded border border-terminal-accent px-2 py-0.5 text-[11px] text-terminal-accent"
             onClick={() => persistLeg(selectedLeg)}

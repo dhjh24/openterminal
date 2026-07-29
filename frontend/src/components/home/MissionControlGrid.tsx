@@ -13,14 +13,14 @@ type MarketCell = {
 };
 
 const MARKET_CELLS: MarketCell[] = [
-  { key: "nifty", label: "NIFTY 50", token: "NIFTY" },
-  { key: "banknifty", label: "BANK NIFTY", token: "BANKNIFTY" },
-  { key: "vix", label: "INDIA VIX", token: "INDIAVIX" },
+  { key: "spx", label: "S&P 500", token: "^GSPC" },
+  { key: "nasdaq", label: "NASDAQ", token: "^IXIC" },
+  { key: "vix", label: "VIX", token: "^VIX" },
 ];
 
 function formatNum(value: number | null | undefined, digits = 2): string {
   if (value == null || !Number.isFinite(value)) return "--";
-  return value.toLocaleString("en-IN", { minimumFractionDigits: digits, maximumFractionDigits: digits });
+  return value.toLocaleString("en-US", { minimumFractionDigits: digits, maximumFractionDigits: digits });
 }
 
 function pctClass(value: number | null | undefined): string {

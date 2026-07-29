@@ -176,53 +176,10 @@ class CorporateActionsService:
         return events
 
     async def _fetch_nse_events(self, symbol: str) -> list[CorporateEvent]:
-        fetcher = await get_unified_fetcher()
-        payload = await fetcher.nse._request(
-            "/corporates-corporateActions",
-            {"index": "equities", "symbol": symbol.upper()},
-        )
-        rows = payload if isinstance(payload, list) else []
-        events: list[CorporateEvent] = []
-        for row in rows:
-            if not isinstance(row, dict):
-                continue
-            title = str(
-                row.get("subject")
-                or row.get("purpose")
-                or row.get("description")
-                or row.get("corporateAction")
-                or "Corporate action"
-            ).strip()
-            event_type = _infer_event_type(title)
-            event_date = _parse_date(
-                row.get("exDate")
-                or row.get("date")
-                or row.get("recordDate")
-                or row.get("boardMeetingDate")
-            )
-            if not event_date:
-                continue
-            ex_date = _parse_date(row.get("exDate"))
-            record_date = _parse_date(row.get("recordDate"))
-            payment_date = _parse_date(row.get("paymentDate"))
-            value = row.get("remarks") or row.get("dividend") or row.get("ratio")
-            events.append(
-                CorporateEvent(
-                    symbol=symbol.upper(),
-                    event_type=event_type,
-                    title=title,
-                    description=str(row.get("details") or row.get("remarks") or title),
-                    event_date=event_date,
-                    ex_date=ex_date,
-                    record_date=record_date,
-                    payment_date=payment_date,
-                    value=str(value).strip() if value else None,
-                    source="nse",
-                    impact=_impact_for(event_type),
-                    url=str(row.get("attchmntFile") or "").strip() or None,
-                )
-            )
-        return events
+        return []
+
+    async def _fetch_bse_announcements(self, symbol: str) -> list[CorporateEvent]:
+        return []
 
     async def _fetch_fmp_dividends_splits(self, symbol: str) -> list[CorporateEvent]:
         fetcher = await get_unified_fetcher()
@@ -359,10 +316,6 @@ class CorporateActionsService:
                 )
                 break
         return out
-
-    async def _fetch_bse_announcements(self, symbol: str) -> list[CorporateEvent]:
-        # BSE scraper scaffold not implemented in this codebase yet.
-        return []
 
     @staticmethod
     def _dedupe_events(events: list[CorporateEvent]) -> list[CorporateEvent]:

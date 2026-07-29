@@ -43,10 +43,10 @@ export function PortfolioLabPage() {
   const [name, setName] = useState("Core Multi-Asset");
   const [description, setDescription] = useState("Portfolio lab baseline");
   const [tags, setTags] = useState("core,multi-asset");
-  const [tickers, setTickers] = useState("RELIANCE,TCS,INFY,HDFCBANK");
+  const [tickers, setTickers] = useState("AAPL,MSFT,NVDA,AMZN");
   const [startDate, setStartDate] = useState("2025-01-01");
   const [endDate, setEndDate] = useState("2025-12-31");
-  const [benchmark, setBenchmark] = useState("NIFTY50");
+  const [benchmark, setBenchmark] = useState("SPY");
   const [rebalanceFrequency, setRebalanceFrequency] = useState<RebalanceFrequency>("WEEKLY");
   const [weightingMethod, setWeightingMethod] = useState<WeightingMethod>("RISK_PARITY");
   const [maxWeight, setMaxWeight] = useState(0.25);

@@ -46,7 +46,7 @@ export function StrategyPage() {
     const premium = Number(priceRow?.ce?.ltp || 0);
     setLegs((prev) => [
       ...prev,
-      { type: "CE", strike, action: "buy", premium, lots: 1, lot_size: 50, expiry: chainQuery.data?.expiry_date || expiry || "" },
+      { type: "CE", strike, action: "buy", premium, lots: 1, lot_size: 100, expiry: chainQuery.data?.expiry_date || expiry || "" },
     ]);
   };
 
@@ -65,7 +65,7 @@ export function StrategyPage() {
             action: "buy" as const,
             premium: Number(item.ltp || 0),
             lots: 1,
-            lot_size: 50,
+            lot_size: 100,
             expiry: chainQuery.data?.expiry_date || expiry || "",
           })),
         ]);
@@ -123,8 +123,8 @@ export function StrategyPage() {
               <div key={`leg-${idx}`} className="rounded border border-terminal-border bg-terminal-bg p-2">
                 <div className="grid grid-cols-2 gap-2 text-xs md:grid-cols-3">
                   <select value={leg.type} onChange={(e) => setLegs((p) => p.map((x, i) => i === idx ? { ...x, type: e.target.value as "CE" | "PE" } : x))} className="rounded border border-terminal-border bg-terminal-panel px-2 py-1">
-                    <option value="CE">CE</option>
-                    <option value="PE">PE</option>
+                    <option value="CE">Call</option>
+                    <option value="PE">Put</option>
                   </select>
                   <select value={leg.action} onChange={(e) => setLegs((p) => p.map((x, i) => i === idx ? { ...x, action: e.target.value as "buy" | "sell" } : x))} className="rounded border border-terminal-border bg-terminal-panel px-2 py-1">
                     <option value="buy">Buy</option>

@@ -17,7 +17,7 @@ import { DenseTable } from "../terminal/DenseTable";
 import { TerminalButton } from "../terminal/TerminalButton";
 import { TerminalInput } from "../terminal/TerminalInput";
 
-const BENCHMARKS = ["NIFTY50", "S&P500", "NASDAQ", "DOW", "MSCIWI"];
+const BENCHMARKS = ["SPY", "S&P500", "NASDAQ", "DOW", "MSCIWI"];
 
 function metricFmt(v: number | null | undefined) {
   if (v == null || !Number.isFinite(v)) return "-";

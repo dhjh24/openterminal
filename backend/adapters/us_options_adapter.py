@@ -1,3 +1,11 @@
+"""US options chain adapter (FMP primary, yfinance fallback).
+
+Internal IV format is **percent** (22.5 = 22.5%). Provider decimals (e.g. yfinance
+``impliedVolatility`` 0.25) are normalized at this boundary via ``normalize_iv_percent``.
+Greeks are always locally calculated (Black-Scholes via mibian) and must be labeled
+``greeks_source: "calculated"`` — never presented as provider-supplied.
+"""
+
 from __future__ import annotations
 
 import asyncio
@@ -8,20 +16,97 @@ from typing import Any, Dict, List, Optional
 import httpx
 import yfinance as yf
 from backend.config.settings import get_settings
+from backend.shared.market_profile import get_us_risk_free_rate_pct
 
 logger = logging.getLogger(__name__)
+
+# Decimal IV from Yahoo/FMP is typically <= 1.5 (150%); above that treat as percent.
+_IV_DECIMAL_MAX = 1.5
+
+
+def normalize_iv_percent(raw_iv: Any) -> float:
+    """Normalize provider IV to internal percent (22.5 = 22.5%)."""
+    try:
+        iv = float(raw_iv)
+    except (TypeError, ValueError):
+        return 0.0
+    if iv != iv or iv <= 0:
+        return 0.0
+    if 0 < iv <= _IV_DECIMAL_MAX:
+        return iv * 100.0
+    return iv
+
+
+def _actual_days_to_expiry(expiry: str) -> int:
+    try:
+        return (datetime.strptime(expiry, "%Y-%m-%d").date() - date.today()).days
+    except Exception:
+        return 0
+
+
+def _leg_data_quality(
+    *,
+    bid: float,
+    ask: float,
+    ltp: float,
+    iv: float,
+    volume: int,
+    oi: int,
+) -> str:
+    """Per-leg quality: ok | partial | stale | empty."""
+    if ltp <= 0 and bid <= 0 and ask <= 0 and iv <= 0:
+        return "empty"
+    flags: list[str] = []
+    if bid <= 0 or ask <= 0:
+        flags.append("missing_quote")
+    elif bid > ask:
+        flags.append("crossed_market")
+    if ltp <= 0:
+        flags.append("no_last")
+    if iv <= 0:
+        flags.append("no_iv")
+    if volume == 0:
+        flags.append("zero_volume")
+    if oi == 0:
+        flags.append("zero_oi")
+    if not flags:
+        return "ok"
+    if ltp > 0 and iv > 0:
+        return "partial"
+    return "stale"
+
+
+def _chain_data_quality(strikes: List[Dict[str, Any]]) -> str:
+    if not strikes:
+        return "empty"
+    leg_qualities: list[str] = []
+    for row in strikes:
+        for key in ("ce", "pe"):
+            leg = row.get(key)
+            if isinstance(leg, dict):
+                leg_qualities.append(str(leg.get("data_quality") or "empty"))
+    if not leg_qualities:
+        return "empty"
+    if all(q == "empty" for q in leg_qualities):
+        return "empty"
+    if all(q == "ok" for q in leg_qualities):
+        return "ok"
+    if any(q in {"ok", "partial"} for q in leg_qualities):
+        return "partial"
+    return "stale"
+
 
 class USOptionsAdapter:
     """Fetches and normalizes US option chain data using FMP or yfinance."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.settings = get_settings()
         self.fmp_key = self.settings.fmp_api_key
-        # US Risk-free rate is roughly 4.5% currently
-        self.risk_free_rate = 4.5
+        self.risk_free_rate = get_us_risk_free_rate_pct()
 
     def _get_greeks_engine(self):
         from backend.fno.services.greeks_engine import get_greeks_engine
+
         return get_greeks_engine()
 
     def _to_float(self, value: Any, default: float = 0.0) -> float:
@@ -32,36 +117,47 @@ class USOptionsAdapter:
             return default
 
     def _to_int(self, value: Any, default: int = 0) -> int:
-        # yfinance returns openInterest/volume as NaN floats when absent, and
-        # int(NaN) raises ValueError. Route through _to_float to neutralise NaN.
         return int(self._to_float(value, float(default)))
+
+    def _occ_symbol(self, opt: Dict[str, Any]) -> str:
+        for key in ("contractSymbol", "contract_symbol", "occ_symbol", "symbol"):
+            val = opt.get(key)
+            if val and str(val).strip():
+                return str(val).strip().upper()
+        return ""
 
     async def get_expiry_dates(self, symbol: str) -> List[str]:
         """Fetch available expiry dates for a US stock."""
         try:
-            # Try yfinance first for expiries as it's reliable and free for this
             ticker = yf.Ticker(symbol)
             expiries = await asyncio.to_thread(lambda: ticker.options)
             return list(expiries)
         except Exception as e:
-            logger.error(f"Error fetching US expiries for {symbol}: {e}")
+            logger.error("Error fetching US expiries for %s: %s", symbol, e)
             return []
 
-    async def get_option_chain(self, symbol: str, expiry: str, strike_range: int = 20) -> Dict[str, Any]:
+    async def get_option_chain(
+        self, symbol: str, expiry: str, strike_range: int = 20
+    ) -> Dict[str, Any]:
         """Fetch option chain for a specific symbol and expiry."""
         symbol = symbol.upper()
+        source = "unavailable"
+        delay_status = "unavailable"
 
-        # 1. Fetch Spot Price
         spot = 0.0
         try:
             ticker = yf.Ticker(symbol)
             info = await asyncio.to_thread(lambda: ticker.info)
-            spot = info.get("regularMarketPrice") or info.get("currentPrice") or info.get("previousClose") or 0.0
+            spot = (
+                info.get("regularMarketPrice")
+                or info.get("currentPrice")
+                or info.get("previousClose")
+                or 0.0
+            )
         except Exception as e:
-            logger.error(f"Error fetching spot for {symbol}: {e}")
+            logger.error("Error fetching spot for %s: %s", symbol, e)
 
-        # 2. Try FMP for chain
-        chain_data = None
+        chain_data: List[Dict[str, Any]] | None = None
         if self.fmp_key:
             try:
                 async with httpx.AsyncClient(timeout=15.0) as client:
@@ -69,102 +165,174 @@ class USOptionsAdapter:
                     resp = await client.get(url, params={"apikey": self.fmp_key})
                     if resp.status_code == 200:
                         raw_data = resp.json()
-                        # FMP returns all expiries, filter for the one we want
-                        chain_data = [opt for opt in raw_data if opt.get("expiration") == expiry]
+                        if isinstance(raw_data, list):
+                            chain_data = [
+                                opt for opt in raw_data if opt.get("expiration") == expiry
+                            ]
+                            if chain_data:
+                                source = "fmp"
+                                delay_status = "delayed"
             except Exception as e:
-                logger.error(f"FMP US Options error for {symbol}: {e}")
+                logger.error("FMP US Options error for %s: %s", symbol, e)
 
-        # 3. Fallback to yfinance if FMP failed or returned nothing
         if not chain_data:
             try:
                 ticker = yf.Ticker(symbol)
                 opt_chain = await asyncio.to_thread(lambda: ticker.option_chain(expiry))
                 chain_data = self._from_yf_chain(opt_chain)
+                if chain_data:
+                    source = "yfinance"
+                    delay_status = "delayed"
             except Exception as e:
-                logger.error(f"yfinance US Options error for {symbol}: {e}")
-                return self._empty_chain(symbol, expiry)
+                logger.error("yfinance US Options error for %s: %s", symbol, e)
+                return self._empty_chain(symbol, expiry, source="yfinance", delay_status="unavailable")
 
         if not chain_data:
-            return self._empty_chain(symbol, expiry)
+            return self._empty_chain(symbol, expiry, source=source, delay_status=delay_status)
 
-        return self._normalize_chain(symbol, spot, expiry, chain_data, strike_range)
+        return self._normalize_chain(
+            symbol,
+            spot,
+            expiry,
+            chain_data,
+            strike_range,
+            source=source,
+            delay_status=delay_status,
+        )
 
     def _from_yf_chain(self, yf_chain: Any) -> List[Dict[str, Any]]:
         """Convert yfinance option chain object to a list of dicts."""
-        combined = []
-        for _, row in yf_chain.calls.iterrows():
-            d = row.to_dict()
-            d["type"] = "C"
-            combined.append(d)
-        for _, row in yf_chain.puts.iterrows():
-            d = row.to_dict()
-            d["type"] = "P"
-            combined.append(d)
+        combined: list[dict[str, Any]] = []
+        try:
+            for _, row in yf_chain.calls.iterrows():
+                d = row.to_dict()
+                d["type"] = "C"
+                combined.append(d)
+            for _, row in yf_chain.puts.iterrows():
+                d = row.to_dict()
+                d["type"] = "P"
+                combined.append(d)
+        except Exception:
+            return []
         return combined
 
-    def _normalize_chain(self, symbol: str, spot: float, expiry: str, data: List[Dict[str, Any]], strike_range: int) -> Dict[str, Any]:
-        grouped = {}
-        dte = max((datetime.strptime(expiry, "%Y-%m-%d").date() - date.today()).days, 1)
+    def _normalize_chain(
+        self,
+        symbol: str,
+        spot: float,
+        expiry: str,
+        data: List[Dict[str, Any]],
+        strike_range: int,
+        *,
+        source: str = "calculated",
+        delay_status: str = "delayed",
+    ) -> Dict[str, Any]:
+        grouped: dict[float, dict[str, Any]] = {}
+        actual_dte = _actual_days_to_expiry(expiry)
         greeks_engine = self._get_greeks_engine()
+        rfr = self.risk_free_rate
 
         for opt in data:
+            if not isinstance(opt, dict):
+                continue
             strike = self._to_float(opt.get("strike"))
+            if strike <= 0:
+                continue
             if strike not in grouped:
-                grouped[strike] = {"strike_price": strike, "ce": self._empty_leg(), "pe": self._empty_leg()}
+                grouped[strike] = {
+                    "strike_price": strike,
+                    "ce": self._empty_leg(),
+                    "pe": self._empty_leg(),
+                }
 
-            # Detect type (FMP uses 'type' or yfinance format)
             opt_type = str(opt.get("type", opt.get("optionType", ""))).upper()
-            if "CALL" in opt_type or opt_type == "C":
+            if "CALL" in opt_type or opt_type in {"C", "CE"}:
                 key = "ce"
                 mibian_type = "CE"
             else:
                 key = "pe"
                 mibian_type = "PE"
 
-            # Normalize values
-            iv = self._to_float(opt.get("impliedVolatility", 0.0))
+            iv = normalize_iv_percent(opt.get("impliedVolatility", opt.get("iv", 0.0)))
             ltp = self._to_float(opt.get("lastPrice", opt.get("price", 0.0)))
+            bid = self._to_float(opt.get("bid"))
+            ask = self._to_float(opt.get("ask"))
+            volume = self._to_int(opt.get("volume"))
+            oi = self._to_int(opt.get("openInterest"))
 
-            # Recalculate IV if missing/low using mibian if possible
-            if iv <= 0 and ltp > 0:
-                iv = greeks_engine.compute_iv(spot, strike, dte, ltp, mibian_type)
+            if iv <= 0 and ltp > 0 and spot > 0:
+                iv = greeks_engine.compute_iv(
+                    spot, strike, actual_dte, ltp, mibian_type, risk_free_rate_pct=rfr
+                )
+
+            greeks = (
+                greeks_engine.compute_greeks(
+                    spot, strike, actual_dte, iv, mibian_type, risk_free_rate_pct=rfr
+                )
+                if spot > 0 and (iv > 0 or ltp > 0)
+                else {"delta": 0.0, "gamma": 0.0, "theta": 0.0, "vega": 0.0, "rho": 0.0}
+            )
+
+            occ = self._occ_symbol(opt)
+            leg_quality = _leg_data_quality(
+                bid=bid, ask=ask, ltp=ltp, iv=iv, volume=volume, oi=oi
+            )
 
             leg = {
-                "oi": self._to_int(opt.get("openInterest")),
-                "oi_change": 0, # US sources don't always give daily OI change in chain
-                "volume": self._to_int(opt.get("volume")),
+                "oi": oi,
+                "oi_change": 0,
+                "volume": volume,
                 "iv": round(iv, 4),
                 "ltp": ltp,
-                "bid": self._to_float(opt.get("bid")),
-                "ask": self._to_float(opt.get("ask")),
+                "bid": bid,
+                "ask": ask,
                 "price_change": self._to_float(opt.get("change")),
-                "greeks": greeks_engine.compute_greeks(spot, strike, dte, iv, mibian_type)
+                "greeks": greeks,
+                "greeks_source": "calculated",
+                "data_quality": leg_quality,
+                "days_to_expiry": actual_dte,
             }
+            if occ:
+                leg["contract_symbol"] = occ
+                leg["occ_symbol"] = occ
+
             grouped[strike][key] = leg
 
         strikes = sorted(grouped.values(), key=lambda x: x["strike_price"])
 
-        # Filter range
-        if strikes and strike_range > 0:
-            idx = min(range(len(strikes)), key=lambda i: abs(strikes[i]["strike_price"] - spot))
+        if strikes and strike_range > 0 and spot > 0:
+            idx = min(
+                range(len(strikes)),
+                key=lambda i: abs(strikes[i]["strike_price"] - spot),
+            )
             left = max(0, idx - strike_range)
             right = min(len(strikes), idx + strike_range + 1)
             strikes = strikes[left:right]
+
+        data_quality = _chain_data_quality(strikes)
+        ts = datetime.now(timezone.utc).isoformat()
 
         return {
             "symbol": symbol,
             "market": "US",
             "spot_price": spot,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": ts,
             "expiry_date": expiry,
-            "available_expiries": [], # Caller should fill this or we fetch separately
+            "days_to_expiry": actual_dte,
+            "available_expiries": [],
             "atm_strike": self._find_atm(spot, strikes),
             "strikes": strikes,
-            "totals": self._calculate_totals(strikes)
+            "totals": self._calculate_totals(strikes),
+            "source": source,
+            "delay_status": delay_status,
+            "data_quality": data_quality,
+            "greeks_source": "calculated",
+            "risk_free_rate_pct": rfr,
         }
 
     def _find_atm(self, spot: float, strikes: List[Dict[str, Any]]) -> float:
-        if not strikes: return 0.0
+        if not strikes or spot <= 0:
+            return 0.0
         return min([s["strike_price"] for s in strikes], key=lambda x: abs(x - spot))
 
     def _calculate_totals(self, strikes: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -178,21 +346,53 @@ class USOptionsAdapter:
             "ce_volume_total": ce_vol,
             "pe_volume_total": pe_vol,
             "pcr_oi": round(pe_oi / ce_oi, 4) if ce_oi > 0 else 0.0,
-            "pcr_volume": round(pe_vol / ce_vol, 4) if ce_vol > 0 else 0.0
+            "pcr_volume": round(pe_vol / ce_vol, 4) if ce_vol > 0 else 0.0,
         }
 
     def _empty_leg(self) -> Dict[str, Any]:
         return {
-            "oi": 0, "oi_change": 0, "volume": 0, "iv": 0.0,
-            "ltp": 0.0, "bid": 0.0, "ask": 0.0, "price_change": 0.0,
-            "greeks": {"delta": 0, "gamma": 0, "theta": 0, "vega": 0, "rho": 0}
+            "oi": 0,
+            "oi_change": 0,
+            "volume": 0,
+            "iv": 0.0,
+            "ltp": 0.0,
+            "bid": 0.0,
+            "ask": 0.0,
+            "price_change": 0.0,
+            "greeks": {"delta": 0, "gamma": 0, "theta": 0, "vega": 0, "rho": 0},
+            "greeks_source": "calculated",
+            "data_quality": "empty",
         }
 
-    def _empty_chain(self, symbol: str, expiry: str) -> Dict[str, Any]:
+    def _empty_chain(
+        self,
+        symbol: str,
+        expiry: str,
+        *,
+        source: str = "unavailable",
+        delay_status: str = "unavailable",
+    ) -> Dict[str, Any]:
         return {
-            "symbol": symbol, "market": "US", "spot_price": 0.0,
+            "symbol": symbol,
+            "market": "US",
+            "spot_price": 0.0,
             "timestamp": datetime.now(timezone.utc).isoformat(),
-            "expiry_date": expiry, "available_expiries": [],
-            "atm_strike": 0.0, "strikes": [],
-            "totals": {"ce_oi_total": 0, "pe_oi_total": 0, "ce_volume_total": 0, "pe_volume_total": 0, "pcr_oi": 0.0, "pcr_volume": 0.0}
+            "expiry_date": expiry,
+            "days_to_expiry": _actual_days_to_expiry(expiry),
+            "available_expiries": [],
+            "atm_strike": 0.0,
+            "strikes": [],
+            "totals": {
+                "ce_oi_total": 0,
+                "pe_oi_total": 0,
+                "ce_volume_total": 0,
+                "pe_volume_total": 0,
+                "pcr_oi": 0.0,
+                "pcr_volume": 0.0,
+            },
+            "source": source,
+            "delay_status": delay_status,
+            "data_quality": "empty",
+            "greeks_source": "calculated",
+            "risk_free_rate_pct": self.risk_free_rate,
         }

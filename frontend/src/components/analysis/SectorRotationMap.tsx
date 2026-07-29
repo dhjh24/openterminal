@@ -95,9 +95,10 @@ export function SectorRotationMap({ defaultBenchmark = "SPY", width = "100%", he
               setIsPlaying(false);
             }}
           >
-            <option value="SPY">SPY (US)</option>
-            <option value="QQQ">QQQ (US Tech)</option>
-            <option value="^NSEI">NIFTY 50 (India)</option>
+            <option value="SPY">SPY (S&amp;P 500)</option>
+            <option value="QQQ">QQQ (Nasdaq-100)</option>
+            <option value="DIA">DIA (Dow)</option>
+            <option value="IWM">IWM (Russell 2000)</option>
           </select>
         </div>
 

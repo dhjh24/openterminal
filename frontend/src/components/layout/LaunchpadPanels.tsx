@@ -306,7 +306,7 @@ function useJkListNavigation<T>(rows: T[]) {
 }
 
 export function LaunchpadChartPanel({ panel }: PanelProps) {
-  const symbol = (panel.symbol || "RELIANCE").toUpperCase();
+  const symbol = (panel.symbol || "AAPL").toUpperCase();
   const history = useStockHistory(symbol, "3mo", "1d");
   const data = history.data?.data ?? [];
   const linkGroup =
@@ -385,7 +385,7 @@ export function LaunchpadWatchlistPanel(_: PanelProps) {
 }
 
 export function LaunchpadNewsFeedPanel({ panel }: PanelProps) {
-  const symbol = (panel.symbol || "RELIANCE").toUpperCase();
+  const symbol = (panel.symbol || "AAPL").toUpperCase();
   const news = useQuery({
     queryKey: ["launchpad", "news", symbol],
     queryFn: () => fetchNewsByTicker(symbol, 25),
@@ -417,7 +417,7 @@ export function LaunchpadNewsFeedPanel({ panel }: PanelProps) {
 }
 
 export function LaunchpadOrderBookPanel({ panel }: PanelProps) {
-  const symbol = (panel.symbol || "RELIANCE").toUpperCase();
+  const symbol = (panel.symbol || "AAPL").toUpperCase();
   const selectedMarket = useSettingsStore((state) => state.selectedMarket);
   return (
     <div className="h-full p-2">
@@ -427,7 +427,7 @@ export function LaunchpadOrderBookPanel({ panel }: PanelProps) {
 }
 
 export function LaunchpadTickerDetailPanel({ panel }: PanelProps) {
-  const symbol = (panel.symbol || "RELIANCE").toUpperCase();
+  const symbol = (panel.symbol || "AAPL").toUpperCase();
   const stock = useStock(symbol);
   const row = stock.data;
   return (
@@ -528,8 +528,9 @@ export function LaunchpadMarketPulsePanel(_: PanelProps) {
   const status = useQuery({ queryKey: ["launchpad", "market-status"], queryFn: fetchMarketStatus, staleTime: 10_000, refetchInterval: 15_000 });
   const payload = (status.data ?? {}) as Record<string, unknown>;
   const rows = [
-    { label: "NIFTY", value: payload.nifty50, change: payload.nifty50Pct },
-    { label: "SENSEX", value: payload.sensex, change: payload.sensexPct },
+    { label: "S&P 500", value: payload.sp500, change: payload.sp500Pct },
+    { label: "NASDAQ", value: payload.nasdaq, change: payload.nasdaqPct },
+    { label: "DOW", value: payload.dowjones, change: payload.dowjonesPct },
     { label: "S&P 500", value: payload.sp500, change: payload.sp500Pct },
     { label: "NIKKEI", value: payload.nikkei225, change: payload.nikkei225Pct },
   ];

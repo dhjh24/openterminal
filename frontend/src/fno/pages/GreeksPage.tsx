@@ -5,6 +5,7 @@ import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxi
 import { fetchGreeks } from "../api/fnoApi";
 import { GreeksHeatmap } from "../components/GreeksHeatmap";
 import { useFnoContext } from "../FnoLayout";
+import { optionTypeLabel } from "../types/fno";
 
 export function GreeksPage() {
   const { symbol, expiry } = useFnoContext();
@@ -46,7 +47,7 @@ export function GreeksPage() {
             className={`rounded border px-2 py-1 ${side === item ? "border-terminal-accent text-terminal-accent" : "border-terminal-border text-terminal-muted"}`}
             onClick={() => setSide(item)}
           >
-            {item}
+            {optionTypeLabel(item)}
           </button>
         ))}
       </div>

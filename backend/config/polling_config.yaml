@@ -1,22 +1,4 @@
-# Polling intervals by market segment (seconds)
-india_equity:
-  market_hours:
-    start: "09:15"
-    end: "15:30"
-    tz: "Asia/Kolkata"
-  interval_live: 5
-  interval_post_market: 300
-  interval_holiday: 3600
-
-india_fno:
-  market_hours:
-    start: "09:15"
-    end: "15:30"
-    tz: "Asia/Kolkata"
-  interval_live: 3
-  interval_post_market: 300
-  interval_holiday: 3600
-
+# Polling intervals by market segment (seconds) — US profile
 us_equity:
   market_hours:
     start: "09:30"
@@ -40,7 +22,6 @@ us_futures:
   interval_live: 3
   interval_closed: 300
 
-# Rate limit safety
 rate_limit:
   max_retries: 5
   base_backoff_sec: 2

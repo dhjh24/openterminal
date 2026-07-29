@@ -13,7 +13,7 @@ vi.mock("../hooks/useStocks", () => ({
 
 vi.mock("../store/settingsStore", () => ({
   useSettingsStore: (selector: (state: { selectedMarket: string }) => unknown) =>
-    selector({ selectedMarket: "NSE" }),
+    selector({ selectedMarket: "NASDAQ" }),
 }));
 
 vi.mock("../realtime/useQuotesStream", () => ({
@@ -21,9 +21,9 @@ vi.mock("../realtime/useQuotesStream", () => ({
   useQuotesStore: (selector: (state: { ticksByToken: Record<string, { ltp: number; change_pct: number }> }) => unknown) =>
     selector({
       ticksByToken: {
-        "NSE:NIFTY": { ltp: 22400.5, change_pct: 0.83 },
-        "NSE:BANKNIFTY": { ltp: 47890.25, change_pct: -0.24 },
-        "NSE:INDIAVIX": { ltp: 12.35, change_pct: 0.11 },
+        "NASDAQ:^GSPC": { ltp: 5245.5, change_pct: 0.83 },
+        "NASDAQ:^IXIC": { ltp: 18340.25, change_pct: -0.24 },
+        "NASDAQ:^VIX": { ltp: 12.35, change_pct: 0.11 },
       },
     }),
 }));
@@ -44,12 +44,12 @@ describe("MissionControlGrid", () => {
     expect(screen.getByText("Market Pulse")).toBeInTheDocument();
     expect(screen.getByText("Launch Matrix")).toBeInTheDocument();
     expect(screen.getByText("System Snapshot")).toBeInTheDocument();
-    expect(screen.getByText("22,400.50")).toBeInTheDocument();
+    expect(screen.getByText("5,245.50")).toBeInTheDocument();
     expect(screen.getByText("+0.83%")).toBeInTheDocument();
 
-    expect(subscribeSpy).toHaveBeenCalledWith(["NIFTY", "BANKNIFTY", "INDIAVIX"]);
+    expect(subscribeSpy).toHaveBeenCalledWith(["^GSPC", "^IXIC", "^VIX"]);
 
     unmount();
-    expect(unsubscribeSpy).toHaveBeenCalledWith(["NIFTY", "BANKNIFTY", "INDIAVIX"]);
+    expect(unsubscribeSpy).toHaveBeenCalledWith(["^GSPC", "^IXIC", "^VIX"]);
   });
 });

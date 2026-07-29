@@ -7,14 +7,6 @@ from backend.core.unified_fetcher import UnifiedFetcher
 from backend.shared.market_classifier import StockClassification, market_classifier
 
 
-class _DummyNSE:
-    async def get_quote_equity(self, _symbol: str):
-        return {}
-
-    async def get_trade_info(self, _symbol: str):
-        return {}
-
-
 class _DummyYahoo:
     async def get_quote_summary(self, _symbol: str, _modules):
         return {
@@ -53,13 +45,6 @@ class _DummyFinnhub:
 
     async def get_market_news(self, category: str = "general", limit: int = 30):
         return [{"headline": f"{category} market", "url": "https://example.com/market"}][:limit]
-
-
-class _DummyKite:
-    api_key = None
-
-    def resolve_access_token(self):
-        return None
 
 
 class _RegistryStub:
@@ -101,11 +86,9 @@ def test_fetch_stock_snapshot_uses_yahoo_quote_name_for_us_symbols(monkeypatch) 
     monkeypatch.setattr(market_classifier, "yfinance_symbol", _fake_yfinance_symbol)
 
     fetcher = UnifiedFetcher(
-        nse=_DummyNSE(),
         yahoo=_DummyYahoo(),
         fmp=_DummyFMP(),
         finnhub=_DummyFinnhub(),
-        kite=_DummyKite(),
     )
 
     snapshot = asyncio.run(fetcher.fetch_stock_snapshot("COST"))
@@ -126,11 +109,9 @@ def test_fetch_quote_uses_adapter_registry_and_preserves_payload_shape(monkeypat
     )
 
     fetcher = UnifiedFetcher(
-        nse=_DummyNSE(),
         yahoo=_DummyYahoo(),
         fmp=_DummyFMP(),
         finnhub=_DummyFinnhub(),
-        kite=_DummyKite(),
     )
 
     payload = asyncio.run(fetcher.fetch_quote("AAPL"))
@@ -158,11 +139,9 @@ def test_fetch_history_uses_adapter_registry_and_returns_chart_payload(monkeypat
     )
 
     fetcher = UnifiedFetcher(
-        nse=_DummyNSE(),
         yahoo=_DummyYahoo(),
         fmp=_DummyFMP(),
         finnhub=_DummyFinnhub(),
-        kite=_DummyKite(),
     )
 
     payload = asyncio.run(fetcher.fetch_history("AAPL", range_str="1mo", interval="1d"))
@@ -189,11 +168,9 @@ def test_fetch_stock_snapshot_uses_unified_quote_path_for_price(monkeypatch) -> 
     )
 
     fetcher = UnifiedFetcher(
-        nse=_DummyNSE(),
         yahoo=_DummyYahoo(),
         fmp=_DummyFMP(),
         finnhub=_DummyFinnhub(),
-        kite=_DummyKite(),
     )
 
     snapshot = asyncio.run(fetcher.fetch_stock_snapshot("COST"))
@@ -205,11 +182,9 @@ def test_fetch_stock_snapshot_uses_unified_quote_path_for_price(monkeypatch) -> 
 
 def test_search_news_uses_yahoo_wrapper() -> None:
     fetcher = UnifiedFetcher(
-        nse=_DummyNSE(),
         yahoo=_DummyYahoo(),
         fmp=_DummyFMP(),
         finnhub=_DummyFinnhub(),
-        kite=_DummyKite(),
     )
 
     rows = asyncio.run(fetcher.search_news("nvidia", limit=5))
@@ -220,11 +195,9 @@ def test_search_news_uses_yahoo_wrapper() -> None:
 
 def test_get_company_news_uses_finnhub_wrapper() -> None:
     fetcher = UnifiedFetcher(
-        nse=_DummyNSE(),
         yahoo=_DummyYahoo(),
         fmp=_DummyFMP(),
         finnhub=_DummyFinnhub(),
-        kite=_DummyKite(),
     )
 
     rows = asyncio.run(fetcher.get_company_news("AAPL", limit=5))
@@ -235,11 +208,9 @@ def test_get_company_news_uses_finnhub_wrapper() -> None:
 
 def test_get_market_news_uses_finnhub_wrapper() -> None:
     fetcher = UnifiedFetcher(
-        nse=_DummyNSE(),
         yahoo=_DummyYahoo(),
         fmp=_DummyFMP(),
         finnhub=_DummyFinnhub(),
-        kite=_DummyKite(),
     )
 
     rows = asyncio.run(fetcher.get_market_news("general", limit=5))

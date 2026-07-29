@@ -8,18 +8,18 @@ import { AsciiHero } from "./AsciiHero";
 
 function fmt(value?: number | null): string {
   if (value === null || value === undefined || !Number.isFinite(value)) return "-";
-  return value.toLocaleString("en-IN", { maximumFractionDigits: 2 });
+  return value.toLocaleString("en-US", { maximumFractionDigits: 2 });
 }
 
 export function HomePage() {
   const navigate = useNavigate();
   const { data: marketStatus } = useMarketStatus();
-  const { subscribe, unsubscribe } = useQuotesStream("NSE");
+  const { subscribe, unsubscribe } = useQuotesStream("NASDAQ");
   const ticks = useQuotesStore((s) => s.ticksByToken);
 
   useEffect(() => {
-    subscribe(["NIFTY", "BANKNIFTY", "INDIAVIX"]);
-    return () => unsubscribe(["NIFTY", "BANKNIFTY", "INDIAVIX"]);
+    subscribe(["SPY", "QQQ", "VIX"]);
+    return () => unsubscribe(["SPY", "QQQ", "VIX"]);
   }, [subscribe, unsubscribe]);
 
   useEffect(() => {
@@ -41,17 +41,17 @@ export function HomePage() {
 
   const statusPayload = marketStatus as {
     marketState?: Array<{ marketStatus?: string }>;
-    nifty50?: number | null;
-    nifty50Pct?: number | null;
+    spy?: number | null;
+    spyPct?: number | null;
     usdInr?: number | null;
   } | undefined;
 
   const marketOpen = String(statusPayload?.marketState?.[0]?.marketStatus || "").toUpperCase() === "OPEN";
-  const nifty = ticks["NSE:NIFTY"]?.ltp ?? (typeof statusPayload?.nifty50 === "number" ? statusPayload.nifty50 : null);
-  const niftyPct = ticks["NSE:NIFTY"]?.change_pct ?? (typeof statusPayload?.nifty50Pct === "number" ? statusPayload.nifty50Pct : null);
-  const bank = ticks["NSE:BANKNIFTY"]?.ltp ?? null;
-  const bankPct = ticks["NSE:BANKNIFTY"]?.change_pct ?? null;
-  const vix = ticks["NSE:INDIAVIX"]?.ltp ?? null;
+  const spy = ticks["NASDAQ:SPY"]?.ltp ?? (typeof statusPayload?.spy === "number" ? statusPayload.spy : null);
+  const spyPct = ticks["NASDAQ:SPY"]?.change_pct ?? (typeof statusPayload?.spyPct === "number" ? statusPayload.spyPct : null);
+  const qqq = ticks["NASDAQ:QQQ"]?.ltp ?? null;
+  const qqqPct = ticks["NASDAQ:QQQ"]?.change_pct ?? null;
+  const vix = ticks["NASDAQ:VIX"]?.ltp ?? null;
 
   return (
     <div className="flex h-screen flex-col bg-terminal-bg text-terminal-text">
@@ -97,7 +97,7 @@ export function HomePage() {
               onClick={() => navigate("/fno")}
               className="group rounded border border-terminal-border bg-terminal-panel/80 p-5 text-left backdrop-blur-[1px] hover:border-terminal-accent"
             >
-              <div className="text-sm font-semibold uppercase tracking-wide text-terminal-accent">Futures & Options</div>
+              <div className="text-sm font-semibold uppercase tracking-wide text-terminal-accent">Options & Futures</div>
               <ul className="mt-3 space-y-1 text-xs text-terminal-muted">
                 <li>Option Chain</li>
                 <li>Greeks Dashboard</li>
@@ -105,7 +105,7 @@ export function HomePage() {
                 <li>Strategy Builder</li>
                 <li>PCR Tracker</li>
                 <li>IV Surface</li>
-                <li>F&O Heatmap</li>
+                <li>Options Heatmap</li>
                 <li>Expiry Dashboard</li>
               </ul>
               <div className="mt-4 inline-block rounded border border-terminal-border px-3 py-1 text-xs text-terminal-accent group-hover:border-terminal-accent">OPEN ?</div>
@@ -135,10 +135,10 @@ export function HomePage() {
       <div className="border-t border-terminal-border bg-terminal-panel px-4 py-2 text-xs">
         <div className="flex flex-wrap items-center gap-3">
           <span className={marketOpen ? "text-terminal-pos" : "text-terminal-neg"}>? {marketOpen ? "OPEN" : "CLOSED"}</span>
-          <span>NIFTY: {fmt(nifty)} ({niftyPct === null || niftyPct === undefined ? "-" : `${niftyPct >= 0 ? "+" : ""}${niftyPct.toFixed(2)}%`})</span>
-          <span>BANKNIFTY: {fmt(bank)} ({bankPct === null || bankPct === undefined ? "-" : `${bankPct >= 0 ? "+" : ""}${bankPct.toFixed(2)}%`})</span>
-          <span>India VIX: {fmt(vix)}</span>
-          <span className="ml-auto text-terminal-muted">Press E for Equity | F for F&O | B for Backtesting</span>
+          <span>SPY: {fmt(spy)} ({spyPct === null || spyPct === undefined ? "-" : `${spyPct >= 0 ? "+" : ""}${spyPct.toFixed(2)}%`})</span>
+          <span>QQQ: {fmt(qqq)} ({qqqPct === null || qqqPct === undefined ? "-" : `${qqqPct >= 0 ? "+" : ""}${qqqPct.toFixed(2)}%`})</span>
+          <span>VIX: {fmt(vix)}</span>
+          <span className="ml-auto text-terminal-muted">Press E for Equity | F for Options | B for Backtesting</span>
         </div>
       </div>
     </div>

@@ -14,15 +14,12 @@ from fastapi.responses import FileResponse
 from backend.api.deps import shutdown_unified_fetcher
 from backend.alerts import get_alert_evaluator_service
 from backend.auth.middleware import AuthMiddleware
-from backend.adapters.registry import get_adapter_registry
-from backend.bg_services.instruments_loader import get_instruments_loader
 from backend.bg_services.news_ingestor import get_news_ingestor
 from backend.bg_services.pcr_snapshot import get_pcr_snapshot_service
 from backend.bg_services.scanner_alert_scheduler import get_scanner_alert_scheduler_service
 from backend.services.prefetch_worker import get_prefetch_worker
 from backend.services.us_tick_stream import get_us_tick_stream_service
 from backend.paper_trading import get_paper_engine
-from backend.core.service_status import service_status_registry
 from backend.config.env import load_local_env
 from backend.config.security import validate_runtime_secrets
 from backend.config.settings import get_settings
@@ -38,7 +35,6 @@ if sys.platform.startswith("win"):
 settings = get_settings()
 
 _prefetch_worker = None
-_instruments_loader = None
 _news_ingestor = None
 _pcr_snapshot_service = None
 _scanner_alert_scheduler = None
@@ -52,7 +48,7 @@ _prefetch_enabled = (
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global _prefetch_worker, _instruments_loader, _news_ingestor, _pcr_snapshot_service, _scanner_alert_scheduler
+    global _prefetch_worker, _news_ingestor, _pcr_snapshot_service, _scanner_alert_scheduler
     validate_runtime_secrets()
     init_db()
 
@@ -60,15 +56,12 @@ async def lifespan(app: FastAPI):
     fetcher = await get_unified_fetcher()
 
     _prefetch_worker = get_prefetch_worker(fetcher)
-    _instruments_loader = get_instruments_loader()
     _news_ingestor = get_news_ingestor()
     _pcr_snapshot_service = get_pcr_snapshot_service()
     _scanner_alert_scheduler = get_scanner_alert_scheduler_service()
 
     if _prefetch_enabled:
         await _prefetch_worker.start()
-    if _instruments_loader:
-        await _instruments_loader.start()
     if _news_ingestor:
         await _news_ingestor.start()
     if _pcr_snapshot_service:
@@ -87,8 +80,6 @@ async def lifespan(app: FastAPI):
 
     if _prefetch_worker:
         await _prefetch_worker.stop()
-    if _instruments_loader:
-        await _instruments_loader.stop()
     if _news_ingestor:
         await _news_ingestor.stop()
     if _pcr_snapshot_service:
@@ -150,6 +141,7 @@ async def healthz() -> dict[str, object]:
 def metrics_lite() -> dict[str, object]:
     from backend.shared.ws_manager import get_marketdata_hub
     hub = get_marketdata_hub()
+    us_stream = get_us_tick_stream_service()
     from backend.bg_services.scanner_alert_scheduler import get_scanner_alert_scheduler_service
     scanner_service = get_scanner_alert_scheduler_service()
     scanner_status = scanner_service.status_snapshot() if scanner_service else {}
@@ -160,7 +152,8 @@ def metrics_lite() -> dict[str, object]:
         "scanner_alert_last_run": scanner_status.get("last_run_at"),
         "scanner_alert_last_status": scanner_status.get("last_status"),
         "scanner_alert_scanned_symbols": scanner_status.get("last_scanned_symbols"),
-        "last_kite_stream_status": hub.kite_stream_status(),
+        "us_finnhub_stream_status": hub.finnhub_stream_status(),
+        "us_tick_stream_health": us_stream.provider_health_snapshot(),
     }
 
 

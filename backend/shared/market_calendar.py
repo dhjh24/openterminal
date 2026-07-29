@@ -1,4 +1,4 @@
-"""Market hours calendar with holiday support for NSE, NYSE, CME."""
+"""Market hours calendar with holiday support for US exchanges."""
 from __future__ import annotations
 
 import json
@@ -22,21 +22,6 @@ class MarketSession(NamedTuple):
 
 
 SESSIONS: dict[str, MarketSession] = {
-    "NSE": MarketSession(
-        tz=ZoneInfo("Asia/Kolkata"),
-        open_time=time(9, 15),
-        close_time=time(15, 30),
-    ),
-    "BSE": MarketSession(
-        tz=ZoneInfo("Asia/Kolkata"),
-        open_time=time(9, 15),
-        close_time=time(15, 30),
-    ),
-    "NFO": MarketSession(
-        tz=ZoneInfo("Asia/Kolkata"),
-        open_time=time(9, 15),
-        close_time=time(15, 30),
-    ),
     "NYSE": MarketSession(
         tz=ZoneInfo("America/New_York"),
         open_time=time(9, 30),
@@ -82,9 +67,7 @@ def _get_holidays(exchange: str) -> set[date]:
         for ex, dates in raw.items():
             _holidays_cache[ex.upper()] = {date.fromisoformat(d) for d in dates}
     exchange_upper = exchange.upper()
-    if exchange_upper in {"BSE", "NFO", "BFO"}:
-        exchange_upper = "NSE"
-    elif exchange_upper == "NASDAQ":
+    if exchange_upper == "NASDAQ":
         exchange_upper = "NYSE"
     return _holidays_cache.get(exchange_upper, set())
 

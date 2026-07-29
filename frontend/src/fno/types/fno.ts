@@ -99,6 +99,7 @@ export type StrategyLeg = {
   action: "buy" | "sell";
   premium: number;
   lots: number;
+  /** Contract multiplier (shares per contract). */
   lot_size: number;
   expiry: string;
 };
@@ -200,40 +201,40 @@ export type OptionsFlowSummary = {
   flow_count?: number;
 };
 
-export const DEFAULT_FNO_SYMBOLS = [
-  "NIFTY",
-  "BANKNIFTY",
-  "RELIANCE",
-  "TCS",
-  "INFY",
-  "HDFCBANK",
-  "ICICIBANK",
-  "SBIN",
-  "LT",
-  "AXISBANK",
-  "KOTAKBANK",
-  "ITC",
-  "BAJFINANCE",
-  "MARUTI",
-  "TATAMOTORS",
-  "BHARTIARTL",
-  "SUNPHARMA",
-  "HCLTECH",
-  "WIPRO",
-  "ADANIPORTS",
-  "NTPC",
-  "ONGC",
-] as const;
-
-export function formatIndianCompact(value: number): string {
-  if (!Number.isFinite(value)) return "-";
-  const abs = Math.abs(value);
-  if (abs >= 1e7) return `${(value / 1e7).toFixed(2)}Cr`;
-  if (abs >= 1e5) return `${(value / 1e5).toFixed(2)}L`;
-  return value.toLocaleString("en-IN", { maximumFractionDigits: 0 });
+export function optionTypeLabel(type: "CE" | "PE" | "C" | "P"): string {
+  return type === "CE" || type === "C" ? "Call" : "Put";
 }
 
-export function formatCurrencyINR(value: number): string {
+export const DEFAULT_FNO_SYMBOLS = [
+  "SPY",
+  "QQQ",
+  "IWM",
+  "DIA",
+  "SPX",
+  "VIX",
+  "AAPL",
+  "MSFT",
+  "NVDA",
+  "AMD",
+  "TSLA",
+  "AMZN",
+  "META",
+  "GOOGL",
+] as const;
+
+export function formatUsCompact(value: number): string {
   if (!Number.isFinite(value)) return "-";
-  return `Rs ${value.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
+  const abs = Math.abs(value);
+  if (abs >= 1e9) return `${(value / 1e9).toFixed(2)}B`;
+  if (abs >= 1e6) return `${(value / 1e6).toFixed(2)}M`;
+  if (abs >= 1e3) return `${(value / 1e3).toFixed(2)}K`;
+  return value.toLocaleString("en-US", { maximumFractionDigits: 0 });
+}
+
+/** @deprecated Use formatUsCompact */
+export const formatIndianCompact = formatUsCompact;
+
+export function formatCurrencyUSD(value: number): string {
+  if (!Number.isFinite(value)) return "-";
+  return `$${value.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
 }

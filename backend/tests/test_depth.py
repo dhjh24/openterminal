@@ -43,7 +43,6 @@ def test_depth_snapshot_http_returns_sorted_book_and_provider_key() -> None:
     client = TestClient(_build_app())
 
     cases = [
-        ("RELIANCE", "IN", "kite"),
         ("AAPL", "US", "finnhub"),
         ("BTC-USD", "CRYPTO", "binance"),
     ]

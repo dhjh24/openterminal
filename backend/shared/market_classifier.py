@@ -13,6 +13,7 @@ from zoneinfo import ZoneInfo
 
 from backend.shared.db import SessionLocal
 from backend.db.models import FutureContract
+from backend.shared.market_profile import DEFAULT_EXCHANGE, is_us_only
 
 
 class StockClassification(BaseModel):
@@ -34,6 +35,8 @@ EXCHANGE_COUNTRY_MAP = {
     "NYSE": {"country_code": "US", "country_name": "United States", "flag_emoji": "🇺🇸", "currency": "USD"},
     "NASDAQ": {"country_code": "US", "country_name": "United States", "flag_emoji": "🇺🇸", "currency": "USD"},
     "AMEX": {"country_code": "US", "country_name": "United States", "flag_emoji": "🇺🇸", "currency": "USD"},
+    "CBOE": {"country_code": "US", "country_name": "United States", "flag_emoji": "🇺🇸", "currency": "USD"},
+    "CME": {"country_code": "US", "country_name": "United States", "flag_emoji": "🇺🇸", "currency": "USD"},
     "LSE": {"country_code": "GB", "country_name": "United Kingdom", "flag_emoji": "🇬🇧", "currency": "GBP"},
     "TSE": {"country_code": "JP", "country_name": "Japan", "flag_emoji": "🇯🇵", "currency": "JPY"},
     "HKSE": {"country_code": "HK", "country_name": "Hong Kong", "flag_emoji": "🇭🇰", "currency": "HKD"},
@@ -43,7 +46,7 @@ EXCHANGE_COUNTRY_MAP = {
     "EURONEXT": {"country_code": "FR", "country_name": "France", "flag_emoji": "🇫🇷", "currency": "EUR"},
 }
 
-_US_EXCHANGES = {"NYSE", "NASDAQ", "AMEX"}
+_US_EXCHANGES = {"NYSE", "NASDAQ", "AMEX", "CBOE", "CME"}
 _NSE_SYMBOLS: set[str] | None = None
 _NSE_LOCK = asyncio.Lock()
 
@@ -96,29 +99,7 @@ class MarketClassifier:
         await self._http.aclose()
 
     async def _load_nse_symbols(self) -> set[str]:
-        global _NSE_SYMBOLS
-        if _NSE_SYMBOLS is not None:
-            return _NSE_SYMBOLS
-        async with _NSE_LOCK:
-            if _NSE_SYMBOLS is not None:
-                return _NSE_SYMBOLS
-            data_dir = Path(__file__).resolve().parents[2] / "data"
-            files = [data_dir / "nse_equity_symbols_eq.csv", data_dir / "nse_equity_symbols_all.csv"]
-            out: set[str] = set()
-            for file_path in files:
-                if not file_path.exists():
-                    continue
-                try:
-                    with file_path.open("r", encoding="utf-8") as f:
-                        rows = csv.DictReader(f)
-                        for row in rows:
-                            symbol = (row.get("Symbol") or row.get("SYMBOL") or "").strip().upper()
-                            if symbol:
-                                out.add(symbol)
-                except Exception:
-                    continue
-            _NSE_SYMBOLS = out
-            return _NSE_SYMBOLS
+        return set()
 
     async def _fetch_fmp_profile(self, symbol: str) -> dict[str, Any]:
         if not self._fmp_key:
@@ -202,24 +183,36 @@ class MarketClassifier:
         exchange = ""
         profile: dict[str, Any] = {}
 
-        if input_symbol.endswith(".NS"):
-            base_symbol = input_symbol[:-3]
-            exchange = "NSE"
-        elif input_symbol.endswith(".BO"):
-            base_symbol = input_symbol[:-3]
-            exchange = "BSE"
-
-        if not exchange:
-            nse_symbols = await self._load_nse_symbols()
-            if input_symbol in nse_symbols:
+        if is_us_only():
+            if input_symbol.endswith(".NS") or input_symbol.endswith(".BO"):
+                base_symbol = input_symbol.rsplit(".", 1)[0]
+                exchange = DEFAULT_EXCHANGE
+            else:
+                profile = await self._fetch_fmp_profile(input_symbol)
+                exchange = str(profile.get("exchangeShortName") or profile.get("exchange") or "").strip().upper()
+                if exchange in {"NSE", "BSE", "NFO"}:
+                    exchange = DEFAULT_EXCHANGE
+                if not exchange:
+                    exchange = DEFAULT_EXCHANGE
+        else:
+            if input_symbol.endswith(".NS"):
+                base_symbol = input_symbol[:-3]
                 exchange = "NSE"
+            elif input_symbol.endswith(".BO"):
+                base_symbol = input_symbol[:-3]
+                exchange = "BSE"
 
-        if not exchange:
-            profile = await self._fetch_fmp_profile(input_symbol)
-            exchange = str(profile.get("exchangeShortName") or profile.get("exchange") or "").strip().upper()
+            if not exchange:
+                nse_symbols = await self._load_nse_symbols()
+                if input_symbol in nse_symbols:
+                    exchange = "NSE"
 
-        if not exchange:
-            exchange = "NSE" if input_symbol in (await self._load_nse_symbols()) else "NASDAQ"
+            if not exchange:
+                profile = await self._fetch_fmp_profile(input_symbol)
+                exchange = str(profile.get("exchangeShortName") or profile.get("exchange") or "").strip().upper()
+
+            if not exchange:
+                exchange = "NSE" if input_symbol in (await self._load_nse_symbols()) else "NASDAQ"
 
         ex_meta = EXCHANGE_COUNTRY_MAP.get(exchange)
         if ex_meta is None and profile:
@@ -263,6 +256,10 @@ class MarketClassifier:
     async def yfinance_symbol(self, symbol: str) -> str:
         raw = symbol.strip().upper()
         if raw.startswith("^") or "=" in raw:
+            return raw
+        if is_us_only():
+            if raw.endswith(".NS") or raw.endswith(".BO"):
+                return raw.rsplit(".", 1)[0]
             return raw
         if raw.endswith(".NS") or raw.endswith(".BO"):
             return raw

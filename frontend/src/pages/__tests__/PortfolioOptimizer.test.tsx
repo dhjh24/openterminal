@@ -14,10 +14,10 @@ vi.mock("../../api/portfolioOptimizer", () => ({
     covariance_methods: [{ id: "sample", label: "Sample" }],
   })),
   runOptimize: vi.fn(async () => ({
-    weights: { RELIANCE: 1.0 },
+    weights: { AAPL: 1.0 },
     metrics: { expected_return: 0.1, volatility: 0.15, sharpe: 0.6, max_drawdown: 0.1 },
-    risk_contributions: { RELIANCE: 1.0 },
-    asset_metrics: [{ symbol: "RELIANCE", annual_return: 0.1, annual_vol: 0.15, weight: 1.0 }],
+    risk_contributions: { AAPL: 1.0 },
+    asset_metrics: [{ symbol: "AAPL", annual_return: 0.1, annual_vol: 0.15, weight: 1.0 }],
     frontier: [{ risk: 0.15, return: 0.1 }],
     selected_point: { risk: 0.15, return: 0.1 },
   })),

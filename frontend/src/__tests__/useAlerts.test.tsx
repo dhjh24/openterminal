@@ -38,14 +38,14 @@ describe("useAlerts", () => {
     const parsed = parseAlertSocketEvent({
       type: "alert_triggered",
       alert_id: "a-1",
-      symbol: "nse:reliance",
+      symbol: "nasdaq:aapl",
       condition: "price_above",
       triggered_value: 2550,
       timestamp: "2026-03-05T00:00:00Z",
     });
-    expect(parsed?.symbol).toBe("NSE:RELIANCE");
+    expect(parsed?.symbol).toBe("NASDAQ:AAPL");
     expect(buildAlertToast(parsed!)).toEqual({
-      title: "Alert: NSE:RELIANCE",
+      title: "Alert: NASDAQ:AAPL",
       message: "price_above @ 2550",
       variant: "warning",
       ttlMs: 5000,
@@ -81,7 +81,7 @@ describe("useAlerts", () => {
           data: JSON.stringify({
             type: "alert_triggered",
             alert_id: "a-1",
-            symbol: "NSE:RELIANCE",
+            symbol: "NASDAQ:AAPL",
             condition: "price_above",
             triggered_value: 2550,
             timestamp: "2026-03-05T00:00:00Z",
@@ -125,7 +125,7 @@ describe("useAlerts", () => {
           data: JSON.stringify({
             type: "alert_triggered",
             alert_id: "a-2",
-            symbol: "NSE:TCS",
+            symbol: "NASDAQ:MSFT",
             condition: "volume_spike",
             triggered_value: 100,
             timestamp: "2026-03-05T00:00:00Z",
@@ -164,7 +164,7 @@ describe("useAlerts", () => {
           data: JSON.stringify({
             type: "alert_triggered",
             alert_id: "a-3",
-            symbol: "NSE:HDFCBANK",
+            symbol: "NASDAQ:GOOGL",
             condition: "breakout",
             triggered_value: 1700,
             timestamp: "2026-03-05T00:00:00Z",

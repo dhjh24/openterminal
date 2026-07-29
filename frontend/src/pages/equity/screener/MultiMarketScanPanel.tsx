@@ -109,10 +109,12 @@ function getRowPrice(row: Record<string, unknown>): number {
   return Number(row.current_price ?? row.price ?? row.last_price ?? 0);
 }
 
+const DEFAULT_US_SCAN_MARKETS = ["NYSE", "NASDAQ"] as const;
+
 export function MultiMarketScanPanel() {
   const navigate = useNavigate();
   const setTicker = useStockStore((state) => state.setTicker);
-  const [markets, setMarkets] = useState<string[]>(["NSE", "NYSE", "NASDAQ"]);
+  const [markets, setMarkets] = useState<string[]>([...DEFAULT_US_SCAN_MARKETS]);
   const [limit, setLimit] = useState(100);
   const [marketCapMin, setMarketCapMin] = useState("1000000000");
   const [peMax, setPeMax] = useState("25");
@@ -237,7 +239,7 @@ export function MultiMarketScanPanel() {
     }
     try {
       const parsed = JSON.parse(raw) as SavedScanTemplate;
-      setMarkets(Array.isArray(parsed.markets) && parsed.markets.length ? parsed.markets : ["NSE", "NYSE", "NASDAQ"]);
+      setMarkets(Array.isArray(parsed.markets) && parsed.markets.length ? parsed.markets : [...DEFAULT_US_SCAN_MARKETS]);
       setLimit(typeof parsed.limit === "number" ? parsed.limit : 100);
       setMarketCapMin(parsed.marketCapMin || "1000000000");
       setPeMax(parsed.peMax || "25");
@@ -265,10 +267,10 @@ export function MultiMarketScanPanel() {
   };
 
   return (
-    <TerminalPanel title="Multi-Market EQS Scan" subtitle="NSE + NYSE + NASDAQ / custom formula mode">
+    <TerminalPanel title="Multi-Market EQS Scan" subtitle="NYSE + NASDAQ / custom formula mode">
       <div className="grid gap-2">
         <div className="flex flex-wrap items-center gap-2">
-          {["NSE", "NYSE", "NASDAQ"].map((m) => (
+          {DEFAULT_US_SCAN_MARKETS.map((m) => (
             <label key={m} className="inline-flex items-center gap-1 text-xs text-terminal-muted">
               <input
                 type="checkbox"

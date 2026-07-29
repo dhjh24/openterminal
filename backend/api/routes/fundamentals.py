@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException
 
 from backend.api.deps import fetch_stock_snapshot_coalesced, get_unified_fetcher
 from backend.equity.services.shareholding import ShareholdingService
+from backend.shared.market_profile import is_us_only, unsupported_market_detail
 from backend.core.fundamental_scores import (
     altman_z_score,
     cagr,
@@ -41,6 +42,8 @@ async def fundamentals_10yr(ticker: str) -> dict:
 
 @router.get("/stocks/{ticker}/shareholding")
 async def shareholding(ticker: str) -> dict:
+    if is_us_only():
+        raise HTTPException(status_code=400, detail=unsupported_market_detail("NSE"))
     fetcher = await get_unified_fetcher()
     symbol = ticker.strip().upper()
     if not symbol:

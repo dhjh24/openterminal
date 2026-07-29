@@ -3,11 +3,11 @@ import { createJSONStorage, persist } from "zustand/middleware";
 
 import type { CountryCode, MarketCode } from "../types/markets";
 
-export type DisplayCurrency = "INR" | "USD";
+export type DisplayCurrency = "USD";
 export type RealtimeMode = "polling" | "ws";
 export type ThemeVariant = "terminal-noir" | "classic-bloomberg" | "light-desk" | "custom";
 export type RecentSecurityAssetClass = "equity" | "fno" | "crypto" | "commodity" | "forex" | "etf" | "mf";
-export type RecentSecurityMarket = "IN" | "US";
+export type RecentSecurityMarket = "US";
 
 export type RecentSecurity = {
   symbol: string;
@@ -22,6 +22,8 @@ export type RecentSecurity = {
 const MAX_RECENT_SECURITIES = 20;
 const RECENT_SECURITY_ASSET_CLASSES: RecentSecurityAssetClass[] = ["equity", "fno", "crypto", "commodity", "forex", "etf", "mf"];
 
+const US_MARKETS: MarketCode[] = ["NASDAQ", "NYSE", "AMEX", "CBOE", "CME"];
+
 function isRecentSecurityAssetClass(value: unknown): value is RecentSecurityAssetClass {
   return RECENT_SECURITY_ASSET_CLASSES.includes(value as RecentSecurityAssetClass);
 }
@@ -34,7 +36,6 @@ function sanitizeRecentSecurity(item: unknown): RecentSecurity | null {
 
   const name = String(row.name ?? symbol).trim() || symbol;
   const assetClass = isRecentSecurityAssetClass(row.assetClass) ? row.assetClass : "equity";
-  const market: RecentSecurityMarket = row.market === "IN" ? "IN" : "US";
   const visitedAt = Number.isFinite(Number(row.visitedAt)) ? Number(row.visitedAt) : Date.now();
   const lastPrice = Number.isFinite(Number(row.lastPrice)) ? Number(row.lastPrice) : undefined;
   const changePercent = Number.isFinite(Number(row.changePercent)) ? Number(row.changePercent) : undefined;
@@ -43,7 +44,7 @@ function sanitizeRecentSecurity(item: unknown): RecentSecurity | null {
     symbol,
     name,
     assetClass,
-    market,
+    market: "US",
     lastPrice,
     changePercent,
     visitedAt,
@@ -92,28 +93,29 @@ type SettingsState = {
   clearRecentSecurities: () => void;
 };
 
-const countryDefaults: Record<CountryCode, { market: MarketCode; currency: DisplayCurrency }> = {
-  IN: { market: "NSE", currency: "INR" },
-  US: { market: "NASDAQ", currency: "USD" },
-};
-
 const defaultCountry: CountryCode = "US";
-const defaultValues = countryDefaults[defaultCountry];
+const defaultMarket: MarketCode = "NASDAQ";
+const defaultCurrency: DisplayCurrency = "USD";
 
-function normalizePersistedMarket(value: unknown, country: CountryCode): MarketCode {
+export function normalizePersistedMarket(value: unknown): MarketCode {
   const raw = String(value ?? "").trim().toUpperCase();
-  if (raw === "IN") return "NSE";
-  if (raw === "US") return "NASDAQ";
-  if (raw === "NSE" || raw === "BSE" || raw === "NYSE" || raw === "NASDAQ") return raw as MarketCode;
-  return countryDefaults[country].market;
+  if (raw === "NSE" || raw === "BSE" || raw === "IN") return "NASDAQ";
+  if (US_MARKETS.includes(raw as MarketCode)) return raw as MarketCode;
+  return defaultMarket;
+}
+
+function migratePersistedCurrency(value: unknown): DisplayCurrency {
+  const raw = String(value ?? "").trim().toUpperCase();
+  if (raw === "INR") return "USD";
+  return defaultCurrency;
 }
 
 export const useSettingsStore = create<SettingsState>()(
   persist(
     (set) => ({
       selectedCountry: defaultCountry,
-      selectedMarket: defaultValues.market,
-      displayCurrency: defaultValues.currency,
+      selectedMarket: defaultMarket,
+      displayCurrency: defaultCurrency,
       realtimeMode: "polling",
       newsAutoRefresh: true,
       newsRefreshSec: 60,
@@ -121,16 +123,15 @@ export const useSettingsStore = create<SettingsState>()(
       customAccentColor: "#FF6B00",
       hudOverlayEnabled: false,
       recentSecurities: [],
-      setSelectedCountry: (country) => {
-        const defaults = countryDefaults[country];
+      setSelectedCountry: () => {
         set({
-          selectedCountry: country,
-          selectedMarket: defaults.market,
-          displayCurrency: defaults.currency,
+          selectedCountry: defaultCountry,
+          selectedMarket: defaultMarket,
+          displayCurrency: defaultCurrency,
         });
       },
       setSelectedMarket: (market) => set({ selectedMarket: market }),
-      setDisplayCurrency: (currency) => set({ displayCurrency: currency }),
+      setDisplayCurrency: () => set({ displayCurrency: defaultCurrency }),
       setRealtimeMode: (mode) => set({ realtimeMode: mode }),
       setNewsAutoRefresh: (enabled) => set({ newsAutoRefresh: enabled }),
       setNewsRefreshSec: (seconds) => set({ newsRefreshSec: seconds }),
@@ -160,15 +161,27 @@ export const useSettingsStore = create<SettingsState>()(
       merge: (persistedState, currentState) => {
         const persisted = (persistedState as Partial<SettingsState>) ?? {};
         const current = currentState as SettingsState;
-        const selectedCountry: CountryCode =
-          persisted.selectedCountry === "IN" || persisted.selectedCountry === "US"
-            ? persisted.selectedCountry
-            : current.selectedCountry;
+
+        const persistedCountry = String((persisted as { selectedCountry?: string }).selectedCountry ?? "").toUpperCase();
+        const persistedMarket = String((persisted as { selectedMarket?: string }).selectedMarket ?? "").toUpperCase();
+        const persistedCurrency = String((persisted as { displayCurrency?: string }).displayCurrency ?? "").toUpperCase();
+
+        const needsMigration =
+          persistedCountry === "IN" ||
+          persistedMarket === "NSE" ||
+          persistedMarket === "BSE" ||
+          persistedCurrency === "INR";
+
+        const selectedCountry: CountryCode = needsMigration ? defaultCountry : defaultCountry;
+        const selectedMarket = needsMigration ? defaultMarket : normalizePersistedMarket(persisted.selectedMarket);
+        const displayCurrency = needsMigration ? defaultCurrency : migratePersistedCurrency(persisted.displayCurrency);
+
         return {
           ...current,
           ...persisted,
           selectedCountry,
-          selectedMarket: normalizePersistedMarket((persisted as any).selectedMarket, selectedCountry),
+          selectedMarket,
+          displayCurrency,
           themeVariant:
             persisted.themeVariant === "terminal-noir" ||
             persisted.themeVariant === "classic-bloomberg" ||

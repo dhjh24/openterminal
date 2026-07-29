@@ -5,21 +5,14 @@ interface Preset {
   strikeStep: number;
 }
 
-const INDIA_PRESETS: Preset[] = [
-  { label: "NIFTY", underlying: "NIFTY 50", exchange: "NFO", strikeStep: 50 },
-  { label: "BANKNIFTY", underlying: "NIFTY BANK", exchange: "NFO", strikeStep: 100 },
-  {
-    label: "FINNIFTY",
-    underlying: "NIFTY FIN SERVICE",
-    exchange: "NFO",
-    strikeStep: 50,
-  },
-];
-
 const US_PRESETS: Preset[] = [
   { label: "SPY", underlying: "SPY", exchange: "AMEX", strikeStep: 1 },
   { label: "QQQ", underlying: "QQQ", exchange: "AMEX", strikeStep: 1 },
   { label: "IWM", underlying: "IWM", exchange: "AMEX", strikeStep: 1 },
+  { label: "AAPL", underlying: "AAPL", exchange: "NASDAQ", strikeStep: 1 },
+  { label: "NVDA", underlying: "NVDA", exchange: "NASDAQ", strikeStep: 1 },
+  { label: "TSLA", underlying: "TSLA", exchange: "NASDAQ", strikeStep: 1 },
+  { label: "AMD", underlying: "AMD", exchange: "NASDAQ", strikeStep: 1 },
 ];
 
 interface Props {
@@ -28,8 +21,8 @@ interface Props {
   onSelect: (preset: Preset) => void;
 }
 
-export function UnderlyingPresets({ market, active, onSelect }: Props) {
-  const presets = market === "india" ? INDIA_PRESETS : US_PRESETS;
+export function UnderlyingPresets({ market: _market, active, onSelect }: Props) {
+  const presets = US_PRESETS;
 
   return (
     <div className="flex gap-1">

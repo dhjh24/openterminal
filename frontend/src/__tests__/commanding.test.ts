@@ -14,7 +14,7 @@ import { useStockStore } from "../store/stockStore";
 describe("GO commanding", () => {
   beforeEach(() => {
     useStockStore.setState({
-      ticker: "RELIANCE",
+      ticker: "AAPL",
       load: vi.fn(async () => undefined),
     } as Partial<ReturnType<typeof useStockStore.getState>> as any);
   });

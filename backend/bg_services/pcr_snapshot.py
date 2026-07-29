@@ -2,20 +2,23 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from backend.fno.services.pcr_tracker import get_pcr_tracker
 
 logger = logging.getLogger(__name__)
 
+_ET = ZoneInfo("America/New_York")
 
-def _now_ist() -> datetime:
-    return datetime.now(timezone.utc) + timedelta(hours=5, minutes=30)
+
+def _now_et() -> datetime:
+    return datetime.now(timezone.utc).astimezone(_ET)
 
 
 class PCRSnapshotService:
-    """Daily PCR snapshots after market close for key F&O symbols."""
+    """Daily PCR snapshots after US equity close for key options symbols."""
 
     def __init__(self) -> None:
         self._scheduler: Any = None
@@ -58,13 +61,19 @@ class PCRSnapshotService:
         self._scheduler = None
         logger.info("event=pcr_snapshot_scheduler_stopped")
 
+    def _market_close_reached(self, now: datetime) -> bool:
+        local = now.astimezone(_ET)
+        if local.weekday() >= 5:
+            return False
+        return (local.hour, local.minute) >= (16, 0)
+
     async def _run_safe(self) -> None:
         async with self._lock:
-            now = _now_ist()
+            now = _now_et()
             if now.weekday() >= 5:
                 self._last_status = "skipped:weekend"
                 return
-            if (now.hour, now.minute) < (15, 30):
+            if not self._market_close_reached(now):
                 self._last_status = "skipped:before_close"
                 return
             snap_date = now.date().isoformat()
@@ -75,7 +84,7 @@ class PCRSnapshotService:
 
     async def snapshot_now(self) -> None:
         tracker = get_pcr_tracker()
-        now = _now_ist()
+        now = _now_et()
         snap_date = now.date().isoformat()
         ok = 0
         for symbol in tracker.snapshot_universe():

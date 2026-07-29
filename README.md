@@ -31,9 +31,11 @@
 
 ---
 
-OpenTerminalUI is a self-hosted, full-stack financial terminal that combines real-time market data, institutional-grade charting, derivatives analytics, portfolio management, and quant research into a single platform. Built with a terminal-style shell interface inspired by Bloomberg and Refinitiv, it delivers professional-grade workflows to anyone with a browser.
+OpenTerminalUI is a self-hosted, full-stack financial terminal for **U.S. markets** that combines real-time market data, institutional-grade charting, derivatives analytics, portfolio management, and quant research into a single platform. Built with a terminal-style shell interface inspired by Bloomberg and Refinitiv, it delivers professional-grade workflows to anyone with a browser.
 
-**Multi-market coverage** across NSE, BSE, NYSE, NASDAQ, crypto, commodities, forex, bonds, ETFs, and mutual funds. **70+ technical indicators**, **multi-panel chart workstations**, **F&O option chains with live Greeks**, **backtesting with Model Lab**, **statistical arbitrage with Pair Trading Lab**, **Portfolio Lab and optimizer workflows**, **paper trading and trade journal**, **OMS / ops / data-quality consoles**, **saved views and launchpad workspaces**, a **tool-using AI research agent with multi-agent debate and Strategy Lab**, and an **extensible plugin system** &mdash; all running on your own hardware.
+**U.S. exchange coverage** across NASDAQ, NYSE, AMEX, CBOE, and CME, with supported asset classes including **equities**, **U.S. options**, **ETFs**, **futures**, **crypto**, **forex**, and **fixed income**. **70+ technical indicators**, **multi-panel chart workstations**, **Options & Futures chains with locally calculated Greeks**, **backtesting with Model Lab**, **statistical arbitrage with Pair Trading Lab**, **Portfolio Lab and optimizer workflows**, **paper trading and trade journal**, **OMS / ops / data-quality consoles**, **saved views and launchpad workspaces**, a **tool-using AI research agent with multi-agent debate and Strategy Lab**, and an **extensible plugin system** &mdash; all running on your own hardware.
+
+> **Market profile:** OpenTerminalUI ships as a **U.S.-only** product (`MARKET_PROFILE=US`). For migration notes, provider behavior, and configuration details, see [docs/US_MARKET_MIGRATION.md](docs/US_MARKET_MIGRATION.md).
 
 ## Screenshots
 
@@ -57,37 +59,37 @@ Captured from the rebuilt Docker image running at `http://localhost:8000`. Accou
 |---|---|
 | <img src="assets/screenshots/market-view.png" alt="AAPL market chart view" width="420" /> | <img src="assets/screenshots/stock-detail.png" alt="AAPL Security Hub" width="420" /> |
 
-| India Security Hub | Financial Analysis |
+| Financial Analysis | Chart Workstation |
 |---|---|
-| <img src="assets/screenshots/security-hub-india.png" alt="RELIANCE Security Hub" width="420" /> | <img src="assets/screenshots/financial-analysis.png" alt="Financial statement analysis" width="420" /> |
+| <img src="assets/screenshots/financial-analysis.png" alt="Financial statement analysis" width="420" /> | <img src="assets/screenshots/chart-workstation.png" alt="Six-pane chart workstation" width="420" /> |
 
-| Chart Workstation | Multi-Timeframe |
+| Multi-Timeframe | DOM |
 |---|---|
-| <img src="assets/screenshots/chart-workstation.png" alt="Six-pane chart workstation" width="420" /> | <img src="assets/screenshots/multi-timeframe.png" alt="Multi-timeframe analysis" width="420" /> |
+| <img src="assets/screenshots/multi-timeframe.png" alt="Multi-timeframe analysis" width="420" /> | <img src="assets/screenshots/dom.png" alt="Depth of market view" width="420" /> |
 
-| DOM | Time & Sales |
+| Time & Sales | Split Compare |
 |---|---|
-| <img src="assets/screenshots/dom.png" alt="Depth of market view" width="420" /> | <img src="assets/screenshots/time-and-sales.png" alt="Time and sales tape" width="420" /> |
+| <img src="assets/screenshots/time-and-sales.png" alt="Time and sales tape" width="420" /> | <img src="assets/screenshots/split-compare.png" alt="Multi-symbol split comparison" width="420" /> |
 
-| Split Compare | Market Heatmap |
+| Market Heatmap | Hotlists |
 |---|---|
-| <img src="assets/screenshots/split-compare.png" alt="Multi-symbol split comparison" width="420" /> | <img src="assets/screenshots/market-heatmap.png" alt="Market heatmap" width="420" /> |
+| <img src="assets/screenshots/market-heatmap.png" alt="Market heatmap" width="420" /> | <img src="assets/screenshots/hotlists.png" alt="Hotlists" width="420" /> |
 
-| Hotlists | Watchlist |
+| Watchlist | Screener |
 |---|---|
-| <img src="assets/screenshots/hotlists.png" alt="Hotlists" width="420" /> | <img src="assets/screenshots/watchlist.png" alt="Populated watchlist" width="420" /> |
+| <img src="assets/screenshots/watchlist.png" alt="Populated watchlist" width="420" /> | <img src="assets/screenshots/screener.png" alt="Advanced screener after running a scan" width="420" /> |
 
-| Screener | Factor Dashboard |
+| Factor Dashboard | Relative Strength |
 |---|---|
-| <img src="assets/screenshots/screener.png" alt="Advanced screener after running a scan" width="420" /> | <img src="assets/screenshots/factor-dashboard.png" alt="Factor dashboard" width="420" /> |
+| <img src="assets/screenshots/factor-dashboard.png" alt="Factor dashboard" width="420" /> | <img src="assets/screenshots/relative-strength.png" alt="Relative strength dashboard" width="420" /> |
 
-| Relative Strength | Sector Rotation |
+| Sector Rotation | Dividends |
 |---|---|
-| <img src="assets/screenshots/relative-strength.png" alt="Relative strength dashboard" width="420" /> | <img src="assets/screenshots/sector-rotation.png" alt="Sector rotation dashboard" width="420" /> |
+| <img src="assets/screenshots/sector-rotation.png" alt="Sector rotation dashboard" width="420" /> | <img src="assets/screenshots/dividends.png" alt="Dividend dashboard" width="420" /> |
 
-| Dividends | Insider Activity |
+| Insider Activity |
 |---|---|
-| <img src="assets/screenshots/dividends.png" alt="Dividend dashboard" width="420" /> | <img src="assets/screenshots/insider-activity.png" alt="Insider activity monitor" width="420" /> |
+| <img src="assets/screenshots/insider-activity.png" alt="Insider activity monitor" width="420" /> | |
 
 #### Portfolio, Risk & Trading
 
@@ -125,11 +127,11 @@ Captured from the rebuilt Docker image running at `http://localhost:8000`. Accou
 |---|---|
 | <img src="assets/screenshots/stat-lab.png" alt="Statistical Lab" width="420" /> | <img src="assets/screenshots/pair-trading.png" alt="Pair Trading Lab with cointegration result" width="420" /> |
 
-#### Futures & Options
+#### Options & Futures
 
 | Option Chain | Greeks |
 |---|---|
-| <img src="assets/screenshots/fno-option-chain.png" alt="F&O option chain" width="420" /> | <img src="assets/screenshots/fno-greeks.png" alt="F&O Greeks page" width="420" /> |
+| <img src="assets/screenshots/fno-option-chain.png" alt="Options chain for SPY" width="420" /> | <img src="assets/screenshots/fno-greeks.png" alt="Options Greeks page" width="420" /> |
 
 | Futures | OI Analysis |
 |---|---|
@@ -139,13 +141,13 @@ Captured from the rebuilt Docker image running at `http://localhost:8000`. Accou
 |---|---|
 | <img src="assets/screenshots/fno-strategy.png" alt="Options strategy builder" width="420" /> | <img src="assets/screenshots/fno-pcr.png" alt="Put-call ratio dashboard" width="420" /> |
 
-| Options Flow | F&O Heatmap |
+| Options Flow | Options Heatmap |
 |---|---|
-| <img src="assets/screenshots/fno-flow.png" alt="Options flow dashboard" width="420" /> | <img src="assets/screenshots/fno-heatmap.png" alt="F&O heatmap" width="420" /> |
+| <img src="assets/screenshots/fno-flow.png" alt="Options flow dashboard" width="420" /> | <img src="assets/screenshots/fno-heatmap.png" alt="Options heatmap" width="420" /> |
 
 | Expiry Calendar | Option Greeks Calculator |
 |---|---|
-| <img src="assets/screenshots/fno-expiry.png" alt="F&O expiry calendar" width="420" /> | <img src="assets/screenshots/option-greeks-calculator.png" alt="Option Greeks calculator" width="420" /> |
+| <img src="assets/screenshots/fno-expiry.png" alt="Options expiry calendar" width="420" /> | <img src="assets/screenshots/option-greeks-calculator.png" alt="Option Greeks calculator" width="420" /> |
 
 #### Cross-Asset & Macro
 
@@ -215,12 +217,7 @@ Captured from the rebuilt Docker image running at `http://localhost:8000`. Accou
 <p align="center">
   <img src="assets/screenshots/stock-detail.png" alt="Security Hub (US)" width="900" />
 </p>
-<p align="center"><em>Security Hub for a US name (AAPL) — quotes, fundamentals, price chart, analysis tabs, and the AI Catalyst &amp; Conviction panel.</em></p>
-
-<p align="center">
-  <img src="assets/screenshots/security-hub-india.png" alt="Security Hub (India)" width="900" />
-</p>
-<p align="center"><em>Security Hub for an Indian name (RELIANCE, NSE) — the same workflow across markets, with India fundamentals and sector context.</em></p>
+<p align="center"><em>Security Hub for a U.S. equity (AAPL, NASDAQ) — quotes, fundamentals, price chart, analysis tabs, and the AI Catalyst &amp; Conviction panel.</em></p>
 
 <p align="center">
   <img src="assets/screenshots/financial-analysis.png" alt="Financial Analysis" width="900" />
@@ -228,14 +225,14 @@ Captured from the rebuilt Docker image running at `http://localhost:8000`. Accou
 <p align="center"><em>Financial analysis — income statement, balance sheet, and cash-flow statements with multi-period trends.</em></p>
 
 <p align="center">
-  <img src="assets/screenshots/fno-option-chain.png" alt="F&O Option Chain" width="900" />
+  <img src="assets/screenshots/fno-option-chain.png" alt="Options Chain" width="900" />
 </p>
-<p align="center"><em>Futures &amp; Options (AAPL, US) — live option chain with Greeks, OI build-up, and PCR signals; the same workflow covers NSE F&amp;O.</em></p>
+<p align="center"><em>Options &amp; Futures (SPY / AAPL) — option chain with locally calculated Greeks, open-interest build-up, and PCR signals for U.S. underliers.</em></p>
 
 <p align="center">
   <img src="assets/screenshots/commodities.png" alt="Commodities" width="900" />
 </p>
-<p align="center"><em>Cross-asset coverage — commodities, forex, crypto, bonds, ETFs, and mutual funds.</em></p>
+<p align="center"><em>Cross-asset coverage — commodities, forex, crypto, U.S. bonds, ETFs, and mutual funds.</em></p>
 
 ### Research & Stock Picking
 
@@ -247,7 +244,7 @@ Captured from the rebuilt Docker image running at `http://localhost:8000`. Accou
 <p align="center">
   <img src="assets/screenshots/factor-dashboard.png" alt="Factor Dashboard" width="900" />
 </p>
-<p align="center"><em>Factor Dashboard — multi-factor (Value / Momentum / Quality / Low-Vol) idea lists and ranked picks for US &amp; Indian markets.</em></p>
+<p align="center"><em>Factor Dashboard — multi-factor (Value / Momentum / Quality / Low-Vol) idea lists and ranked picks for U.S. equities.</em></p>
 
 <p align="center">
   <img src="assets/screenshots/news-sentiment.png" alt="News & Sentiment" width="900" />
@@ -320,7 +317,7 @@ Captured from the rebuilt Docker image running at `http://localhost:8000`. Accou
 - **GO Bar** (`Ctrl+G`) &mdash; Bloomberg-style command bar with symbol lookup and route navigation
 - **Command Palette** (`Ctrl+K`) &mdash; fuzzy search across 25+ functions, tickers, and natural language queries
 - **Function Keys** (`F1`-`F9`) &mdash; rapid workspace switching with Bloomberg-style hotkeys
-- **Ticker Tape** &mdash; rolling market pulse with live quotes across exchanges
+- **Ticker Tape** &mdash; rolling market pulse with live quotes across U.S. exchanges
 - **Theme Engine** &mdash; Terminal Noir (default), classic, and light themes with custom accent support
 - **Desktop & Mobile Layouts** &mdash; responsive design with persistent workspace framing
 
@@ -342,7 +339,7 @@ Captured from the rebuilt Docker image running at `http://localhost:8000`. Accou
 - **8-Tab Security Analysis** &mdash; overview, financials, chart, news/sentiment, ownership, estimates, peers, ESG
 - **Fundamental Metrics** &mdash; P/E, P/B, ROE, ROA, dividend yield, earnings growth, debt ratios
 - **Earnings Calendar** &mdash; historical surprises, upcoming events, guidance tracking
-- **Shareholding History** &mdash; promoter/FII/DII/public breakdown with trend visualization
+- **Shareholding / Ownership** &mdash; institutional and insider ownership trends with SEC filing context
 - **Analyst Estimates** &mdash; consensus tracking, revisions, and target prices
 - **Corporate Actions** &mdash; splits, dividends, rights, bonuses timeline
 - **Peer Comparison** &mdash; relative valuation matrices across comparable companies
@@ -354,16 +351,16 @@ Captured from the rebuilt Docker image running at `http://localhost:8000`. Accou
 - **Query Builder** &mdash; custom filters with preset formulas and arithmetic operations
 - **Custom Formula Engine** &mdash; write, save, and share custom formulas with server-side evaluation, formula library with descriptions and categories
 - **15+ Visualization Modes** &mdash; tables with sparklines, sector treemaps, heatmaps, scatter plots, radar charts, box plots, bubble charts, waterfall charts, RRG quadrants, gauge dials, distribution histograms, stacked area, and comparison bars
-- **Multi-Market Scanning** &mdash; NSE, BSE, NYSE, NASDAQ with technical and fundamental overlays
+- **U.S. Market Scanning** &mdash; NASDAQ, NYSE, and AMEX universes with technical and fundamental overlays
 - **Preset Management** &mdash; save, load, share, and browse community screens
 - **Score-Based Ranking** &mdash; deterministic scoring with stable ordering and explainable setup detection
 
 ### Insight-Driven Stock Picking
 
 - **Multi-Factor Composite Scoring** &mdash; cross-sectional, sector-relative Value / Momentum / Quality / Low-Volatility z-scores combined into a weighted composite rank
-- **Ranked Idea Lists** &mdash; top-quintile picks per market and sector for both US (NYSE/NASDAQ) and Indian (NSE/BSE) universes
-- **Factor Dashboard** &mdash; per-symbol factor radar, factor chips, and conviction scoring with a US/India market toggle
-- **Catalyst & Conviction Engine** &mdash; LLM-extracted sentiment and upcoming catalysts from NSE/BSE and SEC filings, surfaced in the Security Hub
+- **Ranked Idea Lists** &mdash; top-quintile picks per sector across NYSE and NASDAQ universes
+- **Factor Dashboard** &mdash; per-symbol factor radar, factor chips, and conviction scoring for U.S. equities
+- **Catalyst & Conviction Engine** &mdash; LLM-extracted sentiment and upcoming catalysts from SEC/EDGAR filings, surfaced in the Security Hub
 - **Point-in-Time Fundamentals** &mdash; as-reported fundamental history that removes look-ahead bias from factor and fundamental backtests
 - **Why-Ranked Explanations** &mdash; composite scores, factor chips, and plain-language rationale on screener rows, with one-click routing to chart and backtest
 
@@ -379,9 +376,9 @@ Captured from the rebuilt Docker image running at `http://localhost:8000`. Accou
 - **MCP Server** &mdash; the read-only agent tools (screener, snapshot, compare, technicals, backtests, research search) are also exposed over the Model Context Protocol for use by external MCP clients
 - **Read-Only & Resilient** &mdash; the agent never places orders or mutates data, and degrades gracefully on rate limits, empty completions, or unavailable data sources
 
-### Futures & Options (F&O)
+### Options & Futures
 
-- **Option Chain** &mdash; full contract listing with live Greeks (Delta, Gamma, Theta, Vega, Rho)
+- **Option Chain** &mdash; full U.S. contract listing with locally calculated Greeks (Delta, Gamma, Theta, Vega, Rho)
 - **IV Analysis** &mdash; historical and implied volatility tracking, term structure visualization
 - **Strategy Builder** &mdash; multi-leg construction for spreads, butterflies, straddles, strangles
 - **OI Analysis** &mdash; open interest trends, buildup patterns, strike-level concentration
@@ -398,11 +395,11 @@ Captured from the rebuilt Docker image running at `http://localhost:8000`. Accou
 - **Benchmark Overlay** &mdash; compare against indices with relative performance metrics
 - **Risk Engine** &mdash; VaR (95%), CVaR, EWMA volatility, rolling correlation, PCA factor exposures
 - **Factor Analytics** &mdash; multi-factor exposure radar, attribution waterfall, rolling factor history, and factor return comparison across market, size, value, momentum, quality, and low-volatility factors
-- **Stress Testing** &mdash; 6 predefined macro scenarios (GFC 2008, COVID 2020, rate shock, INR depreciation, tech rotation, commodity spike), custom shock builder, Monte Carlo simulation, and historical event replay
+- **Stress Testing** &mdash; 6 predefined macro scenarios (GFC 2008, COVID 2020, rate shock, USD strength, tech rotation, commodity spike), custom shock builder, Monte Carlo simulation, and historical event replay
 - **Correlation Deep Dive** &mdash; correlation matrix, rolling correlation with regime detection, hierarchical clustering with dendrogram, and cross-asset dependency visualization
 - **Tax Lot Manager** &mdash; cost basis tracking across tax lots
 - **Dividend Tracker** &mdash; income tracking with ex-date calendar
-- **Paper Trading** &mdash; virtual trading engine with realistic order fills, slippage modeling, and TCA analytics
+- **Paper Trading** &mdash; virtual trading engine with realistic order fills, slippage modeling, and TCA analytics (simulation only — no real broker orders)
 
 ### Backtesting & Model Lab
 
@@ -442,7 +439,7 @@ Captured from the rebuilt Docker image running at `http://localhost:8000`. Accou
 ### Cross-Asset & Macro
 
 - **Commodities** &mdash; energy, metals, agriculture with futures term structure and seasonal analysis
-- **Forex** &mdash; major pairs, cross rates matrix, central bank monitor (Fed, ECB, BoE, BoJ, RBI, and more)
+- **Forex** &mdash; major pairs, cross rates matrix, central bank monitor (Fed, ECB, BoE, BoJ, and more)
 - **Cryptocurrency** &mdash; full workspace with markets, movers, sectors, DeFi, derivatives, heatmaps, and correlation
 - **ETF Analytics** &mdash; holdings viewer, flow tracker, multi-ETF overlap analysis
 - **Mutual Funds** &mdash; search, comparison, rolling returns, SIP calculator, category rankings, fund overlap
@@ -484,11 +481,12 @@ Captured from the rebuilt Docker image running at `http://localhost:8000`. Accou
 
 ### Real-Time Data
 
-- **Multi-Provider WebSocket** &mdash; Zerodha Kite (India) and Finnhub (US) real-time ticks
-- **Provider Waterfall** &mdash; automatic failover chain: primary → fallback → error
+- **Finnhub WebSocket** &mdash; live U.S. equity ticks when `FINNHUB_API_KEY` is configured
+- **Provider Waterfall** &mdash; automatic failover chain: Finnhub / FMP / Alpaca &rarr; Yahoo fallback &rarr; error
 - **Multi-Level Caching** &mdash; L1 SQLite + L2 Redis with TTL-based invalidation
 - **Candle Aggregation** &mdash; tick-by-tick to any interval with distributed bar construction
 - **Redis Pub/Sub** &mdash; horizontal scaling for multi-client quote fan-out
+- **Data-quality labels** &mdash; delayed, fallback, and calculated fields are surfaced in API responses and the UI
 
 ## Architecture
 
@@ -503,7 +501,7 @@ Captured from the rebuilt Docker image running at `http://localhost:8000`. Accou
 +--------------------------+------------------------+
 |                   API GATEWAY                     |
 |   FastAPI + Uvicorn + JWT Auth + CORS Middleware  |
-|   53 Route Modules (Equity, F&O, Backtest, Risk) |
+|   53 Route Modules (Equity, Options, Backtest, Risk) |
 +--------------------------+------------------------+
                            |
 +--------------------------+------------------------+
@@ -515,8 +513,8 @@ Captured from the rebuilt Docker image running at `http://localhost:8000`. Accou
                            |
 +--------------------------+------------------------+
 |                 DATA PROVIDERS                    |
-|   Zerodha Kite | Finnhub | FMP | Yahoo Finance  |
-|   NSEPython (F&O, Corporate Actions)             |
+|   Finnhub WS | FMP | Yahoo Finance | Alpaca      |
+|   SEC/EDGAR | U.S. Treasury / FRED                |
 +--------------------------+------------------------+
                            |
 +--------------------------+------------------------+
@@ -530,7 +528,7 @@ Captured from the rebuilt Docker image running at `http://localhost:8000`. Accou
 
 Market data flows through a unified pipeline:
 
-1. **Exchange ticks** arrive via WebSocket adapters (Kite, Finnhub)
+1. **Exchange ticks** arrive via WebSocket adapters (Finnhub for live U.S. equities) or polling fallbacks (Yahoo, Alpaca)
 2. **Quote Hub** fans out ticks to connected clients via `/api/ws/quotes`
 3. **Bar Aggregator** constructs OHLCV candles at all supported intervals
 4. **OHLCV Cache** persists bars in SQLite (L1) and Redis (L2)
@@ -567,6 +565,8 @@ Request → L1 Cache (SQLite) → L2 Cache (Redis) → Primary Provider → Fall
 
 ## Quick Start
 
+OpenTerminalUI defaults to the **U.S. market profile** (`MARKET_PROFILE=US`, `VITE_MARKET_PROFILE=US`). All timestamps, session logic, and market-hours displays use **America/New_York**.
+
 ### One command (recommended)
 
 ```bash
@@ -586,7 +586,9 @@ and adapts, then:
 - launches the app at `http://localhost:8000` and **prints your login credentials**.
 
 **Prerequisites:** either Docker (Desktop/Engine with the daemon running) *or*, for
-the local path, Python 3.11+ and Node 20+. Nothing else to configure.
+the local path, Python 3.11+ and Node 20+. Nothing else to configure. API keys are
+optional — add them to unlock live ticks, full fundamentals, and macro series (see
+[Environment Variables](#environment-variables)).
 
 **First login:** when the installer finishes it prints something like:
 
@@ -610,6 +612,9 @@ docker compose down -v      # stop and wipe the database (fresh start next time)
 ./install.sh                # start again
 ```
 
+The Docker stack runs the U.S.-profile backend, frontend, and Redis (SQLite by default).
+Use `docker compose --profile postgres up --build` for PostgreSQL in production-like setups.
+
 ### Adding API keys (one place, guided)
 
 All keys live in the single repo-root `.env`. The easiest way to add or update
@@ -619,30 +624,37 @@ them is the interactive wizard, which shows what each key unlocks:
 make keys          # or: ./scripts/setup-keys.sh
 ```
 
-All keys are optional — the platform runs on built-in fallback data without them.
+All keys are optional — the platform runs on built-in Yahoo fallback data without them.
+Recommended keys for a full U.S. experience: **Finnhub** (live ticks), **FMP** (fundamentals,
+earnings, profiles, options), **FRED** (macro), and **Alpaca** (alternate U.S. market data).
+AI keys (OpenRouter, OpenAI, Gemini, LM Studio) power the research agent and sentiment features.
 
 ### Manual alternatives
 
 <details>
-<summary>Docker by hand</summary>
+<summary>Docker by hand (U.S. profile)</summary>
 
 ```bash
-cp .env.example .env      # add API keys if you have them
+cp .env.example .env      # MARKET_PROFILE=US is already the default
+# Optional: add FINNHUB_API_KEY, FMP_API_KEY, FRED_API_KEY, ALPACA_* keys
 docker compose up --build            # Backend + Frontend + Redis (SQLite)
 docker compose --profile postgres up --build   # with PostgreSQL
 ```
+
+The app is available at `http://localhost:8000`. Set `VITE_MARKET_PROFILE=US` before
+building the frontend if you change market profile settings.
 </details>
 
 <details>
 <summary>Local development (hot reload)</summary>
 
 ```bash
-# Backend
+# Backend (from repo root; MARKET_PROFILE=US in .env)
 python3.11 -m venv .venv && source .venv/bin/activate
 pip install -r backend/requirements.txt
 PYTHONPATH=. uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000
 
-# Frontend (separate terminal)
+# Frontend (separate terminal; VITE_MARKET_PROFILE=US in .env or frontend/.env)
 cd frontend && npm ci && npm run dev
 ```
 
@@ -652,15 +664,21 @@ cd frontend && npm ci && npm run dev
 
 ## Environment Variables
 
-The platform runs without API keys using fallback providers. Add keys to unlock full data access:
+The platform runs without API keys using Yahoo fallback providers. Add keys to unlock live U.S. data:
 
 | Variable | Purpose |
 |----------|---------|
-| `FMP_API_KEY` | Financial Modeling Prep &mdash; US equities, fundamentals, earnings |
-| `FINNHUB_API_KEY` | Finnhub &mdash; US real-time WebSocket ticks |
-| `KITE_API_KEY` | Zerodha Kite &mdash; India NSE/BSE real-time + historical |
-| `KITE_API_SECRET` | Zerodha Kite secret |
-| `KITE_ACCESS_TOKEN` | Zerodha Kite session token |
+| `MARKET_PROFILE` | Market profile (default `US` — U.S.-only deployment) |
+| `VITE_MARKET_PROFILE` | Frontend build-time market profile (default `US`) |
+| `US_RISK_FREE_RATE` | Risk-free rate (%) for options Greeks calculations (default `4.5`) |
+| `FMP_API_KEY` | Financial Modeling Prep &mdash; U.S. equities, fundamentals, earnings, profiles, options |
+| `FINNHUB_API_KEY` | Finnhub &mdash; U.S. real-time WebSocket ticks |
+| `FINNHUB_WS_ENABLED` | Enable Finnhub WebSocket streaming (default `true` when keyed) |
+| `FRED_API_KEY` | FRED &mdash; U.S. macro / economic time series |
+| `ALPACA_API_KEY` | Alpaca &mdash; alternate U.S. market data |
+| `ALPACA_SECRET_KEY` | Alpaca API secret |
+| `ALPACA_FEED` | Alpaca data feed (default `iex`) |
+| `ALPACA_ADJUSTMENT` | Alpaca price adjustment mode (default `raw`) |
 | `JWT_SECRET_KEY` | JWT signing key for authentication (auto-generated by `install.sh`) |
 | `CACHE_SIGNING_KEY` | Cache integrity signing key (auto-generated by `install.sh`) |
 | `BOOTSTRAP_ADMIN_EMAIL` | Email for the first-run admin account (default `admin@openterminal.local`) |
@@ -673,10 +691,69 @@ The platform runs without API keys using fallback providers. Add keys to unlock 
 | `LM_STUDIO_MODEL` | Gemma model id loaded in LM Studio (default `google/gemma-4-26b-a4b`) |
 | `LM_STUDIO_ENABLED` | Toggle the LLM emotion analysis (default `true`; falls back to lexical sentiment when off) |
 | `OPENROUTER_API_KEY` | OpenRouter key powering the AI research agent (free `:free` models work) |
-| `AGENT_PROVIDER` | Agent LLM provider: `openrouter` \| `openai` \| `lmstudio` (default `openrouter`) |
+| `OPENAI_API_KEY` | OpenAI key (optional agent / sentiment provider) |
+| `GEMINI_API_KEY` | Google Gemini key (optional agent provider) |
+| `AGENT_PROVIDER` | Agent LLM provider: `openrouter` \| `openai` \| `lmstudio` \| `gemini` (default `openrouter`) |
 | `AGENT_MODEL` | Primary agent model id (default `openai/gpt-oss-20b:free`) |
 | `AGENT_FALLBACK_MODELS` | Comma-separated models tried when the primary is rate-limited (429) or unavailable (404) |
 | `AGENT_DEBATE_ENABLED` | Enable multi-agent debate mode in the agent console (default `true`) |
+
+## U.S. Market Data & Providers
+
+| Need | Primary | Fallback |
+|------|---------|----------|
+| Live U.S. equity ticks | Finnhub WebSocket (`FINNHUB_API_KEY`) | Polling / Yahoo |
+| Fundamentals, earnings, profiles, options | FMP (`FMP_API_KEY`) | Yahoo Finance |
+| OHLCV / quotes | Yahoo (default adapter) | Alpaca when keyed |
+| SEC filings | SEC/EDGAR (built-in) | — |
+| Rates / yield curves | U.S. Treasury / FRED (`FRED_API_KEY`) | Configurable `US_RISK_FREE_RATE` |
+| Options chain + Greeks | `USOptionsAdapter` + local Black&ndash;Scholes | Calculated marks; provider data labeled |
+
+### Real-time vs delayed data
+
+- **Live ticks** require a Finnhub API key and an active WebSocket connection. Without Finnhub, quotes refresh via polling and may be **15+ minutes delayed** depending on the fallback provider.
+- **Fundamentals and earnings** are richest with FMP; Yahoo fills gaps when FMP is unavailable.
+- **Options chains** may be delayed or partial on free tiers. The UI and API label `source`, `timestamp`, `delay_status`, and `data_quality` so you can see whether a field is live, delayed, fallback, or locally calculated.
+- **Greeks and implied volatility** are **always calculated locally** (mibian) unless explicitly marked otherwise — they are never presented as exchange- or vendor-supplied values.
+
+### U.S. market hours
+
+Regular U.S. equity session hours are modeled in **America/New_York**:
+
+| Session | Hours (ET) |
+|---------|------------|
+| Pre-market | 04:00 – 09:30 |
+| Regular | 09:30 – 16:00 |
+| After-hours | 16:00 – 20:00 |
+
+Extended-hours toggles on charts respect these windows. Futures (CME) and options (CBOE) follow their respective product calendars. Holiday closures use the U.S. equity calendar.
+
+## Paper Trading
+
+Paper trading is a **simulation-only** workspace. It models fills, slippage, and TCA analytics against live or delayed market data, but **never submits orders to a real broker**. There is no live trading integration in the U.S. profile — configure Alpaca or other keys for **market data only**, not order routing.
+
+## Options Data Limitations
+
+- **Greeks** (Delta, Gamma, Theta, Vega, Rho) are computed locally with Black&ndash;Scholes; configure `US_RISK_FREE_RATE` (default `4.5`%) for U.S. discounting.
+- **Implied volatility** is stored internally in **percent** format (e.g. `22.5` = 22.5%). Decimal IV from Yahoo is normalized at the provider boundary.
+- **Delayed or fallback chains** are labeled in responses — do not treat them as live exchange feeds.
+- **Open interest and volume** depend on provider coverage; FMP is preferred when keyed.
+- Contract identifiers follow **OCC** symbology for U.S. options underliers (e.g. SPY, AAPL).
+
+## Troubleshooting
+
+| Symptom | Likely cause | Fix |
+|---------|--------------|-----|
+| Quotes are stale or marked delayed | No `FINNHUB_API_KEY`, or WebSocket disconnected | Add Finnhub key; check `FINNHUB_WS_ENABLED=true`; restart backend |
+| Fundamentals missing | No `FMP_API_KEY` and thin Yahoo coverage | Add FMP key via `make keys` |
+| Greeks look wrong | Default risk-free rate mismatch | Set `US_RISK_FREE_RATE` to current U.S. T-bill / SOFR proxy |
+| Options chain empty | Provider limit or unsupported symbol | Try SPY/AAPL; verify FMP key; check `data_quality` in API response |
+| Macro series unavailable | No `FRED_API_KEY` | Add FRED key for economic indicators |
+| Frontend shows wrong market | Stale build or localStorage | Rebuild with `VITE_MARKET_PROFILE=US`; clear browser storage |
+| Docker cannot reach LM Studio | Host networking | Use `LM_STUDIO_BASE_URL=http://host.docker.internal:1234/v1` |
+| Login fails on first run | Seeding skipped or wrong password | Check `.env` for `BOOTSTRAP_ADMIN_*`; wipe with `docker compose down -v` for a fresh seed |
+
+For migration-specific issues (removing India settings, exchange 400 errors), see [docs/US_MARKET_MIGRATION.md](docs/US_MARKET_MIGRATION.md).
 
 ## AI News Sentiment with Gemma 4 (LM Studio)
 
@@ -792,7 +869,7 @@ make gate
 backend/                 FastAPI app, adapters, services, routes, tests
   adapters/              Market data provider adapters
   agent/                 AI research agent: orchestrator, tools, debate roles
-  api/routes/            53 route modules (equity, fno, backtest, risk, oms, ...)
+  api/routes/            53 route modules (equity, options, backtest, risk, oms, ...)
   core/                  Unified fetcher, failover, service status
   services/              48 business logic modules
   db/                    SQLAlchemy ORM, migrations, caching
@@ -803,7 +880,7 @@ frontend/                React + Vite + TypeScript SPA
   src/agent/             AI agent console, SSE client, artifact + markdown UI
   src/pages/             51 page components
   src/components/        UI components, terminal design system
-  src/fno/               F&O workspace modules
+  src/fno/               Options & Futures workspace modules
   src/store/             Zustand state management
   src/__tests__/         234+ unit tests
   tests/e2e/             Playwright E2E specs

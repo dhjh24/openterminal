@@ -102,7 +102,7 @@ export function OpsDashboardPage() {
                   <TerminalBadge variant="live">STABLE</TerminalBadge>
                 </button>
                 <button className="w-full p-2 border border-terminal-border bg-terminal-panel hover:bg-terminal-border/20 text-[10px] text-left flex justify-between items-center">
-                  <span>TRIGGER BATCH BACKTEST (UNIVERSE: NIFTY50)</span>
+                  <span>TRIGGER BATCH BACKTEST (UNIVERSE: SPY)</span>
                   <span className="text-terminal-dim">IDLE</span>
                 </button>
               </div>

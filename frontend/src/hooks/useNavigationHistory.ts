@@ -14,7 +14,7 @@ type UseNavigationHistoryOptions = {
 
 const ROOT_CRUMBS: Record<string, NavigationBreadcrumb> = {
   equity: { label: "Equity", path: "/equity/stocks" },
-  fno: { label: "F&O", path: "/fno" },
+  fno: { label: "Options & Futures", path: "/fno" },
   backtesting: { label: "Backtesting", path: "/backtesting" },
   account: { label: "Account", path: "/account" },
 };

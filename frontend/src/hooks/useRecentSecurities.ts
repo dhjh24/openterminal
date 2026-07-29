@@ -19,11 +19,7 @@ export function inferRecentSecurityAssetClass(symbol: string, exchange?: string 
   return "equity";
 }
 
-export function inferRecentSecurityMarket(countryCode?: string | null, exchangeOrMarket?: string | null): RecentSecurityMarket {
-  const normalizedCountry = String(countryCode ?? "").trim().toUpperCase();
-  const normalizedExchange = String(exchangeOrMarket ?? "").trim().toUpperCase();
-
-  if (normalizedCountry === "IN" || normalizedExchange === "NSE" || normalizedExchange === "BSE") return "IN";
+export function inferRecentSecurityMarket(_countryCode?: string | null, _exchangeOrMarket?: string | null): RecentSecurityMarket {
   return "US";
 }
 

@@ -32,7 +32,7 @@ describe("BreakoutScannerPage", () => {
       {
         id: "preset-breakout",
         name: "Breakout Scanner",
-        universe: "NSE:NIFTY50",
+        universe: "NASDAQ:SPY",
         timeframe: "1d",
         liquidity_gate: { min_price: 10, min_avg_volume: 0, min_avg_traded_value: 0 },
         rules: [],
@@ -47,7 +47,7 @@ describe("BreakoutScannerPage", () => {
       rows: [
         {
           run_id: "run-1",
-          symbol: "NSE:RELIANCE",
+          symbol: "NASDAQ:AAPL",
           setup_type: "BREAKOUT_N_DAY_HIGH",
           score: 0.92,
           signal_ts: "2026-03-05T00:00:00Z",
@@ -57,7 +57,7 @@ describe("BreakoutScannerPage", () => {
         },
         {
           run_id: "run-1",
-          symbol: "NSE:AXISBANK",
+          symbol: "NASDAQ:MSFT",
           setup_type: "VOLUME_SURGE",
           score: 0.61,
           signal_ts: "2026-03-04T00:00:00Z",
@@ -67,7 +67,7 @@ describe("BreakoutScannerPage", () => {
         },
         {
           run_id: "run-1",
-          symbol: "NSE:TCS",
+          symbol: "NASDAQ:GOOGL",
           setup_type: "BREAKOUT_N_DAY_HIGH",
           score: 0.75,
           signal_ts: "2026-03-03T00:00:00Z",
@@ -90,7 +90,7 @@ describe("BreakoutScannerPage", () => {
     await waitFor(() => {
       expect(mockRunScanner).toHaveBeenCalledWith({ preset_id: "preset-breakout", limit: 30, offset: 0 });
     });
-    const card = await screen.findByTestId("recommendation-NSE:RELIANCE");
+    const card = await screen.findByTestId("recommendation-NASDAQ:AAPL");
     expect(card).toBeInTheDocument();
     expect(card.textContent).toContain("R:R 2.00:1");
   });
@@ -99,14 +99,14 @@ describe("BreakoutScannerPage", () => {
     render(<BreakoutScannerPage />);
     await waitFor(() => expect(mockFetchScannerPresets).toHaveBeenCalledTimes(1));
     fireEvent.click(screen.getByTestId("breakout-run-button"));
-    await screen.findByTestId("create-alert-NSE:RELIANCE");
+    await screen.findByTestId("create-alert-NASDAQ:AAPL");
 
-    fireEvent.click(screen.getByTestId("create-alert-NSE:RELIANCE"));
+    fireEvent.click(screen.getByTestId("create-alert-NASDAQ:AAPL"));
 
     await waitFor(() =>
       expect(mockCreateScannerAlertRule).toHaveBeenCalledWith({
         preset_id: "preset-breakout",
-        symbol: "NSE:RELIANCE",
+        symbol: "NASDAQ:AAPL",
         setup_type: "BREAKOUT_N_DAY_HIGH",
         trigger_level: 2550,
         invalidation_level: 2490,
@@ -122,23 +122,23 @@ describe("BreakoutScannerPage", () => {
     render(<BreakoutScannerPage />);
     await waitFor(() => expect(mockFetchScannerPresets).toHaveBeenCalledTimes(1));
     fireEvent.click(screen.getByTestId("breakout-run-button"));
-    await screen.findByTestId("recommendation-NSE:RELIANCE");
+    await screen.findByTestId("recommendation-NASDAQ:AAPL");
 
     const cardsByScore = screen.getAllByTestId(/^recommendation-/).map((el) => el.getAttribute("data-testid"));
-    expect(cardsByScore).toEqual(["recommendation-NSE:RELIANCE", "recommendation-NSE:TCS", "recommendation-NSE:AXISBANK"]);
+    expect(cardsByScore).toEqual(["recommendation-NASDAQ:AAPL", "recommendation-NASDAQ:GOOGL", "recommendation-NASDAQ:MSFT"]);
 
     fireEvent.change(screen.getByTestId("breakout-sort-select"), { target: { value: "symbol_asc" } });
     const cardsBySymbol = screen.getAllByTestId(/^recommendation-/).map((el) => el.getAttribute("data-testid"));
-    expect(cardsBySymbol).toEqual(["recommendation-NSE:AXISBANK", "recommendation-NSE:RELIANCE", "recommendation-NSE:TCS"]);
+    expect(cardsBySymbol).toEqual(["recommendation-NASDAQ:AAPL", "recommendation-NASDAQ:GOOGL", "recommendation-NASDAQ:MSFT"]);
 
     fireEvent.change(screen.getByTestId("breakout-setup-filter"), { target: { value: "BREAKOUT_N_DAY_HIGH" } });
-    expect(screen.queryByTestId("recommendation-NSE:AXISBANK")).not.toBeInTheDocument();
-    expect(screen.getByTestId("recommendation-NSE:RELIANCE")).toBeInTheDocument();
-    expect(screen.getByTestId("recommendation-NSE:TCS")).toBeInTheDocument();
+    expect(screen.queryByTestId("recommendation-NASDAQ:MSFT")).not.toBeInTheDocument();
+    expect(screen.getByTestId("recommendation-NASDAQ:AAPL")).toBeInTheDocument();
+    expect(screen.getByTestId("recommendation-NASDAQ:GOOGL")).toBeInTheDocument();
 
     fireEvent.change(screen.getByTestId("breakout-min-score-input"), { target: { value: "0.9" } });
-    expect(screen.getByTestId("recommendation-NSE:RELIANCE")).toBeInTheDocument();
-    expect(screen.queryByTestId("recommendation-NSE:TCS")).not.toBeInTheDocument();
+    expect(screen.getByTestId("recommendation-NASDAQ:AAPL")).toBeInTheDocument();
+    expect(screen.queryByTestId("recommendation-NASDAQ:GOOGL")).not.toBeInTheDocument();
   });
 
   it("inserts live recommendation rows from alert websocket events", async () => {
@@ -150,7 +150,7 @@ describe("BreakoutScannerPage", () => {
       capturedOnAlert?.({
         type: "alert_triggered",
         alert_id: "a-live-1",
-        symbol: "NSE:INFY",
+        symbol: "NASDAQ:NVDA",
         condition: "price_above",
         triggered_value: 1520,
         timestamp: "2026-03-05T00:00:00Z",
@@ -162,6 +162,6 @@ describe("BreakoutScannerPage", () => {
       });
     });
 
-    expect(await screen.findByTestId("recommendation-NSE:INFY")).toBeInTheDocument();
+    expect(await screen.findByTestId("recommendation-NASDAQ:NVDA")).toBeInTheDocument();
   });
 });

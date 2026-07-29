@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 import { fetchCryptoSearch, searchSymbols, type SearchSymbolItem } from "../../api/client";
+import { isUsOnly } from "../../config/marketProfile";
 import { CountryFlag } from "../common/CountryFlag";
 import { NotificationBell } from "../notifications/NotificationBell";
 import { useNavigationHistory } from "../../hooks/useNavigationHistory";
@@ -11,17 +12,13 @@ import { useQuotesStore } from "../../realtime/useQuotesStream";
 import { useSettingsStore } from "../../store/settingsStore";
 import { useStockStore } from "../../store/stockStore";
 import { COUNTRY_MARKETS } from "../../types";
-import type { CountryCode, MarketCode } from "../../types";
+import type { MarketCode } from "../../types";
 
-type DisplayCurrency = "INR" | "USD";
-
-const COUNTRY_FLAGS: Record<CountryCode, string> = {
-  IN: "🇮🇳",
+const COUNTRY_FLAGS: Record<"US", string> = {
   US: "🇺🇸",
 };
 
-const COUNTRY_DEFAULT_MARKET: Record<CountryCode, MarketCode> = {
-  IN: "NSE",
+const COUNTRY_DEFAULT_MARKET: Record<"US", MarketCode> = {
   US: "NASDAQ",
 };
 
@@ -41,7 +38,7 @@ export function TopBar({ hideTickerLoader = false, hideMarketMarquee = false }: 
   const selectedCountry = useSettingsStore((s) => s.selectedCountry);
   const selectedMarket = useSettingsStore((s) => s.selectedMarket);
   const displayCurrency = useSettingsStore((s) => s.displayCurrency);
-  const setSelectedCountry = useSettingsStore((s) => s.selectedCountry === "IN" ? s.setSelectedCountry : s.setSelectedCountry); // keep store reactive
+  const setSelectedCountry = useSettingsStore((s) => s.setSelectedCountry);
   const setSelectedMarket = useSettingsStore((s) => s.setSelectedMarket);
   const setDisplayCurrency = useSettingsStore((s) => s.setDisplayCurrency);
   const { addRecent } = useRecentSecurities();
@@ -278,7 +275,8 @@ export function TopBar({ hideTickerLoader = false, hideMarketMarquee = false }: 
     );
     void handleLoad();
   }, [addRecent, handleLoad, selectedCountry, selectedMarket, setTicker]);
-  const safeTicker = (ticker || "NIFTY").toUpperCase();
+  const safeTicker = (ticker || "SPY").toUpperCase();
+  const usOnly = isUsOnly();
 
   return (
     <div className="relative z-20 border-b border-terminal-border bg-terminal-panel">
@@ -304,7 +302,7 @@ export function TopBar({ hideTickerLoader = false, hideMarketMarquee = false }: 
             HEATMAP
           </Link>
           <Link className="rounded border border-terminal-border px-2 py-1 text-[11px] text-terminal-muted hover:text-terminal-text" to={`/fno?symbol=${encodeURIComponent(safeTicker)}`}>
-            F&O -&gt;
+            Options & Futures -&gt;
           </Link>
         </div>
         {!hideTickerLoader ? (
@@ -352,13 +350,13 @@ export function TopBar({ hideTickerLoader = false, hideMarketMarquee = false }: 
             </button>
           </div>
         ) : null}
+        {!usOnly ? (
         <div className="flex shrink-0 items-center gap-1 border-l border-terminal-border pl-2">
           <select
             className="w-[88px] rounded border border-terminal-border bg-terminal-bg px-1 py-1 text-[11px] uppercase text-terminal-text outline-none"
             value={selectedCountry}
-            onChange={(e) => setSelectedCountry(e.target.value as CountryCode)}
+            onChange={(e) => setSelectedCountry(e.target.value as "US")}
           >
-            <option value="IN">{COUNTRY_FLAGS.IN} IN</option>
             <option value="US">{COUNTRY_FLAGS.US} US</option>
           </select>
           <select
@@ -373,18 +371,22 @@ export function TopBar({ hideTickerLoader = false, hideMarketMarquee = false }: 
             ))}
           </select>
         </div>
+        ) : (
         <div className="flex shrink-0 items-center gap-1 border-l border-terminal-border pl-2">
           <select
-            className="w-[72px] rounded border border-terminal-border bg-terminal-bg px-1 py-1 text-[11px] uppercase text-terminal-text outline-none"
-            value={displayCurrency}
-            onChange={(e) => setDisplayCurrency(e.target.value as DisplayCurrency)}
-            title="Display currency"
-            aria-label="Display currency"
+            className="w-[86px] rounded border border-terminal-border bg-terminal-bg px-1 py-1 text-[11px] uppercase text-terminal-text outline-none"
+            value={selectedMarket}
+            onChange={(e) => setSelectedMarket(e.target.value as MarketCode)}
+            aria-label="Exchange"
           >
-            <option value="INR">INR</option>
-            <option value="USD">USD</option>
+            {marketsForCountry.map((market) => (
+              <option key={market} value={market}>
+                {market}
+              </option>
+            ))}
           </select>
         </div>
+        )}
         <div className="inline-flex shrink-0 items-center gap-1 border-l border-terminal-border pl-2 text-[11px] uppercase tracking-wide text-terminal-muted">
           <CountryFlag countryCode={selectedCountry} size="sm" />
           <span>{selectedMarket}</span>

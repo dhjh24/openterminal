@@ -49,12 +49,20 @@ describe("R6-229 Residuals Verification", () => {
   });
 
   describe("Workstation Import Market Defaults", () => {
-    it("defaults missing market to 'IN'", () => {
+    it("defaults missing market to 'US'", () => {
       const config = {
-        slots: [{ ticker: "RELIANCE", timeframe: "1D" }]
+        slots: [{ ticker: "AAPL", timeframe: "1D" }]
       };
       const parsed = parseWorkspaceTemplateConfig(config as any);
-      expect(parsed?.snapshot.slots[0].market).toBe("IN");
+      expect(parsed?.snapshot.slots[0].market).toBe("US");
+    });
+
+    it("migrates legacy 'IN' market to US", () => {
+      const config = {
+        slots: [{ ticker: "AAPL", market: "IN", timeframe: "1D" }]
+      };
+      const parsed = parseWorkspaceTemplateConfig(config as any);
+      expect(parsed?.snapshot.slots[0].market).toBe("US");
     });
 
     it("respects provided 'US' market", () => {

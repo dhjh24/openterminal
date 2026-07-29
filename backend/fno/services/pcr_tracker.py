@@ -8,35 +8,13 @@ from sqlalchemy import text
 from backend.fno.services.oi_analyzer import get_oi_analyzer
 from backend.fno.services.option_chain_fetcher import get_option_chain_fetcher
 from backend.shared.db import engine
+from backend.shared.market_profile import OPTIONS_PRESET_SYMBOLS
 
 
 class PCRTracker:
-    """Tracks Put-Call Ratio trends over time."""
+    """Tracks Put-Call Ratio trends over time (US options under MARKET_PROFILE=US)."""
 
-    DEFAULT_SYMBOLS = [
-        "NIFTY",
-        "BANKNIFTY",
-        "RELIANCE",
-        "TCS",
-        "INFY",
-        "HDFCBANK",
-        "ICICIBANK",
-        "SBIN",
-        "LT",
-        "AXISBANK",
-        "KOTAKBANK",
-        "ITC",
-        "BAJFINANCE",
-        "MARUTI",
-        "TATAMOTORS",
-        "BHARTIARTL",
-        "SUNPHARMA",
-        "HCLTECH",
-        "WIPRO",
-        "ADANIPORTS",
-        "NTPC",
-        "ONGC",
-    ]
+    DEFAULT_SYMBOLS = list(OPTIONS_PRESET_SYMBOLS)
 
     def __init__(self) -> None:
         self._fetcher = get_option_chain_fetcher()
@@ -115,10 +93,11 @@ class PCRTracker:
         }
 
     async def get_current_pcr(self, symbol: str, expiry: str | None = None) -> dict[str, Any]:
-        """Current PCR (OI-based and volume-based) with signal."""
         symbol_u = symbol.strip().upper()
         try:
             chain = await self._fetcher.get_option_chain(symbol_u, expiry=expiry, strike_range=20)
+            if chain.get("error") == "unsupported_market":
+                return self._empty_current(symbol_u, expiry)
             pcr = self._analyzer.get_pcr(chain)
             totals = chain.get("totals") if isinstance(chain.get("totals"), dict) else {}
             return {
@@ -136,7 +115,6 @@ class PCRTracker:
             return self._latest_snapshot(symbol_u) or self._empty_current(symbol_u, expiry)
 
     async def get_pcr_by_strike(self, symbol: str, expiry: str | None = None) -> list[dict[str, Any]]:
-        """PCR at each individual strike."""
         try:
             chain = await self._fetcher.get_option_chain(symbol, expiry=expiry, strike_range=50)
         except Exception:
@@ -193,79 +171,7 @@ class PCRTracker:
             )
         return current
 
-    async def seed_history_from_bhavcopy(self, symbol: str, days: int = 30) -> None:
-        """Best-effort history seeding from nsepython bhavcopy helper."""
-        try:
-            import nsepython  # type: ignore
-        except Exception:
-            return
-
-        nsefin = getattr(nsepython, "nsefin", None)
-        get_fn = getattr(nsefin, "get_fno_bhav_copy", None) if nsefin is not None else None
-        if not callable(get_fn):
-            return
-
-        end = date.today()
-        start = end - timedelta(days=max(days, 1))
-        try:
-            rows = get_fn(start.strftime("%d-%m-%Y"), end.strftime("%d-%m-%Y"))
-        except Exception:
-            return
-        if not isinstance(rows, list):
-            return
-
-        daily: dict[str, dict[str, float]] = {}
-        for row in rows:
-            if not isinstance(row, dict):
-                continue
-            sym = str(row.get("SYMBOL") or "").upper()
-            if sym != symbol.upper():
-                continue
-            d = str(row.get("TIMESTAMP") or "")
-            try:
-                d_iso = datetime.strptime(d, "%d-%b-%Y").date().isoformat()
-            except Exception:
-                continue
-            inst = str(row.get("INSTRUMENT") or "").upper()
-            oi = float(row.get("OPEN_INT") or 0.0)
-            vol = float(row.get("CONTRACTS") or 0.0)
-            slot = daily.setdefault(d_iso, {"ce_oi": 0.0, "pe_oi": 0.0, "ce_vol": 0.0, "pe_vol": 0.0})
-            if inst.endswith("CE"):
-                slot["ce_oi"] += oi
-                slot["ce_vol"] += vol
-            elif inst.endswith("PE"):
-                slot["pe_oi"] += oi
-                slot["pe_vol"] += vol
-
-        with engine.begin() as conn:
-            for day, vals in daily.items():
-                ce_oi = vals["ce_oi"]
-                pe_oi = vals["pe_oi"]
-                ce_vol = vals["ce_vol"]
-                pe_vol = vals["pe_vol"]
-                conn.execute(
-                    text(
-                        """
-                        INSERT INTO pcr_snapshots(snapshot_date, symbol, pcr_oi, pcr_vol, total_ce_oi, total_pe_oi, created_at)
-                        VALUES (:snapshot_date, :symbol, :pcr_oi, :pcr_vol, :total_ce_oi, :total_pe_oi, :created_at)
-                        ON CONFLICT(snapshot_date, symbol) DO NOTHING
-                        """
-                    ),
-                    {
-                        "snapshot_date": day,
-                        "symbol": symbol.upper(),
-                        "pcr_oi": (pe_oi / ce_oi) if ce_oi > 0 else 0.0,
-                        "pcr_vol": (pe_vol / ce_vol) if ce_vol > 0 else 0.0,
-                        "total_ce_oi": ce_oi,
-                        "total_pe_oi": pe_oi,
-                        "created_at": datetime.now(timezone.utc).isoformat(),
-                    },
-                )
-
     async def get_pcr_history(self, symbol: str, days: int = 30) -> list[dict[str, Any]]:
-        """
-        Historical PCR values.
-        """
         self._ensure_table()
         symbol_u = symbol.strip().upper()
         cutoff = (date.today() - timedelta(days=max(days, 1) - 1)).isoformat()
@@ -281,21 +187,6 @@ class PCRTracker:
                 ),
                 {"symbol": symbol_u, "cutoff": cutoff},
             ).fetchall()
-
-        if not rows:
-            await self.seed_history_from_bhavcopy(symbol_u, days=days)
-            with engine.begin() as conn:
-                rows = conn.execute(
-                    text(
-                        """
-                        SELECT snapshot_date, pcr_oi, pcr_vol
-                        FROM pcr_snapshots
-                        WHERE symbol = :symbol AND snapshot_date >= :cutoff
-                        ORDER BY snapshot_date ASC
-                        """
-                    ),
-                    {"symbol": symbol_u, "cutoff": cutoff},
-                ).fetchall()
 
         if not rows:
             try:
