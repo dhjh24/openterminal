@@ -214,7 +214,7 @@ describe("AccountPage revamp", () => {
       }),
     );
     expect(setSelectedCountrySpy).toHaveBeenCalledWith("US");
-    expect(setSelectedMarketSpy).toHaveBeenCalledWith("BSE");
+    expect(setSelectedMarketSpy).toHaveBeenCalledWith("NASDAQ");
     expect(setDisplayCurrencySpy).toHaveBeenCalledWith("USD");
     expect(await screen.findByText("Account details saved.")).toBeInTheDocument();
   });

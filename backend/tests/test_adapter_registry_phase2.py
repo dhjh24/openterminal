@@ -24,12 +24,12 @@ def test_adapter_registry_rejects_nse_under_us() -> None:
         get_adapter_registry().get_adapter("NSE")
 
 
-def test_adapter_chain_uses_alpaca_then_yahoo_for_us() -> None:
+def test_adapter_chain_uses_yahoo_then_alpaca_for_us() -> None:
     registry = get_adapter_registry()
     chain = registry.get_chain("NASDAQ")
     assert len(chain) >= 2
-    assert isinstance(chain[0], AlpacaAdapter) or isinstance(chain[0], YahooFinanceAdapter)
-    assert isinstance(chain[-1], YahooFinanceAdapter)
+    assert isinstance(chain[0], YahooFinanceAdapter)
+    assert isinstance(chain[-1], AlpacaAdapter)
 
 
 def test_adapter_health_snapshot_excludes_kite() -> None:

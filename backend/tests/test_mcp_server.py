@@ -34,7 +34,7 @@ def test_list_tools_maps_registry_definitions() -> None:
     assert isinstance(tools[0], types.Tool)
     assert tools[0].name == "echo"
     assert tools[0].description == "Return supplied arguments."
-    assert tools[0].inputSchema == {
+    assert tools[0].input_schema == {
         "type": "object",
         "properties": {"message": {"type": "string"}},
         "required": ["message"],

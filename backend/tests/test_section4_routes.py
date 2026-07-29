@@ -38,8 +38,8 @@ def test_multimarket_scan_filters_and_sorts(monkeypatch) -> None:
     async def _fake_hydrate(tickers, warnings, refresh_cap=30):
         df = pd.DataFrame(
             [
-                {"ticker": "INFY", "market_cap": 1000, "pe": 20, "sector": "Technology"},
-                {"ticker": "ITC", "market_cap": 500, "pe": 30, "sector": "Consumer"},
+                {"ticker": "AAPL", "market_cap": 2000, "pe": 20, "sector": "Technology"},
+                {"ticker": "MSFT", "market_cap": 1500, "pe": 30, "sector": "Technology"},
             ]
         )
         return df, 0
@@ -57,7 +57,7 @@ def test_multimarket_scan_filters_and_sorts(monkeypatch) -> None:
     monkeypatch.setattr(screener, "fetch_stock_snapshot_coalesced", _fake_snapshot)
 
     req = screener.ScreenerScanRequest(
-        markets=["NSE", "NASDAQ"],
+        markets=["NYSE", "NASDAQ"],
         filters=[screener.ScreenerScanFilter(field="market_cap", op="gte", value=900)],
         sort=screener.ScreenerScanSort(field="market_cap", order="desc"),
         limit=5,

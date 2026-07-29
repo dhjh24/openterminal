@@ -19,7 +19,7 @@ def test_heatmap_treemap_returns_ranked_rows() -> None:
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["market"] == "IN"
+    assert payload["market"] == "US"
     assert payload["group"] == "sector"
     assert payload["size_by"] == "market_cap"
     assert payload["data"]
@@ -52,8 +52,8 @@ def test_heatmap_invalid_period_is_rejected() -> None:
 def test_heatmap_rapid_calls_use_same_cached_payload() -> None:
     client = _build_client()
 
-    first = client.get("/api/heatmap/treemap", params={"market": "IN", "period": "1w"})
-    second = client.get("/api/heatmap/treemap", params={"market": "IN", "period": "1w"})
+    first = client.get("/api/heatmap/treemap", params={"market": "US", "period": "1w"})
+    second = client.get("/api/heatmap/treemap", params={"market": "US", "period": "1w"})
 
     assert first.status_code == 200
     assert second.status_code == 200
