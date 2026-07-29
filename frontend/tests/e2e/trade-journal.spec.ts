@@ -125,7 +125,7 @@ test("trade journal flow creates a trade and renders analytics", async ({ page }
   await page.goto("/equity/journal", { waitUntil: "domcontentloaded" });
 
   await page.getByTestId("add-trade-button").click();
-  await page.getByTestId("journal-entry-form").getByPlaceholder("RELIANCE").fill("RELIANCE");
+  await page.getByTestId("journal-entry-form").getByPlaceholder("AAPL").fill("AAPL");
   await page.getByTestId("journal-entry-form").locator('input[type="datetime-local"]').first().fill("2026-04-01T09:15");
   await page.getByTestId("journal-entry-form").locator('input[type="number"]').nth(0).fill("2500");
   await page.getByTestId("journal-entry-form").locator('input[type="datetime-local"]').nth(1).fill("2026-04-01T15:20");
@@ -133,7 +133,7 @@ test("trade journal flow creates a trade and renders analytics", async ({ page }
   await page.getByTestId("journal-entry-form").locator('input[type="number"]').nth(2).fill("10");
   await page.getByTestId("journal-entry-form").evaluate((form) => (form as HTMLFormElement).requestSubmit());
 
-  await expect(page.getByTestId("journal-card")).toContainText("RELIANCE");
+  await expect(page.getByTestId("journal-card")).toContainText("AAPL");
   await expect(page.getByTestId("journal-pnl").first()).toContainText("+$1,000");
 
   await page.getByRole("tab", { name: "Analytics" }).click();

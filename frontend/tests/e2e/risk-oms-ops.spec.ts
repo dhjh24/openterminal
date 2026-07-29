@@ -26,7 +26,7 @@ test("risk/oms/ops pages render with mocked APIs", async ({ page }) => {
       body: JSON.stringify({
         ewma_vol: 0.15,
         beta: 1.02,
-        marginal_contribution: { RELIANCE: 0.12 },
+        marginal_contribution: { AAPL: 0.12 },
       }),
     });
   });
@@ -36,7 +36,7 @@ test("risk/oms/ops pages render with mocked APIs", async ({ page }) => {
       contentType: "application/json",
       body: JSON.stringify({
         pca_factors: [{ factor: "PC1", variance_explained: 0.62 }],
-        loadings: { RELIANCE: [0.81] },
+        loadings: { AAPL: [0.81] },
       }),
     });
   });
@@ -44,7 +44,7 @@ test("risk/oms/ops pages render with mocked APIs", async ({ page }) => {
     await route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify({ assets: ["RELIANCE"], matrix: [[1]] }),
+      body: JSON.stringify({ assets: ["AAPL"], matrix: [[1]] }),
     });
   });
   await page.route("**/api/risk/sector-concentration**", async (route) => {

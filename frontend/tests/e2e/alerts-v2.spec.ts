@@ -25,7 +25,7 @@ test("alerts builder creates and tests a multi-condition alert", async ({ page }
       const created = {
         id: "alert-1",
         status: "active",
-        ticker: "RELIANCE",
+        ticker: "AAPL",
         alert_type: "price",
         condition: "above",
         threshold: 2500,
@@ -68,7 +68,7 @@ test("alerts builder creates and tests a multi-condition alert", async ({ page }
   await page.getByRole("button", { name: "Create New Alert" }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
 
-  await page.getByLabel("Symbol").fill("RELIANCE");
+  await page.getByLabel("Symbol").fill("AAPL");
   await page.getByLabel("Condition value 1").fill("2500");
   await page.getByRole("button", { name: "Add Condition" }).click();
   await page.getByLabel("Condition field 2").selectOption("rsi_14");
@@ -79,7 +79,7 @@ test("alerts builder creates and tests a multi-condition alert", async ({ page }
   await page.getByLabel("Webhook URL").fill("https://example.com/hook");
   await page.getByRole("button", { name: "Save" }).click();
 
-  await expect(page.getByText("RELIANCE")).toBeVisible();
+  await expect(page.getByText("AAPL")).toBeVisible();
   await expect(page.getByText(/price above 2500 AND rsi_14 above 70/i)).toBeVisible();
 
   await page.getByRole("button", { name: "Test" }).click();

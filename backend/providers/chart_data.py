@@ -66,9 +66,28 @@ class ChartDataProvider:
         self._cache = get_ohlcv_cache()
 
     async def resolve_market(self, symbol: str, market_hint: str | None = None) -> tuple[MarketType, str, str]:
+        from backend.shared.market_profile import DEFAULT_EXCHANGE, is_us_only
+
         raw = (symbol or "").strip().upper()
         if not raw:
             return ("US", "", "")
+
+        if is_us_only():
+            if ":" in raw:
+                exchange, ticker = raw.split(":", 1)
+                exchange = exchange.strip().upper()
+                ticker = ticker.strip().upper()
+                if exchange in IN_EXCHANGES:
+                    return ("US", ticker, ticker)
+                return ("US", ticker, ticker)
+            if raw.endswith(".NS") or raw.endswith(".BO"):
+                base = raw.rsplit(".", 1)[0]
+                return ("US", base, base)
+            hint = (market_hint or "").strip().upper()
+            if hint in IN_EXCHANGES:
+                return ("US", raw, raw)
+            return ("US", raw, raw)
+
         if ":" in raw:
             exchange, ticker = raw.split(":", 1)
             exchange = exchange.strip().upper()

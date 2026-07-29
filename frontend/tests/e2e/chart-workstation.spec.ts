@@ -31,7 +31,7 @@ test.describe("Multi-Chart Workstation E2E", () => {
       { t: 1708743600, o: 2505, h: 2520, l: 2500, c: 2515, v: 120000 },
       { t: 1708747200, o: 2515, h: 2515, l: 2480, c: 2490, v: 90000 },
     ];
-    const chartResponse = { ticker: "RELIANCE", interval: "1d", currency: "INR", data: sampleData };
+    const chartResponse = { ticker: "AAPL", interval: "1d", currency: "USD", data: sampleData };
     await page.route("**/api/v3/chart/**", async (route) => {
       await route.fulfill({ json: chartResponse });
     });
@@ -42,7 +42,7 @@ test.describe("Multi-Chart Workstation E2E", () => {
     await page.route("**/api/search**", async (route) => {
       await route.fulfill({
         json: {
-          results: [{ ticker: "RELIANCE", name: "Reliance Industries", country_code: "IN" }],
+          results: [{ ticker: "AAPL", name: "Reliance Industries", country_code: "US" }],
         },
       });
     });

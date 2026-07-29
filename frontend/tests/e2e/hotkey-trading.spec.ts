@@ -40,7 +40,7 @@ test("ctrl+t opens paper hotkey trading widget and submits a mock buy order", as
   await page.context().route(new RegExp(String.raw`http://127\.0\.0\.1:\d+/api/paper/portfolios/paper-1/positions(?:\?.*)?$`), async (route) => {
     await route.fulfill({
       json: {
-        items: [{ id: "pos-1", symbol: "NSE:RELIANCE", quantity: 5, avg_entry_price: 2480, mark_price: 2500, unrealized_pnl: 100 }],
+        items: [{ id: "pos-1", symbol: "NASDAQ:AAPL", quantity: 5, avg_entry_price: 2480, mark_price: 2500, unrealized_pnl: 100 }],
       },
     });
   });
@@ -51,7 +51,7 @@ test("ctrl+t opens paper hotkey trading widget and submits a mock buy order", as
         items: [
           {
             id: `order-${orderCount || 0}`,
-            symbol: "NSE:RELIANCE",
+            symbol: "NASDAQ:AAPL",
             side: "buy",
             order_type: "market",
             quantity: 10,
@@ -64,10 +64,10 @@ test("ctrl+t opens paper hotkey trading widget and submits a mock buy order", as
     });
   });
 
-  await page.context().route(new RegExp(String.raw`http://127\.0\.0\.1:\d+/api/depth/RELIANCE(?:\?.*)?$`), async (route) => {
+  await page.context().route(new RegExp(String.raw`http://127\.0\.0\.1:\d+/api/depth/AAPL(?:\?.*)?$`), async (route) => {
     await route.fulfill({
       json: {
-        symbol: "RELIANCE",
+        symbol: "AAPL",
         market: "NSE",
         provider_key: "mock",
         as_of: "2026-04-05T20:45:00Z",
@@ -95,7 +95,7 @@ test("ctrl+t opens paper hotkey trading widget and submits a mock buy order", as
       json: {
         id: `order-${orderCount}`,
         status: "filled",
-        symbol: "NSE:RELIANCE",
+        symbol: "NASDAQ:AAPL",
         fill_price: 2500,
         fill_time: "2026-04-05T20:45:00Z",
       },
@@ -111,7 +111,7 @@ test("ctrl+t opens paper hotkey trading widget and submits a mock buy order", as
   const widget = page.getByTestId("hotkey-panel-float");
   await expect(widget).toBeVisible();
   await expect(widget.getByText("Paper", { exact: true })).toBeVisible();
-  await expect(widget.getByTestId("hotkey-symbol")).toContainText("RELIANCE");
+  await expect(widget.getByTestId("hotkey-symbol")).toContainText("AAPL");
   await expect(widget.locator("select")).toHaveValue("paper-1");
 
   await widget.getByLabel("Quantity").fill("10");

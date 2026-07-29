@@ -32,11 +32,11 @@ test.describe("Terminal shell + GO bar", () => {
 
     const commandInput = page.getByPlaceholder(/Type ticker, command, or search/i);
     await expect(commandInput).toBeVisible();
-    await expect(page.locator("div").filter({ hasText: /NIFTY 50/i }).first()).toBeVisible();
-    await expect(page.getByText(/IST/).first()).toBeVisible();
+    await expect(page.locator("div").filter({ hasText: /S&P 500/i }).first()).toBeVisible();
+    await expect(page.getByText(/ET/).first()).toBeVisible();
 
     const cmdBox = await commandInput.boundingBox();
-    const tickerText = page.locator("button").filter({ hasText: /NIFTY 50|S&P 500|SENSEX/i }).first();
+    const tickerText = page.locator("button").filter({ hasText: /S&P 500|S&P 500|DIA/i }).first();
     const tickerBox = await tickerText.boundingBox();
     expect(cmdBox).toBeTruthy();
     expect(tickerBox).toBeTruthy();
@@ -96,7 +96,7 @@ test.describe("Terminal shell + GO bar", () => {
     await loginAndOpen(page, "/equity/watchlist");
 
     await expect(page.getByPlaceholder(/Type ticker, command, or search/i)).toBeVisible();
-    await expect(page.getByText(/IST/).first()).toBeVisible();
+    await expect(page.getByText(/ET/).first()).toBeVisible();
     await expect(page.locator("nav.fixed.bottom-0")).toBeVisible();
   });
 
@@ -117,7 +117,7 @@ test.describe("Terminal shell + GO bar", () => {
     for (const route of routes) {
       await loginAndOpen(page, route);
       await expect(page.getByPlaceholder(/Type ticker, command, or search/i)).toBeVisible();
-      await expect(page.getByText(/IST/).first()).toBeVisible();
+      await expect(page.getByText(/ET/).first()).toBeVisible();
     }
   });
 });

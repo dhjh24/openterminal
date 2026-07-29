@@ -30,11 +30,11 @@ test("correlation dashboard renders matrix, rolling, and clusters", async ({ pag
     const url = new URL(route.request().url());
     const q = (url.searchParams.get("q") || "").toUpperCase();
     const items = [
-      { ticker: "RELIANCE", name: "Reliance Industries" },
-      { ticker: "TCS", name: "Tata Consultancy Services" },
-      { ticker: "HDFCBANK", name: "HDFC Bank" },
-      { ticker: "INFY", name: "Infosys" },
-      { ticker: "ICICIBANK", name: "ICICI Bank" },
+      { ticker: "AAPL", name: "Apple Inc." },
+      { ticker: "MSFT", name: "Microsoft Corporation" },
+      { ticker: "JPM", name: "JPMorgan Chase" },
+      { ticker: "GOOGL", name: "Alphabet Inc." },
+      { ticker: "BAC", name: "Bank of America" },
     ].filter((item) => item.ticker.includes(q) || item.name.toUpperCase().includes(q));
     await route.fulfill({
       status: 200,
@@ -48,7 +48,7 @@ test("correlation dashboard renders matrix, rolling, and clusters", async ({ pag
       status: 200,
       contentType: "application/json",
       body: JSON.stringify({
-        symbols: ["RELIANCE", "TCS", "HDFCBANK", "INFY", "ICICIBANK"],
+        symbols: ["AAPL", "MSFT", "JPM", "GOOGL", "BAC"],
         matrix: [
           [1.0, 0.72, 0.31, 0.61, 0.28],
           [0.72, 1.0, 0.22, 0.83, 0.19],
@@ -94,18 +94,18 @@ test("correlation dashboard renders matrix, rolling, and clusters", async ({ pag
       contentType: "application/json",
       body: JSON.stringify({
         clusters: [
-          { cluster_id: 1, symbols: ["RELIANCE", "TCS", "INFY"], avg_intra_correlation: 0.72 },
-          { cluster_id: 2, symbols: ["HDFCBANK", "ICICIBANK"], avg_intra_correlation: 0.77 },
+          { cluster_id: 1, symbols: ["AAPL", "MSFT", "GOOGL"], avg_intra_correlation: 0.72 },
+          { cluster_id: 2, symbols: ["JPM", "BAC"], avg_intra_correlation: 0.77 },
         ],
         dendrogram: {
           distance: 0.23,
           children: [
-            { name: "RELIANCE", distance: 0, children: [] },
+            { name: "AAPL", distance: 0, children: [] },
             {
               distance: 0.17,
               children: [
-                { name: "TCS", distance: 0, children: [] },
-                { name: "INFY", distance: 0, children: [] },
+                { name: "MSFT", distance: 0, children: [] },
+                { name: "GOOGL", distance: 0, children: [] },
               ],
             },
           ],
@@ -119,7 +119,7 @@ test("correlation dashboard renders matrix, rolling, and clusters", async ({ pag
   await expect(page.getByText("Correlation Dashboard")).toBeVisible();
   await expect(page.getByTestId("correlation-matrix-heatmap")).toBeVisible();
 
-  await page.getByRole("button", { name: "Nifty 50 Top 10" }).click();
+  await page.getByRole("button", { name: "S&P Top 10" }).click();
 
   await expect(page.locator('[data-testid="correlation-matrix-heatmap"] svg rect').first()).toBeVisible({ timeout: 15_000 });
 

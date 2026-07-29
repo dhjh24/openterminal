@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 function makeSeries(interval: string, symbol: string) {
-  const seed = symbol === "TCS" ? 4100 : 2850;
+  const seed = symbol === "MSFT" ? 4100 : 2850;
   const stepMap: Record<string, number> = {
     "1mo": 2_592_000,
     "1wk": 604_800,
@@ -34,10 +34,10 @@ test.describe("Multi-timeframe dashboard", () => {
     await context.route(/http:\/\/127\.0\.0\.1:\d+\/api\/search(?:\?.*)?$/, async (route) => {
       const url = new URL(route.request().url());
       const q = (url.searchParams.get("q") || "").toUpperCase();
-      const symbol = q.includes("TCS") ? "TCS" : "RELIANCE";
+      const symbol = q.includes("MSFT") ? "MSFT" : "AAPL";
       await route.fulfill({
         json: {
-          results: [{ ticker: symbol, name: symbol === "TCS" ? "Tata Consultancy Services" : "Reliance Industries", country_code: "IN" }],
+          results: [{ ticker: symbol, name: symbol === "MSFT" ? "Tata Consultancy Services" : "Reliance Industries", country_code: "US" }],
         },
       });
     });
@@ -45,13 +45,13 @@ test.describe("Multi-timeframe dashboard", () => {
     const fulfillChart = async (route: Parameters<typeof page.route>[1] extends (arg: infer T) => any ? T : never) => {
       const url = new URL(route.request().url());
       const parts = url.pathname.split("/");
-      const symbol = decodeURIComponent(parts[parts.length - 1] || "RELIANCE").toUpperCase();
+      const symbol = decodeURIComponent(parts[parts.length - 1] || "AAPL").toUpperCase();
       const interval = (url.searchParams.get("interval") || "1d").toLowerCase();
       await route.fulfill({
         json: {
           ticker: symbol,
           interval,
-          currency: "INR",
+          currency: "USD",
           data: makeSeries(interval, symbol),
         },
       });
@@ -72,9 +72,9 @@ test.describe("Multi-timeframe dashboard", () => {
     await expect(page.getByTestId("mta-interval-short-term")).toHaveText("4H");
     await expect(page.getByTestId("mta-interval-execution")).toHaveText("1H");
 
-    await page.getByTestId("mta-symbol-input").fill("TCS");
-    await page.locator(".ticker-dropdown-results").getByText("TCS", { exact: true }).click();
-    await expect(page.locator('[data-testid^="mta-panel-"] >> text=TCS')).toHaveCount(4);
+    await page.getByTestId("mta-symbol-input").fill("MSFT");
+    await page.locator(".ticker-dropdown-results").getByText("MSFT", { exact: true }).click();
+    await expect(page.locator('[data-testid^="mta-panel-"] >> text=MSFT')).toHaveCount(4);
 
     await page.getByTestId("mta-preset-day-trade").click();
     await expect(page.getByTestId("mta-interval-long-term")).toHaveText("D");

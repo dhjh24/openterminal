@@ -7,7 +7,7 @@ test("insider activity page and security hub insider tab render", async ({ page 
         trades: [
           {
             date: "2026-04-02",
-            symbol: "RELIANCE",
+            symbol: "AAPL",
             name: "Reliance Industries",
             insider_name: "Mukesh Ambani",
             designation: "Promoter",
@@ -19,7 +19,7 @@ test("insider activity page and security hub insider tab render", async ({ page 
           },
           {
             date: "2026-04-01",
-            symbol: "INFY",
+            symbol: "GOOGL",
             name: "Infosys",
             insider_name: "Nandan Nilekani",
             designation: "Chairman",
@@ -39,7 +39,7 @@ test("insider activity page and security hub insider tab render", async ({ page 
       json: {
         buyers: [
           {
-            symbol: "RELIANCE",
+            symbol: "AAPL",
             name: "Reliance Industries",
             total_value: 250000000,
             trade_count: 3,
@@ -55,7 +55,7 @@ test("insider activity page and security hub insider tab render", async ({ page 
       json: {
         sellers: [
           {
-            symbol: "INFY",
+            symbol: "GOOGL",
             name: "Infosys",
             total_value: 80000000,
             trade_count: 2,
@@ -71,7 +71,7 @@ test("insider activity page and security hub insider tab render", async ({ page 
       json: {
         clusters: [
           {
-            symbol: "RELIANCE",
+            symbol: "AAPL",
             name: "Reliance Industries",
             insider_count: 3,
             total_value: 250000000,
@@ -86,13 +86,13 @@ test("insider activity page and security hub insider tab render", async ({ page 
     });
   });
 
-  await page.context().route(new RegExp(String.raw`http://127\.0\.0\.1:\d+/api/insider/stock/RELIANCE(?:\?.*)?$`), async (route) => {
+  await page.context().route(new RegExp(String.raw`http://127\.0\.0\.1:\d+/api/insider/stock/AAPL(?:\?.*)?$`), async (route) => {
     await route.fulfill({
       json: {
         trades: [
           {
             date: "2026-04-02",
-            symbol: "RELIANCE",
+            symbol: "AAPL",
             insider_name: "Mukesh Ambani",
             designation: "Promoter",
             type: "buy",
@@ -111,11 +111,11 @@ test("insider activity page and security hub insider tab render", async ({ page 
     });
   });
 
-  await page.context().route(new RegExp(String.raw`http://127\.0\.0\.1:\d+/api/stocks/RELIANCE(?:\?.*)?$`), async (route) => {
+  await page.context().route(new RegExp(String.raw`http://127\.0\.0\.1:\d+/api/stocks/AAPL(?:\?.*)?$`), async (route) => {
     await route.fulfill({
       json: {
-        ticker: "RELIANCE",
-        symbol: "RELIANCE",
+        ticker: "AAPL",
+        symbol: "AAPL",
         current_price: 2500,
         change_pct: 1.2,
       },
@@ -123,7 +123,7 @@ test("insider activity page and security hub insider tab render", async ({ page 
   });
 
   const chartPayload = {
-    symbol: "RELIANCE",
+    symbol: "AAPL",
     interval: "1d",
     bars: 2,
     data: [
@@ -133,11 +133,11 @@ test("insider activity page and security hub insider tab render", async ({ page 
     meta: { warnings: [] },
   };
 
-  await page.context().route(new RegExp(String.raw`http://127\.0\.0\.1:\d+/api/v3/chart/RELIANCE(?:\?.*)?$`), async (route) => {
+  await page.context().route(new RegExp(String.raw`http://127\.0\.0\.1:\d+/api/v3/chart/AAPL(?:\?.*)?$`), async (route) => {
     await route.fulfill({ json: chartPayload });
   });
 
-  await page.context().route(new RegExp(String.raw`http://127\.0\.0\.1:\d+/api/chart/RELIANCE(?:\?.*)?$`), async (route) => {
+  await page.context().route(new RegExp(String.raw`http://127\.0\.0\.1:\d+/api/chart/AAPL(?:\?.*)?$`), async (route) => {
     await route.fulfill({ json: chartPayload });
   });
 
@@ -154,7 +154,7 @@ test("insider activity page and security hub insider tab render", async ({ page 
   await expect(page.getByText("Value Ladder")).toBeVisible();
   await expect(page.getByText("Highest accumulated insider buy value over 90 days")).toBeVisible();
 
-  await page.goto("/equity/security?ticker=RELIANCE", { waitUntil: "domcontentloaded" });
+  await page.goto("/equity/security?ticker=AAPL", { waitUntil: "domcontentloaded" });
   await page.getByRole("tab", { name: "Insider" }).click();
   await expect(page.getByText("Insider Timeline")).toBeVisible();
   await expect(page.getByText("Insider Trades")).toBeVisible();
