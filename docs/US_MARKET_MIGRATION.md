@@ -96,6 +96,27 @@ Equities, U.S. options, ETFs, futures, crypto, forex, fixed income, portfolio to
 - No India production imports; no real broker orders
 - Gate: `PYTHONPATH=. python -m compileall backend`, `pytest backend/tests -q`, frontend `npm ci && npm run build && npx vitest run && npm run test:e2e`, `make gate`
 
+## Verification results (feat/us-only-market-profile)
+
+| Check | Result |
+|-------|--------|
+| `compileall backend` | Pass |
+| `pytest backend/tests -q` | **704 passed** |
+| `npm run build` | Pass |
+| `npx vitest run` | **272 passed** (87 files) |
+| `npm run test:e2e` | Requires `python` on PATH (use project `.venv`) |
+| `make gate` | compileall + pytest + frontend build |
+
+## Remaining limitations
+
+- Options chains may be **delayed** (Yahoo) or key-gated (FMP); Greeks are always **locally calculated**, never presented as provider-supplied.
+- Live ticks need `FINNHUB_API_KEY`; without it the app falls back to polling/Yahoo.
+- Paper trading is **simulation only** — no live brokerage connectivity or real orders.
+- Some UI routes still use `/fno` path prefixes (renamed user-facing to Options & Futures).
+- Forex may still list INR as a currency pair (FX coverage, not an India equity market).
+- Mutual-fund SIP calculator may still show legacy INR formatting in places.
+- Screenshot gallery may still include older capture filenames; India hub screenshot removed from README.
+
 ## Default symbols (US)
 
 SPY, QQQ, IWM, DIA, AAPL, MSFT, NVDA, AMD, TSLA, AMZN, META, GOOGL, SPX, VIX

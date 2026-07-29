@@ -25,7 +25,7 @@ setup-frontend:
 test: test-backend
 
 test-backend:
-	cd backend && source .venv/bin/activate && python -m compileall . && pytest -q
+	PYTHONPATH=. python -m compileall backend && PYTHONPATH=. pytest backend/tests -q
 
 build: build-frontend
 
