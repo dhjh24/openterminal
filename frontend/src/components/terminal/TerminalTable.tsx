@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { SymbolContextMenu, type SymbolContextMenuAction } from "../common/SymbolContextMenu";
+import { useSettingsStore } from "../../store/settingsStore";
 
 export type TerminalTableAlign = "left" | "right" | "center";
 export type TerminalTableDensity = "dense" | "compact" | "normal" | "comfortable";
@@ -56,10 +57,10 @@ function alignClass(align?: TerminalTableAlign): string {
 }
 
 function rowDensityClass(density: TerminalTableDensity): string {
-  if (density === "dense") return "h-6";
-  if (density === "compact") return "h-6";
-  if (density === "comfortable") return "h-8";
-  return "h-7";
+  if (density === "dense") return "h-6 min-h-[var(--ot-density-row-compact)]";
+  if (density === "compact") return "h-7 min-h-[var(--ot-density-row-compact)]";
+  if (density === "comfortable") return "h-9 min-h-[var(--ot-density-row-comfortable)]";
+  return "h-8 min-h-[var(--ot-density-row-default)]";
 }
 
 function cellPaddingClass(density: TerminalTableDensity): string {
@@ -102,7 +103,7 @@ export function TerminalTable<T>({
   className = "",
   tableClassName = "",
   emptyText = "No rows",
-  density = "normal",
+  density,
   stickyHeader = true,
   keyboardNavigation = true,
   rowActions,
@@ -110,6 +111,10 @@ export function TerminalTable<T>({
   getRowAriaLabel,
   initialSort,
 }: Props<T>) {
+  const uiDensity = useSettingsStore((s) => s.uiDensity);
+  const resolvedDensity: TerminalTableDensity =
+    density ?? (uiDensity === "comfortable" ? "comfortable" : "compact");
+
   const [internalSelectedIndex, setInternalSelectedIndex] = useState<number>(selectedIndex ?? 0);
   const [sort, setSort] = useState<TerminalTableSortState | undefined>(initialSort);
   const [contextMenu, setContextMenu] = useState<TableContextMenuState<T>>(null);
@@ -169,9 +174,9 @@ export function TerminalTable<T>({
     openContextMenuForIndex(row, originalIndex, { x: rect.left + Math.min(rect.width / 2, 200), y: rect.bottom + 4 });
   };
 
-  const headerPadding = cellPaddingClass(density);
-  const rowHeight = rowDensityClass(density);
-  const dataCellPadding = cellPaddingClass(density);
+  const headerPadding = cellPaddingClass(resolvedDensity);
+  const rowHeight = rowDensityClass(resolvedDensity);
+  const dataCellPadding = cellPaddingClass(resolvedDensity);
 
   return (
     <div
@@ -240,7 +245,7 @@ export function TerminalTable<T>({
                       }
                     >
                       <span className={column.align === "right" ? "ml-auto" : ""}>{column.label}</span>
-                      <span aria-hidden="true" className="text-[9px]">
+                      <span aria-hidden="true" className="ot-type-badge opacity-70">
                         {isSorted ? (sortDir === "asc" ? "▲" : "▼") : "↕"}
                       </span>
                     </button>
@@ -284,7 +289,9 @@ export function TerminalTable<T>({
                     openContextMenuForIndex(row, originalIndex, { x: event.clientX, y: event.clientY });
                   }}
                   className={`border-b border-terminal-border/40 ${rowHeight} ${
-                    selected ? "bg-terminal-accent/10 ring-1 ring-inset ring-terminal-accent/20" : "hover:bg-terminal-bg/70"
+                    selected
+                      ? "bg-terminal-accent/10 ring-1 ring-inset ring-terminal-accent/40 focus-within:ring-terminal-accent/50"
+                      : "hover:bg-terminal-bg/70"
                   } ${sortedIndex % 2 === 1 ? "bg-terminal-bg/20" : ""}`}
                 >
                   {columns.map((column) => (

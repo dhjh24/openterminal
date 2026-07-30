@@ -13,3 +13,7 @@ export { TerminalTooltip } from "./TerminalTooltip";
 export { StatusBar } from "./StatusBar";
 export { SentimentBadge } from "./SentimentBadge";
 export { SentimentChart } from "./SentimentChart";
+export { NumericValue } from "./NumericValue";
+export type { NumericValueProps, NumericValueTone } from "./NumericValue";
+export { ChangeValue } from "./ChangeValue";
+export type { ChangeValueProps } from "./ChangeValue";

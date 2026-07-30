@@ -12,16 +12,17 @@ const tabs = [
 export function MobileBottomNav() {
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-terminal-border bg-terminal-panel px-2 pb-[max(0.25rem,env(safe-area-inset-bottom))] pt-1 md:hidden">
-      <div className="grid grid-cols-5 gap-1 text-[10px]">
+      <div className="grid grid-cols-5 gap-1 ot-type-label-compact">
         {tabs.map((item) => (
           <NavLink
             key={item.path}
             to={item.path}
+            aria-label={item.label}
             className={({ isActive }) =>
-              `flex flex-col items-center justify-center gap-1 rounded border py-1.5 ${isActive ? "border-terminal-accent text-terminal-accent" : "border-terminal-border text-terminal-muted"}`
+              `flex min-h-11 flex-col items-center justify-center gap-1 rounded border py-1.5 ${isActive ? "border-terminal-accent text-terminal-accent" : "border-terminal-border text-terminal-muted"}`
             }
           >
-            <item.icon size={16} />
+            <item.icon size={18} aria-hidden="true" />
             <span>{item.label}</span>
           </NavLink>
         ))}

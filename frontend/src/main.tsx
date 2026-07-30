@@ -7,6 +7,7 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { ChartSyncProvider } from "./shared/chart/ChartSyncContext";
 
 import App from "./App";
+import "./styles/fonts.css";
 import "./index.css";
 import "./styles/terminal-theme.css";
 

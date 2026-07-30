@@ -175,7 +175,7 @@ export function PanelHeader({
 
   return (
     <header {...rest} className={`shrink-0 border-b border-terminal-border ${className}`.trim()}>
-      <div className="flex items-center justify-between gap-2 px-2 py-1">
+      <div className="flex items-center justify-between gap-2 px-3 py-1.5">
         <div className="flex min-w-0 items-center gap-2">
           <button
             type="button"
@@ -216,7 +216,7 @@ type PanelBodyProps = HTMLAttributes<HTMLDivElement> & {
 
 export function PanelBody({ children, className = "", ...rest }: PanelBodyProps) {
   return (
-    <div {...rest} className={`p-2 ${className}`.trim()}>
+    <div {...rest} className={`p-3 ${className}`.trim()}>
       {children}
     </div>
   );

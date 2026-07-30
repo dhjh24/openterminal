@@ -1,19 +1,19 @@
 :root {
   /* Terminal Design System v2 - semantic tokens */
-  --ot-font-data: "Fira Code", "JetBrains Mono", "IBM Plex Mono", "Courier New", monospace;
-  --ot-font-ui: "Inter", "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --ot-font-data: "JetBrains Mono", ui-monospace, monospace;
+  --ot-font-ui: "Inter", system-ui, sans-serif;
 
   --ot-font-weight-regular: 400;
   --ot-font-weight-medium: 500;
   --ot-font-weight-semibold: 600;
   --ot-font-weight-bold: 700;
 
-  /* Typography scale (dense-terminal friendly) */
-  --ot-type-size-2xs: 10px;
-  --ot-type-size-xs: 11px;
-  --ot-type-size-sm: 12px;
-  --ot-type-size-md: 13px;
-  --ot-type-size-lg: 14px;
+  /* Typography scale (readability floor 11px) */
+  --ot-type-size-2xs: 11px;
+  --ot-type-size-xs: 12px;
+  --ot-type-size-sm: 13px;
+  --ot-type-size-md: 14px;
+  --ot-type-size-lg: 15px;
   --ot-type-size-xl: 16px;
   --ot-type-size-2xl: 18px;
   --ot-type-size-3xl: clamp(20px, 2vw, 24px);
@@ -36,11 +36,12 @@
   */
   --ot-type-heading-xl-size: var(--ot-type-size-3xl);
   --ot-type-heading-lg-size: var(--ot-type-size-2xl);
-  --ot-type-panel-title-size: var(--ot-type-size-xs);
-  --ot-type-panel-subtitle-size: var(--ot-type-size-2xs);
-  --ot-type-table-cell-size: var(--ot-type-size-xs);
-  --ot-type-table-header-size: var(--ot-type-size-2xs);
+  --ot-type-panel-title-size: var(--ot-type-size-lg);
+  --ot-type-panel-subtitle-size: var(--ot-type-size-sm);
+  --ot-type-table-cell-size: var(--ot-type-size-md);
+  --ot-type-table-header-size: var(--ot-type-size-sm);
   --ot-type-badge-size: var(--ot-type-size-2xs);
+  --ot-type-body-size: var(--ot-type-size-md);
   --ot-type-status-size: var(--ot-type-size-xs);
   --ot-type-status-line-height: var(--ot-line-height-tight);
   --ot-type-data-line-height: var(--ot-line-height-data);
@@ -68,7 +69,7 @@
 
   --ot-color-text-primary: #d7dde7;
   --ot-color-text-secondary: #adb7c6;
-  --ot-color-text-muted: #7f8b9d;
+  --ot-color-text-muted: #9aa5b5;
   --ot-color-text-inverse: #0d1117;
   --ot-color-text-brand: #e0e0e0;
 
@@ -79,8 +80,8 @@
   --ot-color-accent-secondary: #18ffff;
   --ot-color-accent-info: #448aff;
 
-  --ot-color-market-up: #00e676;
-  --ot-color-market-down: #ff3d3d;
+  --ot-color-market-up: #2ee68a;
+  --ot-color-market-down: #ff5c5c;
   --ot-color-market-neutral: #bdbdbd;
   --ot-color-market-up-soft: rgba(0, 230, 118, 0.15);
   --ot-color-market-down-soft: rgba(255, 61, 61, 0.15);
@@ -156,9 +157,9 @@
   --ot-color-home-widget-tooltip-border: var(--ot-color-border-strong);
   --ot-color-home-widget-shadow: color-mix(in srgb, var(--ot-color-canvas) 54%, transparent);
 
-  --ot-density-row-compact: 24px;
-  --ot-density-row-default: 28px;
-  --ot-density-row-comfortable: 32px;
+  --ot-density-row-compact: 26px;
+  --ot-density-row-default: 30px;
+  --ot-density-row-comfortable: 34px;
 
   /* Compatibility aliases (existing UI uses these widely) */
   --ot-black: var(--ot-color-canvas);
@@ -222,7 +223,9 @@
 .ot-app-shell {
   min-height: 100vh;
   color: var(--ot-text);
-  font-family: var(--ot-font-data);
+  font-family: var(--ot-font-ui);
+  font-size: var(--ot-type-body-size);
+  line-height: var(--ot-line-height-ui);
   background: var(--ot-black);
 }
 
@@ -242,6 +245,14 @@
 }
 
 .ot-type-label {
+  font-family: var(--ot-font-ui);
+  font-size: var(--ot-type-size-sm);
+  line-height: var(--ot-line-height-ui);
+  font-weight: var(--ot-font-weight-medium);
+  letter-spacing: var(--ot-letter-spacing-normal);
+}
+
+.ot-type-label-compact {
   font-family: var(--ot-font-ui);
   font-size: var(--ot-type-size-2xs);
   line-height: var(--ot-line-height-tight);
@@ -272,19 +283,17 @@
 .ot-type-panel-title {
   font-family: var(--ot-font-ui);
   font-size: var(--ot-type-panel-title-size);
-  line-height: var(--ot-type-status-line-height);
+  line-height: var(--ot-line-height-ui);
   font-weight: var(--ot-font-weight-semibold);
-  text-transform: uppercase;
-  letter-spacing: var(--ot-letter-spacing-wide);
+  letter-spacing: var(--ot-letter-spacing-tight);
 }
 
 .ot-type-panel-subtitle {
   font-family: var(--ot-font-ui);
   font-size: var(--ot-type-panel-subtitle-size);
-  line-height: var(--ot-type-status-line-height);
+  line-height: var(--ot-line-height-ui);
   font-weight: var(--ot-font-weight-medium);
-  text-transform: uppercase;
-  letter-spacing: var(--ot-letter-spacing-wide);
+  letter-spacing: var(--ot-letter-spacing-normal);
 }
 
 .ot-type-table-cell {
@@ -322,23 +331,88 @@
 
 .ot-type-body {
   font-family: var(--ot-font-ui);
-  font-size: var(--ot-type-size-sm);
+  font-size: var(--ot-type-body-size);
   line-height: var(--ot-line-height-copy);
 }
 
 .ot-density-dense {
   --ot-density-row-current: var(--ot-density-row-compact);
-  --ot-type-table-size-current: var(--ot-type-size-xs);
+  --ot-type-table-size-current: var(--ot-type-size-sm);
   --ot-type-table-cell-size: var(--ot-type-size-2xs);
   --ot-type-table-header-size: var(--ot-type-size-2xs);
   --ot-type-status-size: var(--ot-type-size-2xs);
   --ot-type-badge-size: var(--ot-type-size-2xs);
-  --ot-type-data-line-height: 1.2;
+  --ot-type-data-line-height: 1.25;
 }
 
 .ot-density-comfortable {
   --ot-density-row-current: var(--ot-density-row-comfortable);
-  --ot-type-table-size-current: var(--ot-type-size-sm);
+  --ot-type-table-size-current: var(--ot-type-size-md);
+  --ot-type-table-cell-size: var(--ot-type-size-md);
+  --ot-type-table-header-size: var(--ot-type-size-sm);
+}
+
+/* Appearance modes (UI readability) */
+[data-ot-effects="off"] .ot-scanline-overlay,
+[data-ot-effects="off"] .ot-vignette-overlay {
+  display: none;
+}
+
+:root[data-ot-contrast="high"] {
+  --ot-color-text-primary: #eef2f7;
+  --ot-color-text-secondary: #c5ced9;
+  --ot-color-text-muted: #b0bac8;
+  --ot-color-border-subtle: #3a4658;
+  --ot-color-border-default: #4a5668;
+}
+
+:root[data-ot-density="comfortable"] {
+  --ot-density-row-current: var(--ot-density-row-comfortable);
+  --ot-type-table-cell-size: var(--ot-type-size-md);
+  --ot-type-table-header-size: var(--ot-type-size-sm);
+}
+
+:root[data-ot-density="compact"] {
+  --ot-density-row-current: var(--ot-density-row-compact);
+  --ot-type-table-cell-size: var(--ot-type-size-sm);
+  --ot-type-table-header-size: var(--ot-type-size-xs);
+}
+
+:root[data-ot-data-font="sans"] .ot-type-data,
+:root[data-ot-data-font="sans"] .ot-type-table-cell,
+:root[data-ot-data-font="sans"] .ot-market-table td {
+  font-family: var(--ot-font-ui);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+:root[data-ot-chart-text="sm"] {
+  --ot-chart-axis-size: var(--ot-type-size-xs);
+}
+
+:root[data-ot-chart-text="md"] {
+  --ot-chart-axis-size: var(--ot-type-size-sm);
+}
+
+:root[data-ot-chart-text="lg"] {
+  --ot-chart-axis-size: var(--ot-type-size-md);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-ot-reduced-motion="false"]) *,
+  :root[data-ot-reduced-motion="true"] * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+:root[data-ot-reduced-motion="true"] * {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
 }
 
 .ot-route-layer {
@@ -359,7 +433,7 @@
   inset: 0;
   z-index: 9999;
   pointer-events: none;
-  background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.03) 0px, rgba(0, 0, 0, 0.03) 1px, transparent 1px, transparent 3px);
+  background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.012) 0px, rgba(0, 0, 0, 0.012) 1px, transparent 1px, transparent 3px);
 }
 
 .ot-vignette-overlay {
@@ -367,7 +441,7 @@
   inset: 0;
   z-index: 9998;
   pointer-events: none;
-  background: radial-gradient(ellipse at center, transparent 50%, rgba(0, 0, 0, 0.5) 100%);
+  background: radial-gradient(ellipse at center, transparent 55%, rgba(0, 0, 0, 0.35) 100%);
 }
 
 .ot-status-bar {
@@ -494,7 +568,7 @@
   bottom: 230px;
   display: flex;
   gap: 8px;
-  font-size: 10px;
+  font-size: var(--ot-type-size-2xs);
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
@@ -524,7 +598,7 @@
 
 .ot-brand-kicker {
   color: var(--ot-amber);
-  font-size: 10px;
+  font-size: var(--ot-type-size-2xs);
   letter-spacing: 0.4em;
   text-transform: uppercase;
   animation: otFadeInLeft 0.65s ease;
@@ -579,7 +653,7 @@
 
 .ot-panel-kicker {
   margin: 0;
-  font-size: 10px;
+  font-size: var(--ot-type-size-2xs);
   letter-spacing: 0.3em;
   text-transform: uppercase;
   color: var(--ot-muted);
@@ -626,7 +700,7 @@
 }
 
 .ot-field-label {
-  font-size: 10px;
+  font-size: var(--ot-type-size-2xs);
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--ot-muted);
@@ -849,7 +923,7 @@
 
 .ot-login-meta {
   color: var(--ot-dark);
-  font-size: 10px;
+  font-size: var(--ot-type-size-2xs);
   line-height: 1.35;
 }
 
@@ -1651,7 +1725,7 @@ button.ot-home-widget-strip-chip:hover {
 
 .ot-panel-header-title {
   color: var(--ot-amber);
-  font-size: 10px;
+  font-size: var(--ot-type-size-2xs);
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
@@ -1680,7 +1754,7 @@ button.ot-home-widget-strip-chip:hover {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
   color: var(--ot-muted);
-  font-size: 10px;
+  font-size: var(--ot-type-size-2xs);
   letter-spacing: 0.04em;
 }
 
@@ -1711,7 +1785,7 @@ button.ot-home-widget-strip-chip:hover {
   display: block;
   margin-bottom: 6px;
   color: var(--ot-muted);
-  font-size: 10px;
+  font-size: var(--ot-type-size-2xs);
   letter-spacing: 0.08em;
 }
 
@@ -1783,7 +1857,7 @@ button.ot-home-widget-strip-chip:hover {
   background: var(--ot-amber-glow);
   color: var(--ot-amber);
   padding: 7px 8px;
-  font-size: 10px;
+  font-size: var(--ot-type-size-2xs);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -1799,7 +1873,7 @@ button.ot-home-widget-strip-chip:hover {
   justify-content: space-between;
   margin-top: 6px;
   color: var(--ot-muted);
-  font-size: 10px;
+  font-size: var(--ot-type-size-2xs);
 }
 
 .ot-command-input {
@@ -1838,7 +1912,7 @@ button.ot-home-widget-strip-chip:hover {
   border-radius: 2px;
   background: transparent;
   height: 34px;
-  font-size: 10px;
+  font-size: var(--ot-type-size-2xs);
   letter-spacing: 0.13em;
   text-transform: uppercase;
   color: var(--ot-text);
@@ -1880,7 +1954,7 @@ button.ot-home-widget-strip-chip:hover {
 
 .ot-system-health {
   margin: 10px 0 0;
-  font-size: 10px;
+  font-size: var(--ot-type-size-2xs);
   letter-spacing: 0.08em;
 }
 
@@ -1892,7 +1966,7 @@ button.ot-home-widget-strip-chip:hover {
 
 .ot-nav-section-title {
   margin: 0 0 8px;
-  font-size: 10px;
+  font-size: var(--ot-type-size-2xs);
   color: var(--ot-muted);
   letter-spacing: 0.1em;
 }
@@ -1940,7 +2014,7 @@ button.ot-home-widget-strip-chip:hover {
   min-width: 30px;
   text-align: center;
   padding: 1px 6px;
-  font-size: 9px;
+  font-size: var(--ot-type-size-2xs);
   letter-spacing: 0.08em;
 }
 

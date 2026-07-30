@@ -9,6 +9,7 @@ import { DataManager } from "../components/settings/DataManager";
 import { APIKeyManager } from "../components/settings/APIKeyManager";
 import { ErrorBoundary } from "../components/common/ErrorBoundary";
 import { useSettingsStore } from "../store/settingsStore";
+import type { ChartTextSize, ContrastMode, DataFont, UiDensity } from "../store/settingsStore";
 import { COUNTRY_MARKETS } from "../types";
 import type { AlertRule, CountryCode, MarketCode } from "../types";
 import type { ScheduledReport } from "../types";
@@ -26,6 +27,18 @@ export function SettingsPage() {
   const setRealtimeMode = useSettingsStore((s) => s.setRealtimeMode);
   const setNewsAutoRefresh = useSettingsStore((s) => s.setNewsAutoRefresh);
   const setNewsRefreshSec = useSettingsStore((s) => s.setNewsRefreshSec);
+  const uiDensity = useSettingsStore((s) => s.uiDensity);
+  const contrastMode = useSettingsStore((s) => s.contrastMode);
+  const dataFont = useSettingsStore((s) => s.dataFont);
+  const reducedMotion = useSettingsStore((s) => s.reducedMotion);
+  const decorativeEffects = useSettingsStore((s) => s.decorativeEffects);
+  const chartTextSize = useSettingsStore((s) => s.chartTextSize);
+  const setUiDensity = useSettingsStore((s) => s.setUiDensity);
+  const setContrastMode = useSettingsStore((s) => s.setContrastMode);
+  const setDataFont = useSettingsStore((s) => s.setDataFont);
+  const setReducedMotion = useSettingsStore((s) => s.setReducedMotion);
+  const setDecorativeEffects = useSettingsStore((s) => s.setDecorativeEffects);
+  const setChartTextSize = useSettingsStore((s) => s.setChartTextSize);
 
   const [alerts, setAlerts] = useState<AlertRule[]>([]);
   const [ticker, setTicker] = useState("AAPL");
@@ -59,7 +72,7 @@ export function SettingsPage() {
 
   return (
     <div className="space-y-3 p-3">
-      <TerminalPanel title="UI Settings" subtitle="Dense terminal defaults">
+      <TerminalPanel title="UI Settings" subtitle="Market and refresh defaults">
         <div className="grid grid-cols-1 gap-2 lg:grid-cols-6">
           <TerminalInput as="select" value={selectedCountry} onChange={(e) => setSelectedCountry(e.target.value as CountryCode)}>
             <option value="US">US</option>
@@ -89,6 +102,56 @@ export function SettingsPage() {
             onChange={(e) => setNewsRefreshSec(Math.max(5, Number(e.target.value) || 60))}
             placeholder="news refresh sec"
           />
+        </div>
+      </TerminalPanel>
+
+      <TerminalPanel title="Appearance" subtitle="Readability, density, and visual effects">
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          <label className="grid gap-1">
+            <span className="ot-type-label text-terminal-text">Density</span>
+            <TerminalInput as="select" value={uiDensity} onChange={(e) => setUiDensity(e.target.value as UiDensity)}>
+              <option value="comfortable">Comfortable (larger rows & text)</option>
+              <option value="compact">Compact</option>
+            </TerminalInput>
+          </label>
+          <label className="grid gap-1">
+            <span className="ot-type-label text-terminal-text">Contrast</span>
+            <TerminalInput as="select" value={contrastMode} onChange={(e) => setContrastMode(e.target.value as ContrastMode)}>
+              <option value="standard">Standard</option>
+              <option value="high">High contrast</option>
+            </TerminalInput>
+          </label>
+          <label className="grid gap-1">
+            <span className="ot-type-label text-terminal-text">Data font</span>
+            <TerminalInput as="select" value={dataFont} onChange={(e) => setDataFont(e.target.value as DataFont)}>
+              <option value="mono">Monospace (default)</option>
+              <option value="sans">Sans-serif numbers</option>
+            </TerminalInput>
+          </label>
+          <label className="grid gap-1">
+            <span className="ot-type-label text-terminal-text">Chart axis text</span>
+            <TerminalInput as="select" value={chartTextSize} onChange={(e) => setChartTextSize(e.target.value as ChartTextSize)}>
+              <option value="sm">Small</option>
+              <option value="md">Medium</option>
+              <option value="lg">Large</option>
+            </TerminalInput>
+          </label>
+          <label className="flex items-center gap-2 ot-type-label text-terminal-text">
+            <input
+              type="checkbox"
+              checked={reducedMotion}
+              onChange={(e) => setReducedMotion(e.target.checked)}
+            />
+            Reduce motion
+          </label>
+          <label className="flex items-center gap-2 ot-type-label text-terminal-text">
+            <input
+              type="checkbox"
+              checked={decorativeEffects}
+              onChange={(e) => setDecorativeEffects(e.target.checked)}
+            />
+            Decorative effects (scanlines, vignette, background)
+          </label>
         </div>
       </TerminalPanel>
 

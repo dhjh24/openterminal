@@ -45,7 +45,7 @@ export function TerminalSelect({
       >
         {children}
       </select>
-      <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-2 inline-flex items-center text-[9px] text-terminal-muted">
+      <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-2 inline-flex items-center ot-type-label-compact text-terminal-muted">
         v
       </span>
     </span>

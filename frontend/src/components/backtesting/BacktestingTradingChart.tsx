@@ -14,7 +14,7 @@ import {
 } from "lightweight-charts";
 import type { Bar } from "oakscriptjs";
 
-import { terminalChartTheme } from "../../shared/chart/chartTheme";
+import { chartThemeWithTextSize, resolveChartAxisFontSize } from "../../shared/chart/chartTheme";
 import {
   isValidChartSize,
   readValidContainerSize,
@@ -23,6 +23,7 @@ import {
 } from "../../shared/chart/safeChartCleanup";
 import { useIndicators } from "../../shared/chart/useIndicators";
 import type { ChartKind, IndicatorConfig } from "../../shared/chart/types";
+import { useSettingsStore } from "../../store/settingsStore";
 import { terminalColors } from "../../theme/terminal";
 
 type TradeMarker = {
@@ -83,6 +84,7 @@ export function BacktestingTradingChart({
   onBrushRangeChange,
   onBrushPreviewRangeChange,
 }: Props) {
+  const chartTextSize = useSettingsStore((s) => s.chartTextSize);
   const hostRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const [chartApi, setChartApi] = useState<IChartApi | null>(null);
@@ -217,7 +219,7 @@ export function BacktestingTradingChart({
       if (!size) return;
 
       const newChart = createChart(hostRef.current, {
-        ...terminalChartTheme,
+        ...chartThemeWithTextSize(chartTextSize),
         width: size.width,
         height: size.height,
       });
@@ -282,6 +284,12 @@ export function BacktestingTradingChart({
       destroyChart();
     };
   }, [height]);
+
+  useEffect(() => {
+    chartRef.current?.applyOptions({
+      layout: { fontSize: resolveChartAxisFontSize(chartTextSize) },
+    });
+  }, [chartTextSize]);
 
   useEffect(() => {
     const chart = chartRef.current;

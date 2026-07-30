@@ -29,7 +29,7 @@ type DataGridPresetConfig = {
 
 export const DATA_GRID_PRESETS: Record<DataGridPreset, DataGridPresetConfig> = {
   default: { density: "normal", stickyHeader: true, keyboardNavigation: true },
-  watchlist: { density: "dense", stickyHeader: true, keyboardNavigation: true },
+  watchlist: { density: "compact", stickyHeader: true, keyboardNavigation: true },
   blotter: { density: "compact", stickyHeader: true, keyboardNavigation: true },
   screener: { density: "compact", stickyHeader: true, keyboardNavigation: true },
   "option-chain": { density: "dense", stickyHeader: true, keyboardNavigation: true },
