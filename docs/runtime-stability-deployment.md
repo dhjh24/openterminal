@@ -16,7 +16,9 @@
 - HTML (`index.html` / `app.html`) is served with `Cache-Control: no-cache`.
 - Hashed `/assets/*` are served with `Cache-Control: public, max-age=31536000, immutable`.
 - Service worker is network-first for navigation/HTML and JS chunks; failed/HTML responses are never cached as scripts.
+- Service worker updates wait for an **Update available** banner (no silent reload). Shell caches are versioned by commit SHA; hashed assets use a shared cache so two tabs on different builds do not lose required chunks on activate.
 - Stale tabs recover once per build via `sessionStorage` key `otui:chunk-recovery` (tied to `__GIT_COMMIT__`).
+- PWA / offline policy: `docs/pwa/README.md`
 
 ## Test commands
 

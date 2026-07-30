@@ -23,6 +23,7 @@ import type {
   CorrelationRollingResponse,
   CorrelationClustersResponse,
 } from "./types";
+import { assertOnlineForAction } from "../lib/offlineGuard";
 
 export async function fetchPortfolios(): Promise<MultiPortfolio[]> {
   const { data } = await api.get<{ items: MultiPortfolio[] }>("/portfolios");
@@ -170,6 +171,7 @@ export async function placePaperOrder(payload: {
   limit_price?: number;
   sl_price?: number;
 }): Promise<PaperOrder> {
+  assertOnlineForAction("Order submission");
   const { data } = await api.post<PaperOrder>("/paper/orders", payload);
   return data;
 }
@@ -182,6 +184,7 @@ export async function createPaperOrder(payload: {
   price?: number;
   limit_price?: number;
 }): Promise<PaperOrder> {
+  assertOnlineForAction("Order submission");
   const { data } = await api.post<PaperOrder>("/paper/orders", payload);
   return data;
 }

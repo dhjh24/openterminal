@@ -608,7 +608,7 @@ export function HomePage() {
 
   return (
     <TerminalShell
-      contentClassName="bg-terminal-bg"
+      contentClassName="bg-terminal-bg pb-16 md:pb-0"
       hideTickerLoader
       showMobileBottomNav
       showWorkspaceControls={false}
