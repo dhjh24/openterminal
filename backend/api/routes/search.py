@@ -19,13 +19,10 @@ DATA_PATH = Path(__file__).resolve().parents[3] / "data" / "sample_tickers.txt"
 _TICKER_LIKE_RE = re.compile(r"^[\^A-Za-z][A-Za-z0-9._=-]{0,12}$")
 
 GLOBAL_INDICES = [
-    SearchResult(ticker="^NSEI", name="NIFTY 50", exchange="NSE"),
-    SearchResult(ticker="^BSESN", name="SENSEX", exchange="BSE"),
-    SearchResult(ticker="^IXIC", name="NASDAQ", exchange="NASDAQ"),
+    SearchResult(ticker="^IXIC", name="NASDAQ Composite", exchange="NASDAQ"),
     SearchResult(ticker="^GSPC", name="S&P 500", exchange="NYSE"),
-    SearchResult(ticker="GC=F", name="GOLD", exchange="AMEX"),
-    SearchResult(ticker="SI=F", name="SILVER", exchange="AMEX"),
-    SearchResult(ticker="CL=F", name="CRUDE OIL", exchange="AMEX"),
+    SearchResult(ticker="^DJI", name="Dow Jones Industrial Average", exchange="NYSE"),
+    SearchResult(ticker="^RUT", name="Russell 2000", exchange="NYSE"),
 ]
 
 # Global Cache

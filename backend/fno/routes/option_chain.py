@@ -13,9 +13,10 @@ from backend.fno.services.option_chain_fetcher import get_option_chain_fetcher
 router = APIRouter()
 
 _SYMBOL_TO_UNDERLYING = {
-    "NIFTY": "NIFTY 50",
-    "BANKNIFTY": "NIFTY BANK",
-    "FINNIFTY": "NIFTY FIN SERVICE",
+    "SPY": "SPY",
+    "QQQ": "QQQ",
+    "IWM": "IWM",
+    "SPX": "SPX",
 }
 
 

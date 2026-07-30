@@ -19,7 +19,7 @@ async def expiry_dashboard() -> dict[str, Any]:
     iv_engine = get_iv_engine()
     oi = get_oi_analyzer()
     pcr = get_pcr_tracker()
-    base = ["NIFTY", "BANKNIFTY"]
+    base = ["SPY", "QQQ"]
     extras = [s for s in pcr.snapshot_universe() if s not in base][:5]
     symbols = base + extras
     items: list[dict[str, Any]] = []

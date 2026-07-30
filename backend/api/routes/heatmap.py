@@ -10,11 +10,10 @@ from fastapi import APIRouter, HTTPException, Query
 
 from backend.adapters.registry import get_adapter_registry
 from backend.shared.market_guard import assert_exchange_allowed
-from backend.shared.market_profile import is_us_only
 
 router = APIRouter()
 
-MarketCode = Literal["IN", "US"]
+MarketCode = Literal["US"]
 GroupBy = Literal["sector", "industry"]
 PeriodCode = Literal["1d", "1w", "1m", "3m", "ytd", "1y"]
 SizeBy = Literal["market_cap", "volume", "turnover"]
@@ -31,22 +30,6 @@ class HeatmapUniverseRow:
     sector: str
     industry: str
     market_cap: float
-
-
-IN_UNIVERSE: tuple[HeatmapUniverseRow, ...] = (
-    HeatmapUniverseRow("RELIANCE", "Reliance Industries", "NSE", "Energy", "Integrated Oil & Gas", 240_000_000_000),
-    HeatmapUniverseRow("TCS", "Tata Consultancy Services", "NSE", "Technology", "IT Services", 185_000_000_000),
-    HeatmapUniverseRow("INFY", "Infosys", "NSE", "Technology", "IT Services", 78_000_000_000),
-    HeatmapUniverseRow("HDFCBANK", "HDFC Bank", "NSE", "Financials", "Private Banks", 145_000_000_000),
-    HeatmapUniverseRow("ICICIBANK", "ICICI Bank", "NSE", "Financials", "Private Banks", 98_000_000_000),
-    HeatmapUniverseRow("SBIN", "State Bank of India", "NSE", "Financials", "Public Banks", 82_000_000_000),
-    HeatmapUniverseRow("BHARTIARTL", "Bharti Airtel", "NSE", "Communication Services", "Telecom Services", 96_000_000_000),
-    HeatmapUniverseRow("LT", "Larsen & Toubro", "NSE", "Industrials", "Engineering & Construction", 63_000_000_000),
-    HeatmapUniverseRow("ITC", "ITC", "NSE", "Consumer Staples", "Tobacco & FMCG", 58_000_000_000),
-    HeatmapUniverseRow("SUNPHARMA", "Sun Pharmaceutical", "NSE", "Healthcare", "Pharmaceuticals", 46_000_000_000),
-    HeatmapUniverseRow("MARUTI", "Maruti Suzuki", "NSE", "Consumer Discretionary", "Automobiles", 52_000_000_000),
-    HeatmapUniverseRow("TITAN", "Titan Company", "NSE", "Consumer Discretionary", "Apparel & Luxury", 38_000_000_000),
-)
 
 US_UNIVERSE: tuple[HeatmapUniverseRow, ...] = (
     HeatmapUniverseRow("AAPL", "Apple", "NASDAQ", "Technology", "Consumer Electronics", 3_100_000_000_000),
@@ -154,7 +137,7 @@ async def _fetch_snapshot(item: HeatmapUniverseRow, period: PeriodCode) -> dict[
 
 
 def _universe_for_market(market: MarketCode) -> tuple[HeatmapUniverseRow, ...]:
-    return IN_UNIVERSE if market == "IN" else US_UNIVERSE
+    return US_UNIVERSE
 
 
 def _cache_key(market: str, group: str, period: str, size_by: str) -> str:
@@ -163,22 +146,31 @@ def _cache_key(market: str, group: str, period: str, size_by: str) -> str:
 
 @router.get("/treemap")
 async def heatmap_treemap(
-    market: MarketCode = Query(default="US" if is_us_only() else "IN"),
+    market: str = Query(default="US"),
     group: GroupBy = Query(default="sector"),
     period: PeriodCode = Query(default="1d"),
     size_by: SizeBy = Query(default="market_cap"),
 ) -> dict[str, Any]:
-    if is_us_only() and market == "IN":
-        assert_exchange_allowed("NSE")
-    key = _cache_key(market, group, period, size_by)
+    market_u = (market or "US").strip().upper()
+    if market_u in {"IN", "INDIA", "NSE", "BSE"}:
+        assert_exchange_allowed("NSE" if market_u in {"IN", "INDIA"} else market_u)
+    if market_u != "US":
+        from backend.shared.market_profile import unsupported_market_detail
+
+        raise HTTPException(
+            status_code=400,
+            detail=unsupported_market_detail(market_u, input_value=market_u),
+        )
+    market_code: MarketCode = "US"
+    key = _cache_key(market_code, group, period, size_by)
     cached = _CACHE.get(key)
     now = time.time()
     if cached and now - cached[0] < _TTL_SECONDS:
         return cached[1]
 
-    universe = _universe_for_market(market)
+    universe = _universe_for_market(market_code)
     if not universe:
-        raise HTTPException(status_code=404, detail=f"No universe available for market {market}")
+        raise HTTPException(status_code=404, detail=f"No universe available for market {market_code}")
 
     rows = await asyncio.gather(*(_fetch_snapshot(item, period) for item in universe))
     groups: dict[str, dict[str, Any]] = {}
@@ -203,7 +195,7 @@ async def heatmap_treemap(
         node["children"].append(child)
 
     data = {
-        "market": market,
+        "market": market_code,
         "group": group,
         "period": period,
         "size_by": size_by,

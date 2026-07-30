@@ -35,7 +35,7 @@ async def get_patterns(
     timeframe: str = Query(default="1D"),
     min_confidence: float = Query(default=0.6, ge=0.0, le=1.0),
     lookback: int = Query(default=200, ge=30, le=2000),
-    market: str = Query(default="NSE"),
+    market: str = Query(default="NASDAQ"),
     chart_provider: ChartDataProvider = Depends(get_chart_provider),
 ) -> dict[str, Any]:
     interval = _normalize_timeframe(timeframe)

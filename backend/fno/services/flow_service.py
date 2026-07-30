@@ -8,14 +8,14 @@ from typing import Any
 from backend.fno.services.option_chain_fetcher import OptionChainFetcher, get_option_chain_fetcher
 
 DEFAULT_FLOW_SYMBOLS = (
-    "NIFTY",
-    "BANKNIFTY",
-    "RELIANCE",
-    "TCS",
-    "INFY",
-    "HDFCBANK",
-    "ICICIBANK",
-    "SBIN",
+    "SPY",
+    "QQQ",
+    "IWM",
+    "AAPL",
+    "MSFT",
+    "NVDA",
+    "TSLA",
+    "AMZN",
 )
 
 
