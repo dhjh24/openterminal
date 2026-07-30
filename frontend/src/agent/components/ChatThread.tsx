@@ -37,8 +37,8 @@ function PhaseStepper({ phases }: { phases: AgentPhase[] }) {
       {phases.map((p, i) => (
         <div key={p.key} className="flex items-center gap-1">
           {i > 0 ? <span className="h-px w-3 shrink-0 bg-terminal-accent/40" /> : null}
-          <span className="flex items-center gap-1 whitespace-nowrap rounded-full border border-terminal-accent/40 bg-terminal-accent/10 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide text-terminal-accent">
-            <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-terminal-accent text-[9px] font-bold text-terminal-bg">
+          <span className="flex items-center gap-1 whitespace-nowrap rounded-full border border-terminal-accent/40 bg-terminal-accent/10 px-2 py-0.5 ot-type-label-compact uppercase tracking-wide text-terminal-accent">
+            <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-terminal-accent ot-type-label-compact font-bold text-terminal-bg">
               {i + 1}
             </span>
             {p.label}
@@ -123,7 +123,7 @@ function DecisionBanner({ decision }: { decision: Decision }) {
         </div>
         {decision.conviction != null ? (
           <div className="mt-2.5">
-            <div className="mb-1 flex items-center justify-between font-mono text-[10px] uppercase tracking-wide text-terminal-muted">
+            <div className="mb-1 flex items-center justify-between ot-type-label-compact uppercase tracking-wide text-terminal-muted">
               <span>Conviction</span>
               <span style={{ color }}>{decision.conviction}%</span>
             </div>

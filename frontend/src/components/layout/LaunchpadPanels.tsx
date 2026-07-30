@@ -41,7 +41,7 @@ export function LaunchpadTemplatePlaceholderPanel({ panel }: PanelProps) {
           {panel.type} is available as a saved Launchpad template slot but does not have a dedicated embedded panel yet.
         </div>
       </div>
-      <div className="rounded-sm border border-terminal-border bg-terminal-bg px-2 py-1 text-[10px] text-terminal-muted">
+      <div className="rounded-sm border border-terminal-border bg-terminal-bg px-2 py-1 ot-type-label-compact text-terminal-muted">
         {panel.symbol ? `Symbol: ${panel.symbol}` : "Assign a symbol or replace this panel from the Launchpad toolbar."}
       </div>
     </PanelBody>
@@ -109,7 +109,7 @@ export function LaunchpadAIResearchPanel({ panel }: PanelProps) {
             <div className="h-6 w-6 shrink-0 rounded-full bg-terminal-accent/20 flex items-center justify-center text-terminal-accent">
               <Bot size={14} />
             </div>
-            <div className="flex items-center gap-2 rounded-sm border border-terminal-border bg-terminal-panel px-3 py-2 text-[10px] text-terminal-muted italic">
+            <div className="flex items-center gap-2 rounded-sm border border-terminal-border bg-terminal-panel px-3 py-2 ot-type-label-compact text-terminal-muted italic">
               <Loader2 size={12} className="animate-spin" />
               Thinking...
             </div>
@@ -160,14 +160,14 @@ export function LaunchpadOptionChainPanel({ panel }: PanelProps) {
     enabled: !!expiry,
   });
 
-  if (isLoading) return <div className="p-4 text-[10px] text-terminal-muted animate-pulse">LOADING CHAIN...</div>;
+  if (isLoading) return <div className="p-4 ot-type-label-compact text-terminal-muted animate-pulse">LOADING CHAIN...</div>;
 
   return (
     <div className="flex h-full flex-col p-1 overflow-hidden">
       <div className="flex items-center gap-2 mb-1">
-        <div className="text-[10px] font-bold text-terminal-accent">{symbol}</div>
+        <div className="ot-type-label-compact font-bold text-terminal-accent">{symbol}</div>
         <select
-          className="bg-terminal-bg text-[9px] border border-terminal-border rounded px-1 outline-none"
+          className="bg-terminal-bg ot-type-label-compact border border-terminal-border rounded px-1 outline-none"
           value={expiry}
           onChange={(e) => setExpiry(e.target.value)}
         >
@@ -175,7 +175,11 @@ export function LaunchpadOptionChainPanel({ panel }: PanelProps) {
         </select>
       </div>
       <div className="flex-1 overflow-auto">
-        <OptionChainTable rows={(chain?.strikes || []) as any} atmStrike={chain?.atm_strike || 0} />
+        <OptionChainTable
+          rows={(chain?.strikes || []) as any}
+          atmStrike={chain?.atm_strike || 0}
+          dataTimestamp={chain?.timestamp}
+        />
       </div>
     </div>
   );
@@ -212,13 +216,13 @@ export function LaunchpadWatchlistHeatmapPanel({ panel }: PanelProps) {
     }) || []
   , [activeWl, ticksByToken, selectedMarket]);
 
-  if (!activeWl) return <div className="p-4 text-[10px] text-terminal-muted animate-pulse">LOADING HEATMAP...</div>;
+  if (!activeWl) return <div className="p-4 ot-type-label-compact text-terminal-muted animate-pulse">LOADING HEATMAP...</div>;
 
   return (
     <div className="flex h-full flex-col p-1 overflow-hidden">
       <div className="flex items-center justify-between mb-1">
         <select
-          className="bg-terminal-bg text-[9px] border border-terminal-border rounded px-1 outline-none"
+          className="bg-terminal-bg ot-type-label-compact border border-terminal-border rounded px-1 outline-none"
           value={activeWlId}
           onChange={(e) => setActiveWlId(e.target.value)}
         >
@@ -252,7 +256,7 @@ export function LaunchpadYieldCurvePanel(_: PanelProps) {
     staleTime: 300_000
   });
 
-  if (isLoading) return <div className="flex h-full items-center justify-center text-[10px] text-terminal-muted animate-pulse">LOADING CURVE...</div>;
+  if (isLoading) return <div className="flex h-full items-center justify-center ot-type-label-compact text-terminal-muted animate-pulse">LOADING CURVE...</div>;
 
   return (
     <div className="h-full flex flex-col p-2">
@@ -270,16 +274,16 @@ export function LaunchpadYieldCurvePanel(_: PanelProps) {
       </div>
       <div className="mt-1 grid grid-cols-3 gap-1">
         <div className="rounded border border-terminal-border bg-terminal-bg p-1 text-center">
-          <div className="text-[8px] uppercase text-terminal-muted">2Y</div>
-          <div className="text-[10px] font-mono text-terminal-text">{(data?.data || []).find(d => d.label === "2Y")?.yield.toFixed(2) || "0.00"}%</div>
+          <div className="ot-type-label-compact uppercase text-terminal-muted">2Y</div>
+          <div className="ot-type-label-compact font-mono text-terminal-text">{(data?.data || []).find(d => d.label === "2Y")?.yield.toFixed(2) || "0.00"}%</div>
         </div>
         <div className="rounded border border-terminal-border bg-terminal-bg p-1 text-center">
-          <div className="text-[8px] uppercase text-terminal-muted">10Y</div>
-          <div className="text-[10px] font-mono text-terminal-text">{(data?.data || []).find(d => d.label === "10Y")?.yield.toFixed(2) || "0.00"}%</div>
+          <div className="ot-type-label-compact uppercase text-terminal-muted">10Y</div>
+          <div className="ot-type-label-compact font-mono text-terminal-text">{(data?.data || []).find(d => d.label === "10Y")?.yield.toFixed(2) || "0.00"}%</div>
         </div>
         <div className={`rounded border border-terminal-border bg-terminal-bg p-1 text-center ${Number(data?.spreads?.["2s10s"]) < 0 ? "border-terminal-neg/40" : ""}`}>
-          <div className="text-[8px] uppercase text-terminal-muted">2s10s</div>
-          <div className={`text-[10px] font-mono ${Number(data?.spreads?.["2s10s"]) < 0 ? "text-terminal-neg" : "text-terminal-pos"}`}>
+          <div className="ot-type-label-compact uppercase text-terminal-muted">2s10s</div>
+          <div className={`ot-type-label-compact font-mono ${Number(data?.spreads?.["2s10s"]) < 0 ? "text-terminal-neg" : "text-terminal-pos"}`}>
             {(data?.spreads?.["2s10s"] || 0).toFixed(3)}%
           </div>
         </div>
@@ -350,7 +354,7 @@ export function LaunchpadWatchlistPanel(_: PanelProps) {
 
   return (
     <div className="h-full overflow-auto p-2" tabIndex={0} onKeyDown={nav.onKeyDown}>
-      <div className="mb-1 flex items-center justify-between text-[10px] uppercase text-terminal-muted">
+      <div className="mb-1 flex items-center justify-between ot-type-label-compact uppercase text-terminal-muted">
         <span>{selectedMarket} feed: {connectionState}</span>
         <span>{rows.length} symbols</span>
       </div>
@@ -397,7 +401,7 @@ export function LaunchpadNewsFeedPanel({ panel }: PanelProps) {
 
   return (
     <div className="h-full overflow-auto p-2" tabIndex={0} onKeyDown={nav.onKeyDown}>
-      <div className="mb-1 text-[10px] uppercase text-terminal-muted">j/k navigation</div>
+      <div className="mb-1 ot-type-label-compact uppercase text-terminal-muted">j/k navigation</div>
       <div className="space-y-1">
         {rows.map((row, idx) => (
           <a
@@ -408,7 +412,7 @@ export function LaunchpadNewsFeedPanel({ panel }: PanelProps) {
             className={`block rounded border px-2 py-1 text-xs ${idx === nav.selected ? "border-terminal-accent bg-terminal-accent/10" : "border-terminal-border bg-terminal-bg"}`}
           >
             <div className="truncate text-terminal-text">{row.title}</div>
-            <div className="truncate text-[10px] text-terminal-muted">{row.source}</div>
+            <div className="truncate ot-type-label-compact text-terminal-muted">{row.source}</div>
           </a>
         ))}
       </div>
@@ -450,7 +454,7 @@ export function LaunchpadScreenerResultsPanel(_: PanelProps) {
   const nav = useJkListNavigation(rows);
   return (
     <div className="h-full overflow-auto p-2" tabIndex={0} onKeyDown={nav.onKeyDown}>
-      <div className="mb-1 text-[10px] uppercase text-terminal-muted">Top movers proxy</div>
+      <div className="mb-1 ot-type-label-compact uppercase text-terminal-muted">Top movers proxy</div>
       <div className="space-y-1">
         {rows.map((row, idx) => (
           <div key={row.key} className={`grid grid-cols-3 rounded border px-2 py-1 text-xs ${idx === nav.selected ? "border-terminal-accent bg-terminal-accent/10" : "border-terminal-border bg-terminal-bg"}`}>

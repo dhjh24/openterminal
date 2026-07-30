@@ -345,7 +345,7 @@ export function CommandPalette() {
             {feedback}
           </div>
         ) : null}
-        <div className="flex items-center justify-between border-t border-terminal-border px-3 py-2 text-[10px] text-terminal-muted">
+        <div className="flex items-center justify-between border-t border-terminal-border px-3 py-2 ot-type-label-compact text-terminal-muted">
           <span>Enter: run | Esc: close | Ctrl/Cmd+/: shortcuts</span>
           {shortcutConflicts.length ? (
             <span className="text-amber-400">{shortcutConflicts.length} conflict(s)</span>

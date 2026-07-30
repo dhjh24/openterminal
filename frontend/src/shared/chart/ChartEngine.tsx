@@ -13,7 +13,7 @@ import {
 } from "lightweight-charts";
 import type { Bar } from "oakscriptjs";
 
-import { terminalChartTheme } from "./chartTheme";
+import { chartThemeWithTextSize, resolveChartAxisFontSize } from "./chartTheme";
 import { isValidChartSize, readValidContainerSize, safeDestroyChart } from "./safeChartCleanup";
 import { useIndicators } from "./useIndicators";
 import { useRealtimeChart } from "./useRealtimeChart";
@@ -36,6 +36,7 @@ import {
   renderFootprintCanvas,
   type FootprintCandleLike,
 } from "./footprintRenderer";
+import { useSettingsStore } from "../../store/settingsStore";
 import { terminalColors } from "../../theme/terminal";
 import { useChartSync } from "./ChartSyncContext";
 import {
@@ -119,6 +120,7 @@ export function ChartEngine({
   const [altParams, setAltParams] = useState<AlternativeChartParams>(DEFAULT_ALT_CHART_PARAMS);
   const [footprintCandles, setFootprintCandles] = useState<FootprintCandleLike[]>([]);
   const { event: syncEvent, publish } = useChartSync();
+  const chartTextSize = useSettingsStore((s) => s.chartTextSize);
   const { bars, liveTick, realtimeMeta } = useRealtimeChart(market, symbol, timeframe, historicalData, enableRealtime);
   const chartTypeId = String(chartType);
   const isFootprintMode = chartTypeId === "footprint";
@@ -324,7 +326,7 @@ export function ChartEngine({
       if (!size) return;
 
       const newChart = createChart(hostRef.current, {
-        ...terminalChartTheme,
+        ...chartThemeWithTextSize(chartTextSize),
         width: size.width,
         height: size.height,
       });
@@ -517,6 +519,12 @@ export function ChartEngine({
     // re-populating them, leaving line/area/baseline AND footprint blank. Type/footprint changes are
     // handled by the visibility + data effects instead; the chart is only rebuilt for height / F&O.
   }, [height, symbolIsFnO]);
+
+  useEffect(() => {
+    chartRef.current?.applyOptions({
+      layout: { fontSize: resolveChartAxisFontSize(chartTextSize) },
+    });
+  }, [chartTextSize]);
 
   useEffect(() => {
     const s = seriesRef.current;

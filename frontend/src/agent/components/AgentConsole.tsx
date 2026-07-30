@@ -71,7 +71,7 @@ export function AgentConsole() {
             aria-pressed={debate}
             aria-label="Toggle multi-agent debate mode"
             title="Multi-agent debate: analyst team → bull vs bear → portfolio-manager decision"
-            className={`rounded border px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wide transition-colors ${
+            className={`rounded border px-2 py-0.5 ot-type-label-compact font-semibold uppercase tracking-wide transition-colors ${
               debate
                 ? "border-terminal-accent bg-terminal-accent text-terminal-bg"
                 : "border-terminal-border text-terminal-muted hover:border-terminal-accent hover:text-terminal-accent"
@@ -85,7 +85,7 @@ export function AgentConsole() {
             aria-pressed={strategy}
             aria-label="Toggle strategy lab mode"
             title="Strategy Lab: bounded, read-only backtest iteration with out-of-sample validation"
-            className={`rounded border px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wide transition-colors ${
+            className={`rounded border px-2 py-0.5 ot-type-label-compact font-semibold uppercase tracking-wide transition-colors ${
               strategy
                 ? "border-terminal-accent bg-terminal-accent text-terminal-bg"
                 : "border-terminal-border text-terminal-muted hover:border-terminal-accent hover:text-terminal-accent"
@@ -99,7 +99,7 @@ export function AgentConsole() {
             aria-pressed={screener}
             aria-label="Toggle screener mode"
             title="Screen membership: which built-in screens this stock qualifies under"
-            className={`rounded border px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wide transition-colors ${
+            className={`rounded border px-2 py-0.5 ot-type-label-compact font-semibold uppercase tracking-wide transition-colors ${
               screener
                 ? "border-terminal-accent bg-terminal-accent text-terminal-bg"
                 : "border-terminal-border text-terminal-muted hover:border-terminal-accent hover:text-terminal-accent"
@@ -110,7 +110,7 @@ export function AgentConsole() {
           {contextSymbol ? (
             <span
               title={`Default subject: ${contextSymbol} (the stock you have open)`}
-              className="rounded border border-terminal-accent/50 px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wide text-terminal-accent"
+              className="rounded border border-terminal-accent/50 px-1.5 py-0.5 ot-type-label-compact font-semibold uppercase tracking-wide text-terminal-accent"
             >
               ▦ {contextSymbol}
             </span>
@@ -118,7 +118,7 @@ export function AgentConsole() {
           {modelLabel ? (
             <span
               title="Model handling this request"
-              className="rounded border border-terminal-border px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wide text-terminal-muted"
+              className="rounded border border-terminal-border px-1.5 py-0.5 ot-type-label-compact font-semibold uppercase tracking-wide text-terminal-muted"
             >
               {modelLabel}
             </span>

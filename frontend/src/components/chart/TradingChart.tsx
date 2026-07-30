@@ -22,7 +22,7 @@ import {
 
 import type { ChartPoint, CorporateEvent, IndicatorResponse, PitFundamentalsResponse } from "../../types";
 import type { DrawMode } from "./DrawingTools";
-import { terminalChartTheme } from "../../shared/chart/chartTheme";
+import { chartThemeWithTextSize, resolveChartAxisFontSize } from "../../shared/chart/chartTheme";
 import { useIndicators } from "../../shared/chart/useIndicators";
 import {
   isValidChartSize,
@@ -50,6 +50,7 @@ import {
   buildEnhancedVolumeBar,
 } from "../../shared/chart/candlePresentation";
 import { canApplyTailUpdate } from "../../shared/chart/chartUtils";
+import { useSettingsStore } from "../../store/settingsStore";
 import { terminalColors, terminalOverlayPalette } from "../../theme/terminal";
 import type { Bar } from "oakscriptjs";
 import { useQuotesStore, useQuotesStream, type QuoteTick } from "../../realtime/useQuotesStream";
@@ -493,6 +494,7 @@ export function TradingChart({
   onRequestCreateAlert,
   onAddToPortfolio,
 }: Props) {
+  const chartTextSize = useSettingsStore((s) => s.chartTextSize);
   const chartRef = useRef<HTMLDivElement | null>(null);
   const apiRef = useRef<IChartApi | null>(null);
   const candleRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
@@ -1292,7 +1294,7 @@ export function TradingChart({
       }
 
       chart = createChart(chartRef.current, {
-      ...terminalChartTheme,
+      ...chartThemeWithTextSize(chartTextSize),
       width: size.width,
       height: size.height,
       leftPriceScale: {
@@ -1748,6 +1750,12 @@ export function TradingChart({
       },
     });
   }, [mainPriceScaleId, resolvedPriceScaleMode]);
+
+  useEffect(() => {
+    apiRef.current?.applyOptions({
+      layout: { fontSize: resolveChartAxisFontSize(chartTextSize) },
+    });
+  }, [chartTextSize]);
 
   useEffect(() => {
     const chart = apiRef.current;

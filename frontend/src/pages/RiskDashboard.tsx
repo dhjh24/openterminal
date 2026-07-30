@@ -271,25 +271,25 @@ export function RiskDashboardPage() {
       <div className="flex flex-wrap items-center justify-between gap-3 rounded border border-terminal-border bg-terminal-panel p-3">
         <div>
           <div className="text-sm font-semibold uppercase text-terminal-accent">RISK ENGINE CONTROL</div>
-          <div className="text-[10px] uppercase text-terminal-muted">Multi-factor risk attribution & attribution analytics</div>
+          <div className="ot-type-label-compact uppercase text-terminal-muted">Multi-factor risk attribution & attribution analytics</div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex rounded border border-terminal-border bg-terminal-bg p-0.5">
             <button
-              className={`px-3 py-1 text-[10px] font-bold rounded-sm transition-colors ${tab === "overview" ? "bg-terminal-accent text-terminal-bg" : "text-terminal-muted hover:text-terminal-text"}`}
+              className={`px-3 py-1 ot-type-label-compact font-bold rounded-sm transition-colors ${tab === "overview" ? "bg-terminal-accent text-terminal-bg" : "text-terminal-muted hover:text-terminal-text"}`}
               onClick={() => setTab("overview")}
             >
               OVERVIEW
             </button>
             <button
-              className={`px-3 py-1 text-[10px] font-bold rounded-sm transition-colors ${tab === "factors" ? "bg-terminal-accent text-terminal-bg" : "text-terminal-muted hover:text-terminal-text"}`}
+              className={`px-3 py-1 ot-type-label-compact font-bold rounded-sm transition-colors ${tab === "factors" ? "bg-terminal-accent text-terminal-bg" : "text-terminal-muted hover:text-terminal-text"}`}
               onClick={() => setTab("factors")}
             >
               FACTOR ATTRIBUTION
             </button>
             <button
-              className={`px-3 py-1 text-[10px] font-bold rounded-sm transition-colors ${tab === "stress" ? "bg-terminal-accent text-terminal-bg" : "text-terminal-muted hover:text-terminal-text"}`}
+              className={`px-3 py-1 ot-type-label-compact font-bold rounded-sm transition-colors ${tab === "stress" ? "bg-terminal-accent text-terminal-bg" : "text-terminal-muted hover:text-terminal-text"}`}
               onClick={() => setTab("stress")}
             >
               STRESS TEST
@@ -299,13 +299,13 @@ export function RiskDashboardPage() {
           {tab === "overview" ? (
             <div className="flex rounded border border-terminal-border bg-terminal-bg p-0.5">
               <button
-                className={`px-3 py-1 text-[10px] font-bold rounded-sm transition-colors ${mode === "portfolio" ? "bg-terminal-accent text-terminal-bg" : "text-terminal-muted hover:text-terminal-text"}`}
+                className={`px-3 py-1 ot-type-label-compact font-bold rounded-sm transition-colors ${mode === "portfolio" ? "bg-terminal-accent text-terminal-bg" : "text-terminal-muted hover:text-terminal-text"}`}
                 onClick={() => setMode("portfolio")}
               >
                 PORTFOLIO
               </button>
               <button
-                className={`px-3 py-1 text-[10px] font-bold rounded-sm transition-colors ${mode === "ticker" ? "bg-terminal-accent text-terminal-bg" : "text-terminal-muted hover:text-terminal-text"}`}
+                className={`px-3 py-1 ot-type-label-compact font-bold rounded-sm transition-colors ${mode === "ticker" ? "bg-terminal-accent text-terminal-bg" : "text-terminal-muted hover:text-terminal-text"}`}
                 onClick={() => setMode("ticker")}
               >
                 TICKER: {storeTicker}
@@ -318,7 +318,7 @@ export function RiskDashboardPage() {
               {PERIODS.map((period) => (
                 <button
                   key={period}
-                  className={`px-3 py-1 text-[10px] font-bold rounded-sm transition-colors ${factorPeriod === period ? "bg-terminal-accent text-terminal-bg" : "text-terminal-muted hover:text-terminal-text"}`}
+                  className={`px-3 py-1 ot-type-label-compact font-bold rounded-sm transition-colors ${factorPeriod === period ? "bg-terminal-accent text-terminal-bg" : "text-terminal-muted hover:text-terminal-text"}`}
                   onClick={() => setFactorPeriod(period)}
                 >
                   {period}
@@ -363,21 +363,21 @@ export function RiskDashboardPage() {
               <div className="space-y-4 p-1 text-xs">
                 <div className="grid grid-cols-2 gap-2">
                   <div className="rounded border border-terminal-border/50 bg-terminal-bg p-2">
-                    <div className="mb-1 text-[10px] text-terminal-muted">EWMA VOLATILITY</div>
+                    <div className="mb-1 ot-type-label-compact text-terminal-muted">EWMA VOLATILITY</div>
                     <div className="text-lg font-bold text-terminal-pos">{(Number(summary?.ewma_vol || 0) * 100).toFixed(2)}%</div>
                   </div>
                   <div className="rounded border border-terminal-border/50 bg-terminal-bg p-2">
-                    <div className="mb-1 text-[10px] text-terminal-muted">SYSTEMATIC BETA</div>
+                    <div className="mb-1 ot-type-label-compact text-terminal-muted">SYSTEMATIC BETA</div>
                     <div className="text-lg font-bold text-terminal-accent">{Number(summary?.beta || 0).toFixed(2)}</div>
                   </div>
                 </div>
 
                 <div>
-                  <div className="mb-2 border-b border-terminal-border pb-1 text-[10px] font-bold uppercase text-terminal-accent">Marginal Contribution to Risk (MCTR)</div>
+                  <div className="mb-2 border-b border-terminal-border pb-1 ot-type-label-compact font-bold uppercase text-terminal-accent">Marginal Contribution to Risk (MCTR)</div>
                   <div className="max-h-48 space-y-1 overflow-y-auto pr-1">
                     {Object.entries(summary?.marginal_contribution || {}).map(([asset, val]) => (
                       <div key={asset} className="flex items-center justify-between border-b border-terminal-border/20 py-1">
-                        <span className="font-bold text-[10px]">{asset}</span>
+                        <span className="font-bold ot-type-label-compact">{asset}</span>
                         <div className="flex items-center gap-2">
                           <div className="h-1 w-20 overflow-hidden rounded-full bg-terminal-border">
                             <div className="h-full bg-terminal-accent" style={{ width: `${Math.min(100, Number(val) * 1000)}%` }} />
@@ -448,7 +448,7 @@ export function RiskDashboardPage() {
 
           <TerminalPanel title="CORRELATION DYNAMICS" subtitle="Rolling pairwise correlation matrix (60D window)">
             <div className="overflow-x-auto p-1">
-              <table className="w-full border-collapse text-right text-[10px]">
+              <table className="w-full border-collapse text-right ot-type-label-compact">
                 <thead>
                   <tr>
                     <th className="border border-terminal-border bg-terminal-panel p-2 text-left font-bold uppercase tracking-wider">ASSET</th>
@@ -512,7 +512,7 @@ export function RiskDashboardPage() {
 
             <TerminalPanel title="STYLE BOX" subtitle="Size vs value positioning">
               <div className="space-y-3">
-                <div className="grid grid-cols-3 gap-2 text-center text-[10px]" data-testid="factor-style-box">
+                <div className="grid grid-cols-3 gap-2 text-center ot-type-label-compact" data-testid="factor-style-box">
                   {["Small", "Mid", "Large"].map((row) =>
                     ["Value", "Blend", "Growth"].map((column) => {
                       const active = styleBox.row === row && styleBox.column === column;
@@ -571,23 +571,23 @@ export function RiskDashboardPage() {
             <TerminalPanel title="FACTOR SNAPSHOT" subtitle="Contribution and model fit" className="xl:col-span-2">
               <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-1">
                 <div className="rounded border border-terminal-border bg-terminal-bg p-2">
-                  <div className="text-[10px] uppercase text-terminal-muted">Total Return</div>
+                  <div className="ot-type-label-compact uppercase text-terminal-muted">Total Return</div>
                   <div className={`mt-1 text-lg font-bold ${Number(factorAttribution?.total_return || 0) >= 0 ? "text-terminal-pos" : "text-terminal-neg"}`}>
                     {fmtPct(factorAttribution?.total_return || 0)}
                   </div>
                 </div>
                 <div className="rounded border border-terminal-border bg-terminal-bg p-2">
-                  <div className="text-[10px] uppercase text-terminal-muted">Alpha</div>
+                  <div className="ot-type-label-compact uppercase text-terminal-muted">Alpha</div>
                   <div className={`mt-1 text-lg font-bold ${Number(factorAttribution?.alpha || 0) >= 0 ? "text-terminal-pos" : "text-terminal-neg"}`}>
                     {fmtPct(factorAttribution?.alpha || 0)}
                   </div>
                 </div>
                 <div className="rounded border border-terminal-border bg-terminal-bg p-2">
-                  <div className="text-[10px] uppercase text-terminal-muted">R-Squared</div>
+                  <div className="ot-type-label-compact uppercase text-terminal-muted">R-Squared</div>
                   <div className="mt-1 text-lg font-bold text-terminal-accent">{(Number(factorAttribution?.r_squared || 0) * 100).toFixed(1)}%</div>
                 </div>
                 <div className="rounded border border-terminal-border bg-terminal-bg p-2">
-                  <div className="text-[10px] uppercase text-terminal-muted">Market Factor Return</div>
+                  <div className="ot-type-label-compact uppercase text-terminal-muted">Market Factor Return</div>
                   <div className="mt-1 text-lg font-bold text-terminal-text">
                     {fmtPct((factorReturns?.factors?.market || []).reduce((sum: number, row: { return: number }) => sum + Number(row.return || 0), 0), 2)}
                   </div>

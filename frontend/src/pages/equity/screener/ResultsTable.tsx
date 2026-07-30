@@ -6,6 +6,8 @@ import { addWatchlistItem } from "../../../api/client";
 import { useAgentStore } from "../../../agent/agentStore";
 import { ExportButton } from "../../../components/common/ExportButton";
 import { DataGrid } from "../../../components/common/DataGrid";
+import { ChangeValue } from "../../../components/terminal/ChangeValue";
+import { NumericValue } from "../../../components/terminal/NumericValue";
 import { TerminalPanel } from "../../../components/terminal/TerminalPanel";
 import { useStockStore } from "../../../store/stockStore";
 import { InlineBar } from "./InlineBar";
@@ -180,12 +182,14 @@ function MarketMetricsCell({ row }: { row: Record<string, unknown> }) {
     <div className="min-w-[210px] font-sans">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <div className="text-sm font-semibold text-terminal-text">{formatPrice(price)}</div>
-          <div className="mt-1 text-[10px] uppercase text-terminal-muted">{trendLabel(move, position)}</div>
+          <div className="text-sm font-semibold text-terminal-text">
+            <NumericValue value={price || undefined} kind="price" />
+          </div>
+          <div className="mt-1 ot-type-label-compact uppercase text-terminal-muted">{trendLabel(move, position)}</div>
         </div>
-        <div className={`inline-flex shrink-0 items-center gap-1 rounded-sm border px-1.5 py-0.5 text-[11px] ${move >= 0 ? "border-terminal-pos/30 bg-terminal-pos/10 text-terminal-pos" : "border-terminal-neg/30 bg-terminal-neg/10 text-terminal-neg"}`}>
+        <div className={`inline-flex shrink-0 items-center gap-1 rounded-sm border px-1.5 py-0.5 ot-type-ui ${move >= 0 ? "border-terminal-pos/30 bg-terminal-pos/10 text-terminal-pos" : "border-terminal-neg/30 bg-terminal-neg/10 text-terminal-neg"}`}>
           <MoveIcon className="h-3 w-3" aria-hidden="true" />
-          {move ? formatPct(move) : "--"}
+          {move ? <ChangeValue value={move} decimals={1} showArrow={false} /> : "--"}
         </div>
       </div>
       <div className="mt-2 flex items-center gap-3">
@@ -193,7 +197,7 @@ function MarketMetricsCell({ row }: { row: Record<string, unknown> }) {
           <SparklineCell values={values} />
         </div>
         <div className="min-w-[68px] flex-1">
-          <div className="mb-1 flex justify-between text-[10px] text-terminal-muted">
+          <div className="mb-1 flex justify-between ot-type-label-compact text-terminal-muted">
             <span>52W</span>
             <span className={tone}>{position ? `${position.toFixed(0)}%` : "--"}</span>
           </div>
@@ -476,7 +480,6 @@ export function ResultsTable({ framed = true }: ResultsTableProps) {
           </div>
         )}
         className="max-h-[64vh] xl:max-h-[68vh]"
-        tableClassName="text-[11px]"
         columns={[
           {
             key: "company",
@@ -487,7 +490,7 @@ export function ResultsTable({ framed = true }: ResultsTableProps) {
             renderCell: (row) => (
               <div className="min-w-0">
                 <div className="flex min-w-0 items-center gap-2">
-                  <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-sm border border-terminal-border bg-terminal-bg font-sans text-[10px] font-semibold text-terminal-accent">
+                  <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-sm border border-terminal-border bg-terminal-bg font-sans ot-type-label-compact font-semibold text-terminal-accent">
                     {(getTicker(row) || "?").slice(0, 2)}
                   </span>
                   <div className="min-w-0">
@@ -537,7 +540,7 @@ export function ResultsTable({ framed = true }: ResultsTableProps) {
                 <span className="block max-w-[360px] truncate font-sans text-xs text-terminal-text" title={whyRanked(row)}>{whyRanked(row)}</span>
                 <div className="mt-1 flex flex-wrap gap-1">
                   {factorChips(row).slice(0, 3).map((chip) => (
-                    <span key={`${getTicker(row)}-${chip}`} className="rounded-full border border-terminal-border bg-terminal-bg px-2 py-0.5 font-sans text-[10px] text-terminal-muted">{chip}</span>
+                    <span key={`${getTicker(row)}-${chip}`} className="rounded-full border border-terminal-border bg-terminal-bg px-2 py-0.5 font-sans ot-type-label-compact text-terminal-muted">{chip}</span>
                   ))}
                 </div>
               </div>
@@ -590,7 +593,7 @@ export function ResultsTable({ framed = true }: ResultsTableProps) {
                   <div className={move >= 0 ? "text-sm font-semibold text-terminal-pos" : "text-sm font-semibold text-terminal-neg"}>
                     {move ? formatPct(move) : "--"}
                   </div>
-                  <div className="mt-1 text-[10px] uppercase text-terminal-muted">1Y bias</div>
+                  <div className="mt-1 ot-type-label-compact uppercase text-terminal-muted">1Y bias</div>
                 </div>
               );
             },

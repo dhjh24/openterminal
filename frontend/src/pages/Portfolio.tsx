@@ -564,7 +564,7 @@ export function PortfolioPage() {
           <TerminalButton size="sm" variant={portfolioView === "legacy" ? "accent" : "default"} onClick={() => switchPortfolioView("legacy")}>
             Legacy View
           </TerminalButton>
-          <Link className="inline-flex min-h-8 items-center justify-center rounded-sm border border-terminal-border px-2 py-1 text-[10px] uppercase tracking-wide text-terminal-muted transition-colors hover:text-terminal-text" to="/equity/portfolio/lab">
+          <Link className="inline-flex min-h-8 items-center justify-center rounded-sm border border-terminal-border px-2 py-1 ot-type-label-compact uppercase tracking-wide text-terminal-muted transition-colors hover:text-terminal-text" to="/equity/portfolio/lab">
             Open Portfolio Lab
           </Link>
         </div>
@@ -627,7 +627,7 @@ export function PortfolioPage() {
                         <div className="text-xs text-terminal-text">
                           {item.scheme_code} | {item.scheme_name}
                         </div>
-                        <div className="text-[10px] text-terminal-muted">
+                        <div className="ot-type-label-compact text-terminal-muted">
                           {item.fund_house || "Unknown Fund House"} | {item.scheme_sub_category || item.scheme_category || "Other"}
                         </div>
                       </button>
@@ -893,7 +893,7 @@ export function PortfolioPage() {
           {MOMENTUM_ROTATION_BASKET.map((symbol) => (
             <TerminalButton
               key={symbol}
-              className={`px-1.5 py-0.5 text-[10px] normal-case tracking-normal ${
+              className={`px-1.5 py-0.5 ot-type-label-compact normal-case tracking-normal ${
                 ticker === symbol
                   ? "border-terminal-accent bg-terminal-accent/20 text-terminal-accent"
                   : "border-terminal-border text-terminal-muted hover:text-terminal-text"
@@ -913,37 +913,37 @@ export function PortfolioPage() {
           <TerminalPanel title="Portfolio Summary" subtitle="Value, returns, win rate, and holding age">
             <div className="grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-6">
               <div className="rounded border border-terminal-accent/50 bg-terminal-bg px-3 py-2">
-                <div className="text-[10px] uppercase tracking-wide text-terminal-muted">Portfolio Value</div>
+                <div className="ot-type-label-compact uppercase tracking-wide text-terminal-muted">Portfolio Value</div>
                 <div className="mt-1 text-sm font-semibold leading-none text-terminal-text md:text-base [font-variant-numeric:tabular-nums]">
                   {formatInr(totalValue)}
                 </div>
               </div>
               <div className="rounded border border-terminal-border/80 bg-terminal-bg px-3 py-2">
-                <div className="text-[10px] uppercase tracking-wide text-terminal-muted">Invested</div>
+                <div className="ot-type-label-compact uppercase tracking-wide text-terminal-muted">Invested</div>
                 <div className="mt-1 text-sm font-semibold leading-none text-terminal-text md:text-base [font-variant-numeric:tabular-nums]">
                   {formatInr(totalCost)}
                 </div>
               </div>
               <div className={`rounded border bg-terminal-bg px-3 py-2 ${overallPnl >= 0 ? "border-terminal-pos/60" : "border-terminal-neg/60"}`}>
-                <div className="text-[10px] uppercase tracking-wide text-terminal-muted">Unrealized P&L</div>
+                <div className="ot-type-label-compact uppercase tracking-wide text-terminal-muted">Unrealized P&L</div>
                 <div className={`mt-1 text-sm font-semibold leading-none md:text-base [font-variant-numeric:tabular-nums] ${performanceToneClass}`}>
                   {formatInr(overallPnl)}
                 </div>
               </div>
               <div className={`rounded border bg-terminal-bg px-3 py-2 ${lifetimePct >= 0 ? "border-terminal-pos/60" : "border-terminal-neg/60"}`}>
-                <div className="text-[10px] uppercase tracking-wide text-terminal-muted">Total Return</div>
+                <div className="ot-type-label-compact uppercase tracking-wide text-terminal-muted">Total Return</div>
                 <div className={`mt-1 text-sm font-semibold leading-none md:text-base [font-variant-numeric:tabular-nums] ${performanceToneClass}`}>
                   {formatPctValue(lifetimePct)}
                 </div>
               </div>
               <div className="rounded border border-terminal-border/80 bg-terminal-bg px-3 py-2">
-                <div className="text-[10px] uppercase tracking-wide text-terminal-muted">Win Rate</div>
+                <div className="ot-type-label-compact uppercase tracking-wide text-terminal-muted">Win Rate</div>
                 <div className="mt-1 text-sm font-semibold leading-none text-terminal-text md:text-base [font-variant-numeric:tabular-nums]">
                   {holdingsCount > 0 ? formatPctValue((winnersCount / holdingsCount) * 100) : "-"}
                 </div>
               </div>
               <div className="rounded border border-terminal-border/80 bg-terminal-bg px-3 py-2">
-                <div className="text-[10px] uppercase tracking-wide text-terminal-muted">Avg Days Held</div>
+                <div className="ot-type-label-compact uppercase tracking-wide text-terminal-muted">Avg Days Held</div>
                 <div className="mt-1 text-sm font-semibold leading-none text-terminal-text md:text-base [font-variant-numeric:tabular-nums]">
                   {avgHoldingDays || 0}
                 </div>

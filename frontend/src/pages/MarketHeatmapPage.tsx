@@ -158,10 +158,12 @@ export function MarketHeatmapPage() {
   );
   const visibleGroups = useMemo(() => {
     if (activeGroup) {
+      const children = activeGroup.children ?? [];
       return [
         {
           ...activeGroup,
-          value: activeGroup.children.reduce((sum, child) => sum + Number(child.value || 0), 0),
+          children,
+          value: children.reduce((sum, child) => sum + Number(child.value || 0), 0),
         },
       ];
     }
@@ -169,6 +171,7 @@ export function MarketHeatmapPage() {
   }, [activeGroup, query.data?.groups]);
   const layout = useMemo(() => buildTreemap(visibleGroups, size.width, size.height), [visibleGroups, size.height, size.width]);
   const isMobile = size.width < 768;
+  const constituentCount = query.data?.data?.length ?? 0;
 
   return (
     <div className="space-y-4">
@@ -407,7 +410,7 @@ export function MarketHeatmapPage() {
             <TerminalPanel title="Universe Snapshot" bodyClassName="space-y-2 text-xs">
               <div className="flex items-center justify-between">
                 <span className="text-terminal-muted">Constituents</span>
-                <span className="text-terminal-text">{query.data?.data.length ?? 0}</span>
+                <span className="text-terminal-text">{constituentCount}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-terminal-muted">Grouping</span>

@@ -13,6 +13,8 @@ import { useQuotesStream, useQuotesStore } from "../../realtime/useQuotesStream"
 import { useSettingsStore } from "../../store/settingsStore";
 import { useDisplayCurrency } from "../../hooks/useDisplayCurrency";
 import { ExportButton } from "../common/ExportButton";
+import { ChangeValue } from "../terminal/ChangeValue";
+import { NumericValue } from "../terminal/NumericValue";
 import { TerminalButton } from "../terminal/TerminalButton";
 import { TerminalInput } from "../terminal/TerminalInput";
 import { TerminalCombobox } from "../terminal/TerminalCombobox";
@@ -235,7 +237,7 @@ export function WatchlistManager() {
                 aria-pressed={activeWlId === wl.id}
               >
                 <span className="text-xs font-bold uppercase">{wl.name}</span>
-                <span className="text-[9px] opacity-60">{wl.symbols.length} items</span>
+                <span className="ot-type-label-compact opacity-60">{wl.symbols.length} items</span>
               </button>
               <button
                 onClick={(e) => { e.stopPropagation(); if(confirm('Delete?')) deleteMut.mutate(wl.id); }}
@@ -257,10 +259,10 @@ export function WatchlistManager() {
             {activeWl && (
               <>
                 <h1 className="text-sm font-bold uppercase text-terminal-accent">{activeWl.name}</h1>
-                <div className="rounded border border-terminal-border bg-terminal-bg px-2 py-0.5 text-[10px] uppercase text-terminal-muted" data-testid="watchlist-route-status">
+                <div className="rounded border border-terminal-border bg-terminal-bg px-2 py-0.5 ot-type-status uppercase text-terminal-muted" data-testid="watchlist-route-status">
                   {selectedMarket} {connectionState}
                 </div>
-                <div className="rounded border border-terminal-border bg-terminal-bg px-2 py-0.5 text-[10px] uppercase text-terminal-muted">
+                <div className="rounded border border-terminal-border bg-terminal-bg px-2 py-0.5 ot-type-status uppercase text-terminal-muted">
                   {activeWl.symbols.length} symbols
                 </div>
                 <div className="flex rounded border border-terminal-border p-0.5 bg-terminal-bg">
@@ -344,8 +346,8 @@ export function WatchlistManager() {
             ) : activeWl ? (
               viewMode === "table" ? (
                 <div className="overflow-x-auto rounded border border-terminal-border">
-                  <table className="w-full text-left text-xs font-mono">
-                    <thead className="bg-terminal-panel text-terminal-muted border-b border-terminal-border">
+                  <table className="w-full text-left ot-type-table-cell">
+                    <thead className="bg-terminal-panel ot-type-table-header text-terminal-muted border-b border-terminal-border">
                       <tr>
                         <th className="px-3 py-2">SYMBOL</th>
                         <th className="px-3 py-2 text-right">LTP</th>
@@ -382,11 +384,15 @@ export function WatchlistManager() {
                             }}
                           >
                             <td className="px-3 py-2 font-bold text-terminal-accent">{s}</td>
-                            <td className="px-3 py-2 text-right text-terminal-text">{live?.ltp?.toFixed(2) || '--'}</td>
-                            <td className={`px-3 py-2 text-right ${changePct >= 0 ? 'text-terminal-pos' : 'text-terminal-neg'}`}>
-                              {changePct >= 0 ? '+' : ''}{changePct.toFixed(2)}%
+                            <td className="px-3 py-2 text-right">
+                              <NumericValue value={live?.ltp} kind="price" />
                             </td>
-                            <td className="px-3 py-2 text-right text-terminal-muted">{live?.volume?.toLocaleString() || '--'}</td>
+                            <td className="px-3 py-2 text-right">
+                              <ChangeValue value={changePct} decimals={2} showArrow={false} />
+                            </td>
+                            <td className="px-3 py-2 text-right text-terminal-muted">
+                              <NumericValue value={live?.volume ?? undefined} kind="volume" />
+                            </td>
                             <td className="px-3 py-2 text-center">
                               <button
                                 type="button"

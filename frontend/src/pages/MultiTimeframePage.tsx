@@ -21,7 +21,7 @@ import {
 import { isValidChartSize, readValidContainerSize, safeDestroyChart } from "../shared/chart/safeChartCleanup";
 import { fetchChart } from "../api/client";
 import { TickerDropdown } from "../components/chart-workstation/TickerDropdown";
-import { terminalChartTheme } from "../shared/chart/chartTheme";
+import { chartThemeWithTextSize, resolveChartAxisFontSize } from "../shared/chart/chartTheme";
 import { useSettingsStore } from "../store/settingsStore";
 import { useStockStore } from "../store/stockStore";
 import { terminalColors } from "../theme/terminal";
@@ -288,6 +288,7 @@ function MtaChartPanel({
   onChartModeChange,
   onIndicatorPeriodChange,
 }: MtaChartPanelProps) {
+  const chartTextSize = useSettingsStore((s) => s.chartTextSize);
   const hostRef = useRef<HTMLDivElement | null>(null);
   const chartApiRef = useRef<IChartApi | null>(null);
   const candleSeriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
@@ -339,10 +340,11 @@ function MtaChartPanel({
       const size = readValidContainerSize(hostRef.current, 320);
       if (!size) return;
 
+      const baseTheme = chartThemeWithTextSize(chartTextSize);
       chart = createChart(hostRef.current, {
-      ...terminalChartTheme,
+      ...baseTheme,
       layout: {
-        ...terminalChartTheme.layout,
+        ...baseTheme.layout,
         background: {
           type: ColorType.Solid,
           color: terminalColors.panel,
@@ -355,7 +357,7 @@ function MtaChartPanel({
         horzLines: { color: "rgba(45, 55, 69, 0.35)" },
       },
       timeScale: {
-        ...terminalChartTheme.timeScale,
+        ...baseTheme.timeScale,
         rightOffset: 4,
         barSpacing: 8,
       },
@@ -444,6 +446,12 @@ function MtaChartPanel({
     candleSeriesRef.current?.applyOptions({ visible: chartMode === "candles" });
     lineSeriesRef.current?.applyOptions({ visible: chartMode === "line" });
   }, [chartMode]);
+
+  useEffect(() => {
+    chartApiRef.current?.applyOptions({
+      layout: { fontSize: resolveChartAxisFontSize(chartTextSize) },
+    });
+  }, [chartTextSize]);
 
   useEffect(() => {
     candleSeriesRef.current?.setData(chartData);

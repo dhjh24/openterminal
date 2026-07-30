@@ -110,15 +110,15 @@ export function IconRail() {
               ].join(" ")
             }
           >
-            <span className="ot-type-label text-[9px] leading-none">{item.glyph}</span>
-            <span className="text-[9px] leading-tight">{item.label}</span>
+            <span className="ot-type-label-compact leading-none">{item.glyph}</span>
+            <span className="ot-type-label-compact leading-tight">{item.label}</span>
           </NavLink>
         ))}
       </nav>
       <div className="border-t border-terminal-border p-2 space-y-2">
         <button
           type="button"
-          className="w-full rounded-sm border border-terminal-border px-1 py-1 text-[9px] uppercase tracking-[0.08em] text-terminal-muted hover:border-terminal-accent hover:text-terminal-accent"
+          className="w-full rounded-sm border border-terminal-border px-1 py-1 ot-type-label-compact text-terminal-muted hover:border-terminal-accent hover:text-terminal-accent"
           onClick={() => {
             window.dispatchEvent(
               new KeyboardEvent("keydown", { key: "k", ctrlKey: true }),
@@ -132,11 +132,12 @@ export function IconRail() {
           className="flex w-full flex-col items-center gap-1 rounded-sm border border-transparent px-1 py-1.5 text-terminal-muted hover:border-terminal-border hover:text-terminal-text"
           onClick={() => navigate("/account")}
           title={user ? `${user.email} (${user.role})` : "Not signed in"}
+          aria-label={user ? `Account ${user.email}` : "Sign in"}
         >
-          <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-terminal-border text-[9px] font-medium text-terminal-accent">
+          <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-terminal-border ot-type-label-compact font-medium text-terminal-accent">
             {user ? initials : "?"}
           </span>
-          <span className="text-[8px] leading-tight truncate w-full text-center uppercase">
+          <span className="ot-type-label-compact leading-tight truncate w-full text-center">
             {user ? user.role : "Sign in"}
           </span>
         </button>
