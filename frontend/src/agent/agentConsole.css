@@ -35,3 +35,9 @@
   padding: var(--ot-space-2) var(--ot-space-3);
   cursor: pointer;
 }
+
+@media (max-width: 767px) {
+  .ot-agent-launcher {
+    display: none;
+  }
+}

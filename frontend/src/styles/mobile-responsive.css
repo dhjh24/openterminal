@@ -1,6 +1,8 @@
 /* ==========================================================================
    Mobile Responsive Overrides
-   Phase 2: Global responsive containment + Phase 3: iPhone safe areas
+   Phase 2: Global responsive containment
+   Phase 3: iPhone safe areas
+   Phase 10: Mobile typography
    ========================================================================== */
 
 /* --- Phase 2: Global containment --- */
@@ -54,18 +56,57 @@ nav.fixed.bottom-0 {
   padding-bottom: max(0.25rem, env(safe-area-inset-bottom, 0px)) !important;
 }
 
-/* Agent launcher — offset above bottom nav */
-@media (max-width: 767px) {
-  .ot-agent-launcher {
-    bottom: calc(var(--ot-space-4, 16px) + 64px) !important;
-  }
-}
-
 /* Status bar safe area */
 .ot-status-bar {
   padding-top: env(safe-area-inset-top, 0px);
   padding-left: env(safe-area-inset-left, 0px);
   padding-right: env(safe-area-inset-right, 0px);
+}
+
+/* --- Phase 10: Mobile typography --- */
+
+/* Prevent iOS zoom on form fields — 16px minimum */
+@media (max-width: 767px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+
+  /* Base body size floor */
+  body {
+    font-size: 14px;
+  }
+
+  /* Ensure muted text retains contrast on dark background */
+  .text-terminal-muted,
+  [class*="text-terminal-muted"] {
+    color: #9aa5b5;
+  }
+
+  /* Bottom nav labels: readable size, moderate tracking */
+  nav.fixed.bottom-0 .text-\[11px\] {
+    font-size: 11px;
+    letter-spacing: 0.06em;
+  }
+
+  /* Allow descriptions and long email to wrap */
+  .text-terminal-muted,
+  .ot-home-widget-card-kicker,
+  .ot-home-widget-ring-summary,
+  .ot-home-widget-nav-description {
+    overflow-wrap: break-word;
+    word-break: break-word;
+  }
+
+  /* Prices and clocks: tabular monospace is already set via existing CSS */
+  /* Ensure it applies even when inherited */
+  .ot-home-widget-clock-value,
+  .ot-home-widget-strip-value,
+  .ot-home-widget-strip-change,
+  .ot-type-data {
+    font-variant-numeric: tabular-nums !important;
+  }
 }
 
 /* --- Mobile page padding --- */
@@ -98,11 +139,6 @@ nav.fixed.bottom-0 {
   .ot-home-widget-strip {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
-  }
-
-  /* Bottom nav: 5 items + More fits better than 6 cramped columns */
-  nav.fixed.bottom-0 .ot-bottom-nav-grid {
-    grid-template-columns: repeat(5, 1fr) !important;
   }
 }
 
