@@ -14,6 +14,7 @@ import {
 import type { Bar } from "oakscriptjs";
 
 import { terminalChartTheme } from "./chartTheme";
+import { isValidChartSize, readValidContainerSize, safeDestroyChart } from "./safeChartCleanup";
 import { useIndicators } from "./useIndicators";
 import { useRealtimeChart } from "./useRealtimeChart";
 import type { ChartEngineProps } from "./types";
@@ -273,159 +274,10 @@ export function ChartEngine({
 
   useEffect(() => {
     if (!hostRef.current || chartRef.current) return;
-    const chart = createChart(hostRef.current, {
-      ...terminalChartTheme,
-      width: hostRef.current.clientWidth,
-      height,
-    });
-
-    const candles = chart.addSeries(
-      CandlestickSeries,
-      {
-        upColor: isFootprintMode ? "transparent" : terminalColors.candleUp,
-        downColor: isFootprintMode ? "transparent" : terminalColors.candleDown,
-        borderVisible: !isFootprintMode,
-        wickUpColor: isFootprintMode ? "transparent" : terminalColors.candleUp,
-        wickDownColor: isFootprintMode ? "transparent" : terminalColors.candleDown,
-        visible:
-          isFootprintMode ||
-          chartTypeId === "candle" ||
-          chartTypeId === "renko" ||
-          chartTypeId === "kagi" ||
-          chartTypeId === "point_figure" ||
-          chartTypeId === "line_break",
-      },
-      0,
-    );
-    const line = chart.addSeries(LineSeries, { color: terminalColors.accent, lineWidth: 2, visible: chartTypeId === "line" }, 0);
-    const area = chart.addSeries(
-      AreaSeries,
-      { lineColor: terminalColors.accent, topColor: terminalColors.accentAreaTop, bottomColor: terminalColors.accentAreaBottom, visible: chartTypeId === "area" },
-      0,
-    );
-    const baseline = chart.addSeries(
-      BaselineSeries,
-      {
-        visible: chartTypeId === "baseline",
-        topLineColor: terminalColors.candleUp,
-        bottomLineColor: terminalColors.candleDown,
-        topFillColor1: terminalColors.candleUpFillStrong,
-        topFillColor2: terminalColors.candleUpFillSoft,
-        bottomFillColor1: terminalColors.candleDownFillStrong,
-        bottomFillColor2: terminalColors.candleDownFillSoft,
-      },
-      0,
-    );
-    const volume = chart.addSeries(
-      HistogramSeries,
-      {
-        priceFormat: { type: "volume" },
-        color: terminalColors.candleUpAlpha80,
-        visible: showVolume && !isFootprintMode,
-      },
-      1,
-    );
-    const delivery = chart.addSeries(
-      LineSeries,
-      {
-        color: terminalColors.info,
-        lineWidth: 2,
-        visible: showDeliveryOverlay && !isFootprintMode,
-        priceScaleId: "delivery-scale",
-      },
-      0,
-    );
-    chart.priceScale("delivery-scale").applyOptions({
-      borderVisible: false,
-      scaleMargins: { top: 0.7, bottom: 0.12 },
-    });
-
-    const sessionShading = chart.addSeries(HistogramSeries, {
-      priceScaleId: "",
-      visible: !isFootprintMode,
-      lastValueVisible: false,
-      priceLineVisible: false,
-    });
-    chart.priceScale("").applyOptions({
-      scaleMargins: { top: 0, bottom: 0 },
-    });
-
-    // Keep price action dominant and volume compact.
-    chart.panes()[0]?.setStretchFactor(8);
-    chart.panes()[1]?.setStretchFactor(2);
-
-    let oi: ISeriesApi<"Area", Time> | null = null;
-    if (symbolIsFnO) {
-      oi = chart.addSeries(
-        AreaSeries,
-        {
-          topColor: "rgba(245,124,32,0.2)",
-          bottomColor: "rgba(245,124,32,0.01)",
-          lineColor: terminalColors.accentAlt,
-          lineWidth: 1,
-          priceScaleId: "oi-scale",
-        },
-        0,
-      );
-      chart.priceScale("oi-scale").applyOptions({
-        scaleMargins: { top: 0.7, bottom: 0 },
-        borderVisible: false,
-      });
-    }
-
-      seriesRef.current = { candles, line, area, baseline, volume, oi, delivery, sessionShading };
-    chartRef.current = chart;
-    setChartApi(chart);
-
-    const renderFootprintOverlay = () => {
-      const canvas = footprintCanvasRef.current;
-      const candleSeries = seriesRef.current.candles;
-      const activeFootprint = footprintCandlesRef.current;
-      // Keep the overlay canvas exactly the size of the chart host. Without this the canvas kept its
-      // intrinsic 300px width while the chart mapped coordinates across its full (~1000px) pane, so
-      // every footprint column was clamped to the canvas's right edge and stacked into one block.
-      if (canvas && hostRef.current) {
-        canvas.style.width = `${hostRef.current.clientWidth}px`;
-        canvas.style.height = `${hostRef.current.clientHeight}px`;
-      }
-      if (!canvas || !candleSeries || !activeFootprint.length || !isFootprintModeRef.current) {
-        if (canvas) {
-          const ctx = canvas.getContext("2d");
-          if (ctx) {
-            const rect = canvas.getBoundingClientRect();
-            const dpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
-            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-            ctx.clearRect(0, 0, rect.width, rect.height);
-          }
-        }
-        return;
-      }
-      // Pin the visible range to the footprint window exactly once per data load. Doing it here (in the
-      // render path, which reliably runs with the populated ref) rather than in the state effect —
-      // whose closure was firing before the footprint state settled — so the columns span the chart.
-      if (!footprintPinnedRef.current && activeFootprint.length > 1) {
-        const firstT = activeFootprint[0]!.timestamp;
-        const lastT = activeFootprint[activeFootprint.length - 1]!.timestamp;
-        if (firstT !== lastT) {
-          try {
-            chart.timeScale().setVisibleRange({ from: firstT as UTCTimestamp, to: lastT as UTCTimestamp });
-            footprintPinnedRef.current = true;
-          } catch {
-            /* range not applicable yet; retry on next render */
-          }
-        }
-      }
-      renderFootprintCanvas(
-        canvas,
-        activeFootprint,
-        {
-          timeToX: (time) => chart.timeScale().timeToCoordinate(time as UTCTimestamp),
-          priceToY: (price) => candleSeries.priceToCoordinate(price),
-        },
-        { candleWidth: 20 },
-      );
-    };
-    footprintRenderRef.current = renderFootprintOverlay;
+    let disposed = false;
+    let chart: IChartApi | null = null;
+    let observer: ResizeObserver | null = null;
+    let resizeBatcher: ReturnType<typeof createRafBatcher<{ width: number; height: number }>> | null = null;
 
     const onCrosshairMove = (param: { time?: Time }) => {
       const t = typeof param.time === "number" ? Number(param.time) : null;
@@ -441,8 +293,6 @@ export function ChartEngine({
       publish({ sourceId: panelId, timestamp: t, price: Number(b.close) });
       crosshairCbRef.current?.({ open: Number(b.open), high: Number(b.high), low: Number(b.low), close: Number(b.close), time: t });
     };
-
-    chart.subscribeCrosshairMove(onCrosshairMove as never);
 
     const onVisibleLogicalRangeChange = (logicalRange: { from: number; to: number } | null) => {
       if (!logicalRange || !canBackfillRef.current || backfillInFlightRef.current) return;
@@ -467,29 +317,197 @@ export function ChartEngine({
         footprintRenderRef.current?.();
       }
     };
-    chart.timeScale().subscribeVisibleLogicalRangeChange(onVisibleLogicalRangeChangeWithFootprint as never);
 
-    const resizeBatcher = createRafBatcher<{ width: number; height: number }>(({ width, height }) => {
-      chart.applyOptions({ width, height });
-    });
-    const observer = new ResizeObserver(() => {
-      if (!hostRef.current) return;
-      resizeBatcher.schedule({
-        width: hostRef.current.clientWidth,
-        height: hostRef.current.clientHeight || height,
+    const createWhenReady = () => {
+      if (disposed || chart || !hostRef.current || chartRef.current) return;
+      const size = readValidContainerSize(hostRef.current, height);
+      if (!size) return;
+
+      const newChart = createChart(hostRef.current, {
+        ...terminalChartTheme,
+        width: size.width,
+        height: size.height,
       });
+
+      const candles = newChart.addSeries(
+        CandlestickSeries,
+        {
+          upColor: isFootprintMode ? "transparent" : terminalColors.candleUp,
+          downColor: isFootprintMode ? "transparent" : terminalColors.candleDown,
+          borderVisible: !isFootprintMode,
+          wickUpColor: isFootprintMode ? "transparent" : terminalColors.candleUp,
+          wickDownColor: isFootprintMode ? "transparent" : terminalColors.candleDown,
+          visible:
+            isFootprintMode ||
+            chartTypeId === "candle" ||
+            chartTypeId === "renko" ||
+            chartTypeId === "kagi" ||
+            chartTypeId === "point_figure" ||
+            chartTypeId === "line_break",
+        },
+        0,
+      );
+      const line = newChart.addSeries(LineSeries, { color: terminalColors.accent, lineWidth: 2, visible: chartTypeId === "line" }, 0);
+      const area = newChart.addSeries(
+        AreaSeries,
+        { lineColor: terminalColors.accent, topColor: terminalColors.accentAreaTop, bottomColor: terminalColors.accentAreaBottom, visible: chartTypeId === "area" },
+        0,
+      );
+      const baseline = newChart.addSeries(
+        BaselineSeries,
+        {
+          visible: chartTypeId === "baseline",
+          topLineColor: terminalColors.candleUp,
+          bottomLineColor: terminalColors.candleDown,
+          topFillColor1: terminalColors.candleUpFillStrong,
+          topFillColor2: terminalColors.candleUpFillSoft,
+          bottomFillColor1: terminalColors.candleDownFillStrong,
+          bottomFillColor2: terminalColors.candleDownFillSoft,
+        },
+        0,
+      );
+      const volume = newChart.addSeries(
+        HistogramSeries,
+        {
+          priceFormat: { type: "volume" },
+          color: terminalColors.candleUpAlpha80,
+          visible: showVolume && !isFootprintMode,
+        },
+        1,
+      );
+      const delivery = newChart.addSeries(
+        LineSeries,
+        {
+          color: terminalColors.info,
+          lineWidth: 2,
+          visible: showDeliveryOverlay && !isFootprintMode,
+          priceScaleId: "delivery-scale",
+        },
+        0,
+      );
+      newChart.priceScale("delivery-scale").applyOptions({
+        borderVisible: false,
+        scaleMargins: { top: 0.7, bottom: 0.12 },
+      });
+
+      const sessionShading = newChart.addSeries(HistogramSeries, {
+        priceScaleId: "",
+        visible: !isFootprintMode,
+        lastValueVisible: false,
+        priceLineVisible: false,
+      });
+      newChart.priceScale("").applyOptions({
+        scaleMargins: { top: 0, bottom: 0 },
+      });
+
+      newChart.panes()[0]?.setStretchFactor(8);
+      newChart.panes()[1]?.setStretchFactor(2);
+
+      let oi: ISeriesApi<"Area", Time> | null = null;
+      if (symbolIsFnO) {
+        oi = newChart.addSeries(
+          AreaSeries,
+          {
+            topColor: "rgba(245,124,32,0.2)",
+            bottomColor: "rgba(245,124,32,0.01)",
+            lineColor: terminalColors.accentAlt,
+            lineWidth: 1,
+            priceScaleId: "oi-scale",
+          },
+          0,
+        );
+        newChart.priceScale("oi-scale").applyOptions({
+          scaleMargins: { top: 0.7, bottom: 0 },
+          borderVisible: false,
+        });
+      }
+
+      seriesRef.current = { candles, line, area, baseline, volume, oi, delivery, sessionShading };
+      chart = newChart;
+      chartRef.current = newChart;
+      setChartApi(newChart);
+
+      const renderFootprintOverlay = () => {
+        const canvas = footprintCanvasRef.current;
+        const candleSeries = seriesRef.current.candles;
+        const activeFootprint = footprintCandlesRef.current;
+        if (canvas && hostRef.current) {
+          canvas.style.width = `${hostRef.current.clientWidth}px`;
+          canvas.style.height = `${hostRef.current.clientHeight}px`;
+        }
+        if (!canvas || !candleSeries || !activeFootprint.length || !isFootprintModeRef.current) {
+          if (canvas) {
+            const ctx = canvas.getContext("2d");
+            if (ctx) {
+              const rect = canvas.getBoundingClientRect();
+              const dpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
+              ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+              ctx.clearRect(0, 0, rect.width, rect.height);
+            }
+          }
+          return;
+        }
+        if (!footprintPinnedRef.current && activeFootprint.length > 1) {
+          const firstT = activeFootprint[0]!.timestamp;
+          const lastT = activeFootprint[activeFootprint.length - 1]!.timestamp;
+          if (firstT !== lastT) {
+            try {
+              newChart.timeScale().setVisibleRange({ from: firstT as UTCTimestamp, to: lastT as UTCTimestamp });
+              footprintPinnedRef.current = true;
+            } catch {
+              /* range not applicable yet; retry on next render */
+            }
+          }
+        }
+        renderFootprintCanvas(
+          canvas,
+          activeFootprint,
+          {
+            timeToX: (time) => newChart.timeScale().timeToCoordinate(time as UTCTimestamp),
+            priceToY: (price) => candleSeries.priceToCoordinate(price),
+          },
+          { candleWidth: 20 },
+        );
+      };
+      footprintRenderRef.current = renderFootprintOverlay;
+
+      newChart.subscribeCrosshairMove(onCrosshairMove as never);
+      newChart.timeScale().subscribeVisibleLogicalRangeChange(onVisibleLogicalRangeChangeWithFootprint as never);
+
+      resizeBatcher = createRafBatcher<{ width: number; height: number }>(({ width, height: nextHeight }) => {
+        if (!chart || !isValidChartSize(width, nextHeight)) return;
+        chart.applyOptions({ width, height: nextHeight });
+      });
+
+      renderFootprintOverlay();
+    };
+
+    observer = new ResizeObserver(() => {
+      if (!hostRef.current) return;
+      if (!chart) {
+        createWhenReady();
+        return;
+      }
+      const width = hostRef.current.clientWidth;
+      const nextHeight = hostRef.current.clientHeight || height;
+      if (!isValidChartSize(width, nextHeight)) return;
+      resizeBatcher?.schedule({ width, height: nextHeight });
       footprintRenderRef.current?.();
     });
     observer.observe(hostRef.current);
-
-    renderFootprintOverlay();
+    createWhenReady();
 
     return () => {
-      observer.disconnect();
-      resizeBatcher.cancel();
-      chart.unsubscribeCrosshairMove(onCrosshairMove as never);
-      chart.timeScale().unsubscribeVisibleLogicalRangeChange(onVisibleLogicalRangeChangeWithFootprint as never);
-      chart.remove();
+      disposed = true;
+      observer?.disconnect();
+      resizeBatcher?.cancel();
+      const chartInstance = chart;
+      chart = null;
+      if (chartInstance) {
+        chartInstance.unsubscribeCrosshairMove(onCrosshairMove as never);
+        chartInstance.timeScale().unsubscribeVisibleLogicalRangeChange(onVisibleLogicalRangeChangeWithFootprint as never);
+        safeDestroyChart(chartInstance);
+      }
       chartRef.current = null;
       setChartApi(null);
       footprintRenderRef.current = null;

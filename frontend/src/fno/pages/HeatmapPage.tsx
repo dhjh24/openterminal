@@ -141,14 +141,12 @@ export function HeatmapPage() {
           ) : isError ? (
             <div className="flex h-full flex-col items-center justify-center gap-2 text-terminal-neg text-sm">
               <span className="text-2xl">⚠</span>
-              <span>Failed to load heatmap data.</span>
-              <span className="text-xs text-terminal-muted">Ensure the F&amp;O data feed is connected (Kite API key required).</span>
+              <span>Failed to load options heatmap. Check US options data configuration (FMP/Finnhub API keys) and authentication.</span>
             </div>
           ) : data.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center gap-2 text-terminal-muted text-sm">
               <span className="text-3xl">📊</span>
-              <span>No heatmap data available.</span>
-              <span className="text-xs">Connect a live Kite API key to stream F&amp;O open interest data.</span>
+              <span>No options heatmap data available. Ensure market data providers are configured for US option chains.</span>
             </div>
           ) : (
             <HeatGrid cells={data} onCellClick={(name) => navigate(`/fno?symbol=${encodeURIComponent(name)}`)} />

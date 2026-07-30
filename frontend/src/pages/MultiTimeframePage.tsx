@@ -18,6 +18,7 @@ import {
   type CSSProperties,
 } from "react";
 
+import { isValidChartSize, readValidContainerSize, safeDestroyChart } from "../shared/chart/safeChartCleanup";
 import { fetchChart } from "../api/client";
 import { TickerDropdown } from "../components/chart-workstation/TickerDropdown";
 import { terminalChartTheme } from "../shared/chart/chartTheme";
@@ -328,7 +329,17 @@ function MtaChartPanel({
 
   useEffect(() => {
     if (!hostRef.current || chartApiRef.current) return;
-    const chart = createChart(hostRef.current, {
+
+    let disposed = false;
+    let chart: IChartApi | null = null;
+    let handleCrosshairMove: ((param: MouseEventParams<Time>) => void) | null = null;
+
+    const createWhenReady = () => {
+      if (disposed || chart || !hostRef.current || chartApiRef.current) return;
+      const size = readValidContainerSize(hostRef.current, 320);
+      if (!size) return;
+
+      chart = createChart(hostRef.current, {
       ...terminalChartTheme,
       layout: {
         ...terminalChartTheme.layout,
@@ -337,8 +348,8 @@ function MtaChartPanel({
           color: terminalColors.panel,
         },
       },
-      width: hostRef.current.clientWidth,
-      height: hostRef.current.clientHeight || 320,
+      width: size.width,
+      height: size.height,
       grid: {
         vertLines: { color: "rgba(45, 55, 69, 0.35)" },
         horzLines: { color: "rgba(45, 55, 69, 0.35)" },
@@ -381,7 +392,7 @@ function MtaChartPanel({
     lineSeriesRef.current = line;
     emaSeriesRef.current = ema;
 
-    const handleCrosshairMove = (param: MouseEventParams<Time>) => {
+    handleCrosshairMove = (param: MouseEventParams<Time>) => {
       const nextTime = typeof param.time === "number" ? Number(param.time) : null;
       const matched = findClosestPoint(dataRef.current, nextTime);
       startTransition(() => {
@@ -393,21 +404,35 @@ function MtaChartPanel({
     };
 
     chart.subscribeCrosshairMove(handleCrosshairMove);
+    };
+
     resizeObserverRef.current = new ResizeObserver(() => {
       const host = hostRef.current;
       if (!host) return;
-      chart.applyOptions({
-        width: host.clientWidth,
-        height: host.clientHeight || 320,
-      });
+      if (!chart) {
+        createWhenReady();
+        return;
+      }
+      const width = host.clientWidth;
+      const height = host.clientHeight || 320;
+      if (!isValidChartSize(width, height)) return;
+      chart.applyOptions({ width, height });
     });
     resizeObserverRef.current.observe(hostRef.current);
+    createWhenReady();
 
     return () => {
+      disposed = true;
       resizeObserverRef.current?.disconnect();
       resizeObserverRef.current = null;
-      chart.unsubscribeCrosshairMove(handleCrosshairMove);
-      chart.remove();
+      if (chart && handleCrosshairMove) {
+        try {
+          chart.unsubscribeCrosshairMove(handleCrosshairMove);
+        } catch {
+          /* already torn down */
+        }
+      }
+      safeDestroyChart(chart);
       chartApiRef.current = null;
       candleSeriesRef.current = null;
       lineSeriesRef.current = null;

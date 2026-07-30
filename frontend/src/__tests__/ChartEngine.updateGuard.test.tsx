@@ -6,13 +6,30 @@ import { ChartEngine } from "../shared/chart/ChartEngine";
 const updateByPane = new Map<number, ReturnType<typeof vi.fn>>();
 const setDataByPane = new Map<number, ReturnType<typeof vi.fn>>();
 
-if (!(globalThis as any).ResizeObserver) {
-  (globalThis as any).ResizeObserver = class {
-    observe() {}
-    disconnect() {}
-    unobserve() {}
-  };
-}
+Object.defineProperty(HTMLElement.prototype, "clientWidth", {
+  configurable: true,
+  get() {
+    return 800;
+  },
+});
+Object.defineProperty(HTMLElement.prototype, "clientHeight", {
+  configurable: true,
+  get() {
+    return 400;
+  },
+});
+
+(globalThis as any).ResizeObserver = class {
+  private cb: ResizeObserverCallback;
+  constructor(cb: ResizeObserverCallback) {
+    this.cb = cb;
+  }
+  observe(target: Element) {
+    this.cb([{ target, contentRect: target.getBoundingClientRect() } as ResizeObserverEntry], this as unknown as ResizeObserver);
+  }
+  disconnect() {}
+  unobserve() {}
+};
 
 vi.mock("lightweight-charts", () => {
   const CandlestickSeries = Symbol("CandlestickSeries");

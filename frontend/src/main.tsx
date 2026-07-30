@@ -26,6 +26,14 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    void navigator.serviceWorker.register("/sw.js");
+    void navigator.serviceWorker.register(`/sw.js?v=${encodeURIComponent(String(__GIT_COMMIT__ || "dev"))}`);
+  });
+
+  // When a new SW takes control after deploy, reload once so HTML/chunks stay in sync.
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (refreshing) return;
+    refreshing = true;
+    window.location.reload();
   });
 }
