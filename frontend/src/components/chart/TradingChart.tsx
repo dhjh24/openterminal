@@ -1495,18 +1495,12 @@ export function TradingChart({
       resizeBatcher.cancel();
       chart.unsubscribeCrosshairMove(onCrosshairMove);
       chart.unsubscribeClick(onClick);
-      // #region agent log
-      fetch('http://127.0.0.1:7625/ingest/c045516d-1b38-46bf-8e57-28466fd17455',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'0d8a28'},body:JSON.stringify({sessionId:'0d8a28',runId:'post-fix',hypothesisId:'H1',location:'TradingChart.tsx:cleanup-before-remove',message:'Chart cleanup starting (no removeSeries after chart.remove)',data:{comparisonCount:comparisonSeriesRef.current.length,overlayCount:overlaySeriesRef.current.length,drawingCount:drawingLineSeriesRef.current.length,apiRefAlive:!!apiRef.current},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
       // Drop series refs first; chart.remove() disposes all series. Calling
       // removeSeries after remove() throws "Value is undefined".
       overlaySeriesRef.current = [];
       comparisonSeriesRef.current = [];
       drawingLineSeriesRef.current = [];
       chart.remove();
-      // #region agent log
-      fetch('http://127.0.0.1:7625/ingest/c045516d-1b38-46bf-8e57-28466fd17455',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'0d8a28'},body:JSON.stringify({sessionId:'0d8a28',runId:'post-fix',hypothesisId:'H1',location:'TradingChart.tsx:cleanup-after-chart-remove',message:'chart.remove() completed without post-remove removeSeries',data:{comparisonCount:comparisonSeriesRef.current.length,skippedRemoveSeries:true},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
       apiRef.current = null;
       setIndicatorChartApi(null);
       candleRef.current = null;
@@ -1687,9 +1681,6 @@ export function TradingChart({
       return;
     }
     for (const series of overlaySeriesRef.current) {
-      // #region agent log
-      fetch('http://127.0.0.1:7625/ingest/c045516d-1b38-46bf-8e57-28466fd17455',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'0d8a28'},body:JSON.stringify({sessionId:'0d8a28',runId:'pre-fix',hypothesisId:'H2',location:'TradingChart.tsx:overlay-removeSeries',message:'Removing overlay series',data:{seriesDefined:series!=null,count:overlaySeriesRef.current.length,apiRefAlive:!!apiRef.current},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
       chart.removeSeries(series);
     }
     overlaySeriesRef.current = [];
@@ -1727,9 +1718,6 @@ export function TradingChart({
     const chart = apiRef.current;
     if (!chart) return;
     for (const s of comparisonSeriesRef.current) {
-      // #region agent log
-      fetch('http://127.0.0.1:7625/ingest/c045516d-1b38-46bf-8e57-28466fd17455',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'0d8a28'},body:JSON.stringify({sessionId:'0d8a28',runId:'pre-fix',hypothesisId:'H2',location:'TradingChart.tsx:comparison-removeSeries',message:'Removing comparison series',data:{seriesDefined:s!=null,count:comparisonSeriesRef.current.length,incomingLen:comparisonSeries.length,apiRefAlive:!!apiRef.current},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
       chart.removeSeries(s);
     }
     comparisonSeriesRef.current = [];
@@ -1767,9 +1755,6 @@ export function TradingChart({
     }
 
     for (const s of drawingLineSeriesRef.current) {
-      // #region agent log
-      fetch('http://127.0.0.1:7625/ingest/c045516d-1b38-46bf-8e57-28466fd17455',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'0d8a28'},body:JSON.stringify({sessionId:'0d8a28',runId:'pre-fix',hypothesisId:'H3',location:'TradingChart.tsx:drawing-removeSeries',message:'Removing drawing series',data:{seriesDefined:s!=null,count:drawingLineSeriesRef.current.length,apiRefAlive:!!apiRef.current},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
       chart.removeSeries(s);
     }
     drawingLineSeriesRef.current = [];

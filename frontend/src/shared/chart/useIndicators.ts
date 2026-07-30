@@ -47,7 +47,11 @@ function toPlotData(points: Array<{ time: unknown; value: unknown }>): Array<{ t
 function clearSeries(chart: IChartApi, map: SeriesMap): SeriesMap {
   for (const plotMap of Object.values(map)) {
     for (const series of Object.values(plotMap)) {
-      chart.removeSeries(series);
+      try {
+        chart.removeSeries(series);
+      } catch {
+        // Chart may already be disposed by TradingChart cleanup (chart.remove()).
+      }
     }
   }
   return {};
@@ -64,7 +68,11 @@ function removeIndicatorSeries(
   indicatorId: string,
 ): void {
   for (const series of Object.values(seriesMap[indicatorId] ?? {})) {
-    chart.removeSeries(series);
+    try {
+      chart.removeSeries(series);
+    } catch {
+      // ignore stale refs / disposed chart
+    }
   }
   delete seriesMap[indicatorId];
   delete placementMap[indicatorId];
