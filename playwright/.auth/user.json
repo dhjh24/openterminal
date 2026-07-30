@@ -2,15 +2,15 @@
   "cookies": [],
   "origins": [
     {
-      "origin": "http://127.0.0.1:4173",
+      "origin": "http://127.0.0.1:8005",
       "localStorage": [
         {
           "name": "ot-access-token",
-          "value": "x.eyJzdWIiOiJlMmUtdXNlciIsImVtYWlsIjoiZTJlQGV4YW1wbGUuY29tIiwicm9sZSI6InRyYWRlciIsImV4cCI6MTc4NTM2OTcyN30.y"
+          "value": "x.eyJzdWIiOiJlMmUtdXNlciIsImVtYWlsIjoiZTJlQGV4YW1wbGUuY29tIiwicm9sZSI6InRyYWRlciIsImV4cCI6MTc4NTQ1MzkxMH0.y"
         },
         {
           "name": "ot-refresh-token",
-          "value": "x.eyJleHAiOjE3ODUzNzMzMjd9.y"
+          "value": "x.eyJleHAiOjE3ODU0NTc1MTB9.y"
         }
       ]
     }
