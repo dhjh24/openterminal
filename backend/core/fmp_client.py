@@ -60,19 +60,17 @@ class FMPClient:
             return response.json()
         except httpx.HTTPStatusError as e:
             status = e.response.status_code
+            # Never log full request URLs — they include apikey query params.
             if status == 401:
-                # 401 = invalid/expired key -> stop hammering the API for this process.
                 logger.error("FMP API key invalid (401); disabling FMP for this session.")
                 self.disabled = True
             elif status == 402:
-                # 402 = endpoint/symbol not in the current subscription tier (e.g. intraday,
-                # institutional ownership, ESG, or non-US symbols). Per-call restriction only.
                 logger.debug("FMP restricted endpoint %s (402); skipping.", endpoint)
             else:
-                logger.warning("FMP request failed for %s: %s", endpoint, e)
+                logger.warning("FMP request failed for %s: HTTP %s", endpoint, status)
             return []
         except Exception as e:
-            logger.error(f"FMP Request Error: {e}")
+            logger.error("FMP Request Error for %s: %s", endpoint, type(e).__name__)
             return []
 
     async def get_quote(self, symbol: str) -> Dict[str, Any]:
@@ -129,4 +127,18 @@ class FMPClient:
     async def get_esg_data(self, symbol: str, limit: int = 20) -> List[Dict[str, Any]]:
         # ESG is premium-tier on stable; returns [] gracefully when not subscribed.
         rows = await self._get("esg-disclosures", {"symbol": self._symbol(symbol), "limit": limit})
+        return rows if isinstance(rows, list) else []
+
+    async def get_stock_news_latest(self, limit: int = 50, page: int = 0) -> List[Dict[str, Any]]:
+        rows = await self._get("news/stock-latest", {"page": page, "limit": limit})
+        return rows if isinstance(rows, list) else []
+
+    async def get_stock_news(self, symbols: str | List[str], limit: int = 20) -> List[Dict[str, Any]]:
+        if isinstance(symbols, list):
+            joined = ",".join(self._symbol(s) for s in symbols if str(s).strip())
+        else:
+            joined = self._symbol(str(symbols))
+        if not joined:
+            return []
+        rows = await self._get("news/stock", {"symbols": joined, "limit": limit})
         return rows if isinstance(rows, list) else []

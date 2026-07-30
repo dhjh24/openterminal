@@ -6,18 +6,29 @@ services:
     image: openterminalui:latest
     ports:
       - "${APP_PORT:-8005}:8000"
+    # Load the full repo-root .env into the container (Compose also uses it for ${VAR} interpolation).
+    # Explicit `environment` entries below still win on conflicts. Never commit `.env`.
+    env_file:
+      - .env
     environment:
       OPENTERMINALUI_ENV: "${OPENTERMINALUI_ENV:-development}"
       MARKET_PROFILE: "${MARKET_PROFILE:-US}"
       US_RISK_FREE_RATE: "${US_RISK_FREE_RATE:-4.5}"
       FMP_API_KEY: "${FMP_API_KEY:-}"
       FINNHUB_API_KEY: "${FINNHUB_API_KEY:-}"
+      FINNHUB_WS_ENABLED: "${FINNHUB_WS_ENABLED:-true}"
+      FRED_API_KEY: "${FRED_API_KEY:-}"
+      ALPACA_API_KEY: "${ALPACA_API_KEY:-}"
+      ALPACA_SECRET_KEY: "${ALPACA_SECRET_KEY:-}"
+      ALPACA_FEED: "${ALPACA_FEED:-iex}"
+      ALPACA_ADJUSTMENT: "${ALPACA_ADJUSTMENT:-raw}"
       JWT_SECRET_KEY: "${JWT_SECRET_KEY:-}"
       CACHE_SIGNING_KEY: "${CACHE_SIGNING_KEY:-}"
       BOOTSTRAP_ADMIN_EMAIL: "${BOOTSTRAP_ADMIN_EMAIL:-}"
       BOOTSTRAP_ADMIN_PASSWORD: "${BOOTSTRAP_ADMIN_PASSWORD:-}"
       DATABASE_URL: "${DATABASE_URL:-sqlite+aiosqlite:////data/openterminal.db}"
-      REDIS_URL: "${REDIS_URL:-redis://redis:6379/0}"
+      # Force the compose Redis service hostname. Host `.env` often sets localhost for non-Docker runs.
+      REDIS_URL: "redis://redis:6379/0"
       OPENTERMINALUI_PREFETCH_ENABLED: "${OPENTERMINALUI_PREFETCH_ENABLED:-${OPENSCREENS_PREFETCH_ENABLED:-0}}"
       OPENTERMINALUI_SQLITE_URL: "${OPENTERMINALUI_SQLITE_URL:-${OPENSCREENS_SQLITE_URL:-sqlite:////data/openterminalui.db}}"
       OPENTERMINALUI_CORS_ORIGINS: "${OPENTERMINALUI_CORS_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173}"

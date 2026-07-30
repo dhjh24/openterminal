@@ -1,11 +1,13 @@
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 
 import { ProfileCompletionRing } from "../components/home/ProfileCompletionRing";
 import { CountryFlag } from "../components/common/CountryFlag";
 import { TerminalBadge } from "../components/terminal/TerminalBadge";
 import { TerminalButton } from "../components/terminal/TerminalButton";
 import { TerminalPanel } from "../components/terminal/TerminalPanel";
+import { api } from "../api/base";
 import { useAuth } from "../contexts/AuthContext";
 import { useSettingsStore } from "../store/settingsStore";
 import {
@@ -125,11 +127,23 @@ function buildDefaultConnected(
 
 function buildDefaultAggregators(): AccountAggregatorSettings {
   return {
-    marketDataApiKey: "",
-    executionApiKey: "",
-    newsApiKey: "",
     webhookUrl: "",
   };
+}
+
+function configuredIntegrations(providers: {
+  finnhub_configured?: boolean;
+  fmp_configured?: boolean;
+  yahoo_fallback?: string;
+  google_news_rss_fallback?: string;
+} | null): number {
+  if (!providers) return 0;
+  let count = 0;
+  if (providers.finnhub_configured) count += 1;
+  if (providers.fmp_configured) count += 1;
+  if (providers.yahoo_fallback === "available") count += 1;
+  if (providers.google_news_rss_fallback === "available") count += 1;
+  return count;
 }
 
 function initials(profile: AccountProfile, email: string): string {
@@ -200,10 +214,6 @@ function deriveLatestAction(activity: {
   return `${entries[0].kind} @ ${new Date(entries[0].at).toLocaleTimeString()}`;
 }
 
-function configuredIntegrations(aggregators: AccountAggregatorSettings): number {
-  return Object.values(aggregators).filter((value) => value.trim().length > 0).length;
-}
-
 function buildExportBundle(
   user: { email: string; role: string },
   profile: AccountProfile,
@@ -244,9 +254,14 @@ export function AccountPage() {
       buildDefaultConnected(selectedCountry, selectedMarket, displayCurrency),
     ),
   );
-  const [aggregators, setAggregators] = useState<AccountAggregatorSettings>(() =>
-    loadLocalState<AccountAggregatorSettings>(AGGREGATORS_STORAGE_KEY, buildDefaultAggregators()),
-  );
+  const [aggregators, setAggregators] = useState<AccountAggregatorSettings>(() => {
+    const loaded = loadLocalState<AccountAggregatorSettings & Record<string, string>>(
+      AGGREGATORS_STORAGE_KEY,
+      buildDefaultAggregators(),
+    );
+    // Never keep provider secrets in browser storage.
+    return { webhookUrl: String(loaded.webhookUrl || "") };
+  });
   const [message, setMessage] = useState<{ text: string; tone: "success" | "warn" } | null>(null);
   const [activity, setActivity] = useState<{
     savedAt: number | null;
@@ -258,6 +273,23 @@ export function AccountPage() {
     resetAt: null,
   });
   const messageTimerRef = useRef<number | null>(null);
+
+  const providerStatusQuery = useQuery({
+    queryKey: ["account", "news-providers"],
+    queryFn: async () => {
+      const { data } = await api.get<{
+        providers: {
+          finnhub_configured: boolean;
+          fmp_configured: boolean;
+          yahoo_fallback: string;
+          google_news_rss_fallback: string;
+          news_scheduler: string;
+        };
+      }>("/health/news-providers");
+      return data.providers;
+    },
+    staleTime: 30_000,
+  });
 
   useEffect(() => {
     return () => {
@@ -329,7 +361,7 @@ export function AccountPage() {
     completed: PROFILE_COMPLETION_FIELDS.length - missingFields.length,
     total: PROFILE_COMPLETION_FIELDS.length,
   };
-  const integrationCount = configuredIntegrations(aggregators);
+  const integrationCount = configuredIntegrations(providerStatusQuery.data ?? null);
   const persistedSlots = [PROFILE_STORAGE_KEY, CONNECTED_STORAGE_KEY, AGGREGATORS_STORAGE_KEY].filter((key) =>
     Boolean(localStorage.getItem(key)),
   ).length;
@@ -862,43 +894,35 @@ export function AccountPage() {
 
         <TerminalPanel
           title="Integrations & Recovery"
-          subtitle="API keys, webhook routing, and export readiness"
+          subtitle="Server news providers (booleans only) and webhook routing"
           actions={
             <TerminalBadge variant={integrationCount >= 2 ? "success" : "warn"}>{integrationCount}/4 online</TerminalBadge>
           }
         >
           <div className="grid grid-cols-1 gap-3 text-xs md:grid-cols-2">
-            <label>
-              Market Data API Key
-              <input
-                type="password"
-                className={INPUT_CLASS_NAME}
-                value={aggregators.marketDataApiKey}
-                onChange={(event) => updateAggregators("marketDataApiKey", event.target.value)}
-                placeholder="Enter market data key"
-              />
-            </label>
-            <label>
-              Execution API Key
-              <input
-                type="password"
-                className={INPUT_CLASS_NAME}
-                value={aggregators.executionApiKey}
-                onChange={(event) => updateAggregators("executionApiKey", event.target.value)}
-                placeholder="Enter execution key"
-              />
-            </label>
-            <label>
-              News API Key
-              <input
-                type="password"
-                className={INPUT_CLASS_NAME}
-                value={aggregators.newsApiKey}
-                onChange={(event) => updateAggregators("newsApiKey", event.target.value)}
-                placeholder="Enter news key"
-              />
-            </label>
-            <label>
+            <div className="rounded-sm border border-terminal-border/70 bg-terminal-bg/45 px-3 py-3">
+              <div className="text-[10px] uppercase tracking-[0.14em] text-terminal-muted">Finnhub</div>
+              <div className="mt-1 text-terminal-text">
+                {providerStatusQuery.data?.finnhub_configured ? "configured" : "not configured"}
+              </div>
+            </div>
+            <div className="rounded-sm border border-terminal-border/70 bg-terminal-bg/45 px-3 py-3">
+              <div className="text-[10px] uppercase tracking-[0.14em] text-terminal-muted">FMP</div>
+              <div className="mt-1 text-terminal-text">
+                {providerStatusQuery.data?.fmp_configured ? "configured" : "not configured"}
+              </div>
+            </div>
+            <div className="rounded-sm border border-terminal-border/70 bg-terminal-bg/45 px-3 py-3">
+              <div className="text-[10px] uppercase tracking-[0.14em] text-terminal-muted">Yahoo fallback</div>
+              <div className="mt-1 text-terminal-text">{providerStatusQuery.data?.yahoo_fallback || "unknown"}</div>
+            </div>
+            <div className="rounded-sm border border-terminal-border/70 bg-terminal-bg/45 px-3 py-3">
+              <div className="text-[10px] uppercase tracking-[0.14em] text-terminal-muted">Google News RSS</div>
+              <div className="mt-1 text-terminal-text">
+                {providerStatusQuery.data?.google_news_rss_fallback || "unknown"}
+              </div>
+            </div>
+            <label className="md:col-span-2">
               Webhook URL
               <input
                 className={INPUT_CLASS_NAME}
@@ -910,8 +934,9 @@ export function AccountPage() {
           </div>
 
           <div className="mt-3 rounded-sm border border-terminal-border/70 bg-terminal-bg/45 px-3 py-3 text-[11px] leading-5 text-terminal-muted">
-            Browser persistence is unchanged: values stay in memory until you press save, then the page writes the same three
-            Account localStorage keys and syncs the country, market, and currency selectors back into the settings store.
+            Provider API keys stay on the server (`.env` / Docker). This page never stores provider secrets in
+            localStorage. Only the webhook URL is saved in the browser vault with profile and desk routing.
+            Scheduler: {providerStatusQuery.data?.news_scheduler || "unknown"}.
           </div>
         </TerminalPanel>
       </div>

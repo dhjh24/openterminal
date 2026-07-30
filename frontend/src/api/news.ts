@@ -5,23 +5,33 @@ import type {
   QuarterlyReportApiItem,
 } from "./types";
 
+function asNewsList(data: { results?: NewsApiItem[]; items?: NewsApiItem[] } | undefined): NewsApiItem[] {
+  if (Array.isArray(data?.items) && data.items.length) return data.items;
+  if (Array.isArray(data?.results)) return data.results;
+  return Array.isArray(data?.items) ? data.items : [];
+}
+
 export async function fetchSymbolNews(market: string, symbol: string, limit = 30): Promise<NewsApiItem[]> {
-  const { data } = await api.get<{ results: NewsApiItem[] }>(`/news/${market}/${symbol}`, { params: { limit } });
-  return Array.isArray(data?.results) ? data.results : [];
+  const { data } = await api.get<{ results?: NewsApiItem[]; items?: NewsApiItem[] }>("/news/symbol", {
+    params: { market, symbol, limit },
+  });
+  return asNewsList(data);
 }
 
 export async function fetchMarketNews(market: string, limit = 30): Promise<NewsApiItem[]> {
-  const { data } = await api.get<{ results: NewsApiItem[] }>(`/news/${market}`, { params: { limit } });
-  return Array.isArray(data?.results) ? data.results : [];
+  const { data } = await api.get<{ results?: NewsApiItem[]; items?: NewsApiItem[] }>("/news/market", {
+    params: { market, limit },
+  });
+  return asNewsList(data);
 }
 
 export async function fetchLatestNews(limit = 100): Promise<NewsLatestApiItem[]> {
-  const { data } = await api.get<{ items: NewsLatestApiItem[] }>("/v1/news/latest", { params: { limit } });
+  const { data } = await api.get<{ items: NewsLatestApiItem[] }>("/news/latest", { params: { limit } });
   return Array.isArray(data?.items) ? data.items : [];
 }
 
 export async function searchLatestNews(q: string, limit = 100): Promise<NewsLatestApiItem[]> {
-  const { data } = await api.get<{ items: NewsLatestApiItem[] }>("/v1/news/search", { params: { q, limit } });
+  const { data } = await api.get<{ items: NewsLatestApiItem[] }>("/news/search", { params: { q, limit } });
   return Array.isArray(data?.items) ? data.items : [];
 }
 
