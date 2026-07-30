@@ -61,13 +61,9 @@ def _us_classification(symbol: str) -> StockClassification:
 
 
 def test_market_classifier_fallback_defaults_unknown_unsuffixed_to_us(monkeypatch) -> None:
-    async def _fake_nse_symbols():
-        return {"RELIANCE", "TCS"}
-
     async def _fake_profile(_: str):
         return {}
 
-    monkeypatch.setattr(market_classifier, "_load_nse_symbols", _fake_nse_symbols)
     monkeypatch.setattr(market_classifier, "_fetch_fmp_profile", _fake_profile)
 
     cls = asyncio.run(market_classifier.classify("AAPL"))

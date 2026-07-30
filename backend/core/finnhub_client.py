@@ -35,10 +35,7 @@ class FinnhubClient:
             self.client = None
 
     def _symbol(self, symbol: str) -> str:
-        symbol = symbol.strip().upper()
-        if not symbol.endswith(".NS"):
-            return f"{symbol}.NS"
-        return symbol
+        return symbol.strip().upper()
 
     async def _get(self, endpoint: str, params: Optional[Dict[str, Any]] = None) -> Any:
         if self.disabled:

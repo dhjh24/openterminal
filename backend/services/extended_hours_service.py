@@ -1,4 +1,3 @@
-
 import logging
 from datetime import datetime, time as dt_time, timezone, timedelta
 from enum import Enum
@@ -7,27 +6,20 @@ from zoneinfo import ZoneInfo
 import httpx
 import os
 
+from backend.shared.market_guard import assert_exchange_allowed
+
 logger = logging.getLogger(__name__)
 
 class TradingSession(str, Enum):
     PRE_MARKET = "pre"
     REGULAR = "rth"
     AFTER_HOURS = "post"
-    PRE_OPEN = "pre_open"      # Indian market
-    CLOSING = "closing"         # Indian market closing session
 
 # US market session boundaries (Eastern Time)
 US_SESSIONS = {
     TradingSession.PRE_MARKET:  (dt_time(4, 0), dt_time(9, 30)),
     TradingSession.REGULAR:     (dt_time(9, 30), dt_time(16, 0)),
     TradingSession.AFTER_HOURS: (dt_time(16, 0), dt_time(20, 0)),
-}
-
-# Indian market session boundaries (IST)
-IN_SESSIONS = {
-    TradingSession.PRE_OPEN:    (dt_time(9, 0), dt_time(9, 15)),
-    TradingSession.REGULAR:     (dt_time(9, 15), dt_time(15, 30)),
-    TradingSession.CLOSING:     (dt_time(15, 30), dt_time(15, 40)),
 }
 
 
@@ -57,7 +49,7 @@ class ExtendedHoursService:
         Fetch OHLCV data. If extended=True, include pre/post market bars.
         """
         # Normalize user-facing market/exchange inputs into:
-        # 1) session region for tagging ("US"/"IN")
+        # 1) session region for tagging ("US")
         # 2) provider market hint (exchange code expected by providers)
         session_market, provider_market_hint = self._normalize_market_inputs(market)
         timeframe = self._normalize_timeframe(timeframe)
@@ -79,8 +71,8 @@ class ExtendedHoursService:
             except ValueError:
                 pass
 
-        # If not US and not extended, just use standard provider
-        if not extended or session_market != "US":
+        # Extended hours are US-session specific
+        if not extended:
              bars = await provider.get_ohlcv(
                 symbol,
                 interval=timeframe,
@@ -99,13 +91,13 @@ class ExtendedHoursService:
         return tagged
 
     def _normalize_market_inputs(self, market: str) -> tuple[str, str]:
-        value = (market or "").strip().upper()
+        value = (market or "").strip().upper() or "NASDAQ"
+        # Reject NSE/BSE/IN (and aliases) under MARKET_PROFILE=US
+        assert_exchange_allowed(value)
         if value in {"NYSE", "NASDAQ", "AMEX", "US"}:
             return "US", ("NASDAQ" if value == "US" else value)
-        if value in {"NSE", "BSE", "NFO", "IN"}:
-            return "IN", ("NSE" if value == "IN" else value)
-        # Conservative fallback keeps provider compatibility while disabling session specialization.
-        return value or "IN", (value or "NSE")
+        # Non-India fallback: treat as US for session tagging
+        return "US", value
 
     def _normalize_timeframe(self, timeframe: str) -> str:
         raw = (timeframe or "1d").strip()
@@ -262,16 +254,13 @@ class ExtendedHoursService:
         """
         Determine which trading session a bar belongs to based on its timestamp.
         """
-        if market == "US":
-            tz = ZoneInfo("America/New_York")
-            sessions = US_SESSIONS
-        elif market == "IN":
-            tz = ZoneInfo("Asia/Kolkata")
-            sessions = IN_SESSIONS
-        else:
+        if market != "US":
             bar["session"] = "rth"
             bar["isExtended"] = False
             return bar
+
+        tz = ZoneInfo("America/New_York")
+        sessions = US_SESSIONS
 
         bar_dt = datetime.fromtimestamp(bar["time"], tz=tz)
         bar_time = bar_dt.time()

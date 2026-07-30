@@ -14,7 +14,7 @@ import {
 import { TerminalBadge } from "../../components/terminal/TerminalBadge";
 import { TerminalPanel } from "../../components/terminal/TerminalPanel";
 import { fetchOptionsFlow, fetchOptionsFlowSummary } from "../api/fnoApi";
-import { formatIndianCompact, optionTypeLabel, type OptionsFlowItem } from "../types/fno";
+import { formatUsCompact, optionTypeLabel, type OptionsFlowItem } from "../types/fno";
 
 type SortKey = "time" | "heat" | "premium";
 type TypeFilter = "ALL" | "CE" | "PE";
@@ -23,7 +23,7 @@ type ChartWindow = "1d" | "5d";
 function formatPremium(value: number): string {
   if (!Number.isFinite(value)) return "-";
   if (Math.abs(value) >= 1_000_000) return `$${(value / 1_000_000).toFixed(2)}M`;
-  return `${formatIndianCompact(value)}`;
+  return `${formatUsCompact(value)}`;
 }
 
 function formatTs(value: string): string {
@@ -405,7 +405,7 @@ export function OptionsFlowPage() {
               </defs>
               <CartesianGrid stroke="rgba(148, 163, 184, 0.12)" vertical={false} />
               <XAxis dataKey="label" tick={{ fill: "#94a3b8", fontSize: 11 }} />
-              <YAxis tick={{ fill: "#94a3b8", fontSize: 11 }} tickFormatter={(value) => formatIndianCompact(Number(value))} />
+              <YAxis tick={{ fill: "#94a3b8", fontSize: 11 }} tickFormatter={(value) => formatUsCompact(Number(value))} />
               <Tooltip
                 contentStyle={{ background: "#111827", border: "1px solid rgba(148,163,184,0.2)" }}
                 formatter={(value) => formatPremium(Number(value ?? 0))}

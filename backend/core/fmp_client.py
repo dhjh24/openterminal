@@ -2,28 +2,12 @@ from __future__ import annotations
 
 import logging
 import os
-from pathlib import Path
 from typing import Any, List, Dict, Optional
 
 import httpx
 
 logger = logging.getLogger(__name__)
-_US_SYMBOLS_CACHE: set[str] | None = None
 
-
-def _known_us_symbols() -> set[str]:
-    global _US_SYMBOLS_CACHE
-    if _US_SYMBOLS_CACHE is not None:
-        return _US_SYMBOLS_CACHE
-    data_dir = Path(__file__).resolve().parents[1] / "data"
-    out: set[str] = set()
-    for name in ("us_sp500_symbols.txt", "us_nasdaq100_symbols.txt", "us_all_symbols.txt"):
-        path = data_dir / name
-        if not path.exists():
-            continue
-        out.update(line.strip().upper() for line in path.read_text(encoding="utf-8").splitlines() if line.strip())
-    _US_SYMBOLS_CACHE = out
-    return out
 
 class FMPClient:
     # Migrated from the retired v3 API to FMP's "stable" API. The stable API
@@ -54,15 +38,8 @@ class FMPClient:
             self.client = None
 
     def _symbol(self, symbol: str) -> str:
-        # FMP usually expects .NS for NSE
-        symbol = symbol.strip().upper()
-        if "." in symbol:
-            return symbol
-        if symbol in _known_us_symbols():
-            return symbol
-        if not symbol.endswith(".NS"):
-            return f"{symbol}.NS"
-        return symbol
+        # US FMP symbols are bare tickers (no India .NS/.BO suffix).
+        return symbol.strip().upper()
 
     async def _get(self, endpoint: str, params: Optional[Dict[str, Any]] = None) -> Any:
         if self.disabled:

@@ -424,7 +424,7 @@ async def get_portfolio_analytics(
     max_drawdown = 0.0
     if holding_views:
         try:
-            risk = await portfolio_analytics_service.risk_metrics(holding_views, risk_free_rate=0.06, benchmark=portfolio.benchmark_symbol or "NIFTY50")
+            risk = await portfolio_analytics_service.risk_metrics(holding_views, risk_free_rate=0.045, benchmark=portfolio.benchmark_symbol or "SPY")
             sharpe_ratio = float(risk.get("sharpe_ratio") or 0.0)
             max_drawdown = float(risk.get("max_drawdown") or 0.0)
         except Exception:

@@ -17,12 +17,17 @@ from backend.shared.db import init_db
 
 TRADING_DAYS = 252
 BENCHMARK_MAP = {
-    "NIFTY50": "^NSEI",
-    "NIFTY 50": "^NSEI",
-    "SENSEX": "^BSESN",
+    "SPY": "SPY",
     "S&P500": "^GSPC",
     "S&P 500": "^GSPC",
     "SP500": "^GSPC",
+    "QQQ": "QQQ",
+    "DIA": "DIA",
+    "IWM": "IWM",
+    # Legacy India aliases retained for stored portfolios; prefer SPY going forward.
+    "NIFTY50": "^GSPC",
+    "NIFTY 50": "^GSPC",
+    "SENSEX": "^GSPC",
 }
 PORTFOLIO_PERIOD_RANGE_MAP = {
     "1W": "5d",
@@ -281,7 +286,7 @@ class PortfolioAnalyticsService:
         port = (returns * weights.reindex(returns.columns).fillna(0.0)).sum(axis=1)
         return port
 
-    async def risk_metrics(self, holdings: Iterable[Holding], risk_free_rate: float = 0.06, benchmark: str = "NIFTY50") -> dict[str, Any]:
+    async def risk_metrics(self, holdings: Iterable[Holding], risk_free_rate: float = 0.045, benchmark: str = "SPY") -> dict[str, Any]:
         port = await self._portfolio_returns(holdings, range_str="2y")
         if port.empty:
             return {
@@ -409,7 +414,7 @@ class PortfolioAnalyticsService:
         rows.sort(key=lambda x: (x.get("ex_date") or x.get("event_date") or ""))
         return {"upcoming": rows, "annual_income_projection": annual_income}
 
-    async def benchmark_overlay(self, holdings: Iterable[Holding], benchmark: str = "NIFTY50") -> dict[str, Any]:
+    async def benchmark_overlay(self, holdings: Iterable[Holding], benchmark: str = "SPY") -> dict[str, Any]:
         symbols = [h.ticker for h in holdings]
         buy_dates = {h.ticker: h.buy_date for h in holdings}
         quantities = {h.ticker: float(h.quantity) for h in holdings}
@@ -472,7 +477,7 @@ class PortfolioAnalyticsService:
     ) -> dict[str, Any]:
         period_label = _normalize_period(period)
         range_str = PORTFOLIO_PERIOD_RANGE_MAP[period_label]
-        requested_benchmark = str(benchmark or "").strip().upper() or "NIFTY50"
+        requested_benchmark = str(benchmark or "").strip().upper() or "SPY"
 
         portfolio_key = str(portfolio_id or "").strip()
         if portfolio_key.lower() in {"", "current", "legacy", "default"}:
@@ -556,7 +561,7 @@ class PortfolioAnalyticsService:
             init_db()
             rows = db.query(PortfolioHoldingORM).filter(PortfolioHoldingORM.portfolio_id == portfolio_key).all()
 
-        benchmark_symbol = BENCHMARK_MAP.get((requested_benchmark or "").upper(), requested_benchmark) or portfolio.benchmark_symbol or "NIFTY50"
+        benchmark_symbol = BENCHMARK_MAP.get((requested_benchmark or "").upper(), requested_benchmark) or portfolio.benchmark_symbol or "SPY"
         symbols = [str(row.symbol).strip().upper() for row in rows if str(row.symbol).strip()]
         snapshot_tasks = {symbol: asyncio.create_task(fetch_stock_snapshot_coalesced(symbol)) for symbol in symbols}
         series_tasks = {symbol: asyncio.create_task(self._close_series(symbol, range_str=range_str)) for symbol in symbols}
@@ -617,14 +622,14 @@ class PortfolioAnalyticsService:
         db: Session,
         portfolio_id: str,
         period: str = "1M",
-        benchmark: str = "NIFTY50",
+        benchmark: str = "SPY",
     ) -> dict[str, Any]:
         context = await self._load_portfolio_attribution_context(db, portfolio_id, period, benchmark)
         holdings = list(context.get("holdings") or [])
         portfolio_total_return = float(context.get("portfolio_return") or 0.0)
         benchmark_total_return = float(context.get("benchmark_return") or 0.0)
         period_label = str(context.get("period") or _normalize_period(period))
-        benchmark_label = str(context.get("benchmark") or benchmark or "NIFTY50")
+        benchmark_label = str(context.get("benchmark") or benchmark or "SPY")
 
         sector_rows: dict[str, dict[str, float]] = {}
         for row in holdings:

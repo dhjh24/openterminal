@@ -24,8 +24,8 @@ async def etf_screener(category: Optional[str] = None):
         {"ticker": "VTI", "name": "Vanguard Total Stock Market ETF", "exchange": "NYSE Arca", "category": "Large Blend", "expense_ratio": 0.03, "aum": 350000000000, "ytd_return": 9.8, "three_year_return": 11.8},
         {"ticker": "IWM", "name": "iShares Russell 2000 ETF", "exchange": "NYSE Arca", "category": "Small Blend", "expense_ratio": 0.19, "aum": 60000000000, "ytd_return": 2.5, "three_year_return": 5.2},
         {"ticker": "EEM", "name": "iShares MSCI Emerging Markets ETF", "exchange": "NYSE Arca", "category": "Emerging Markets", "expense_ratio": 0.70, "aum": 25000000000, "ytd_return": 1.2, "three_year_return": -2.5},
-        {"ticker": "NIFTYBEES.NS", "name": "Nippon India ETF Nifty 50 BeES", "exchange": "NSE", "category": "Large Cap", "expense_ratio": 0.04, "aum": 20000000000, "ytd_return": 8.5, "three_year_return": 15.5},
-        {"ticker": "JUNIORBEES.NS", "name": "Nippon India ETF Nifty Next 50 BeES", "exchange": "NSE", "category": "Next 50", "expense_ratio": 0.15, "aum": 5000000000, "ytd_return": 12.5, "three_year_return": 18.2},
+        {"ticker": "DIA", "name": "SPDR Dow Jones Industrial Average ETF Trust", "exchange": "NYSE Arca", "category": "Large Blend", "expense_ratio": 0.16, "aum": 35000000000, "ytd_return": 8.1, "three_year_return": 10.4},
+        {"ticker": "XLK", "name": "Technology Select Sector SPDR Fund", "exchange": "NYSE Arca", "category": "Technology", "expense_ratio": 0.09, "aum": 60000000000, "ytd_return": 14.0, "three_year_return": 16.2},
     ]
 
     if category:

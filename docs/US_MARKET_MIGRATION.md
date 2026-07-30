@@ -114,16 +114,26 @@ Equities, U.S. options, ETFs, futures, crypto, forex, fixed income, portfolio to
 - Paper trading is **simulation only** — no live brokerage connectivity or real orders.
 - Some UI routes still use `/fno` path prefixes (renamed user-facing to Options & Futures).
 - Forex may still list INR as a currency pair (FX coverage, not an India equity market).
-- Mutual-fund SIP calculator may still show legacy INR formatting in places.
-- Screenshot gallery may still include older capture filenames; India hub screenshot removed from README.
+- First-release exchange coverage is **NYSE + NASDAQ only** (REST quotes + Finnhub streaming). AMEX/CBOE/CME are not claimed until end-to-end paths exist.
+- `data/holidays.json` covers calendar year **2026** (plus early closes); CI/tests fail if the year rolls over without an update.
+- Some agent/tool defaults and stress-test fixtures may still mention historical India symbols in non-runtime paths.
 
 ## Default symbols (US)
 
-SPY, QQQ, IWM, DIA, AAPL, MSFT, NVDA, AMD, TSLA, AMZN, META, GOOGL, SPX, VIX
+Prefetch defaults: SPY, QQQ, IWM, DIA, AAPL, MSFT, NVDA, AMZN, META, TSLA  
+(override with `PREFETCH_SYMBOLS`)
 
 ## Supported exchanges (US profile)
 
-NASDAQ, NYSE, AMEX, CBOE, CME
+**NASDAQ, NYSE** (tested REST + streaming)
+
+## Holiday calendar maintenance
+
+Update `data/holidays.json` before each year:
+
+1. Set `"years": [YYYY]` and NYSE holiday dates.
+2. Add `"early_closes": { "YYYY-MM-DD": "13:00", ... }` for early-close sessions.
+3. Run `pytest backend/tests/test_market_calendar.py` — `assert_calendar_covers` fails if the current year is missing.
 
 ## Defaults
 
@@ -134,5 +144,15 @@ NASDAQ, NYSE, AMEX, CBOE, CME
 | Exchange | NASDAQ |
 | Timezone | America/New_York |
 | Options underlier | SPY |
-| Risk-free rate | Configurable (`US_RISK_FREE_RATE`, documented fallback ~4.5%) |
-| Internal IV format | **Percent** (e.g. `22.5` = 22.5%); decimals from Yahoo normalized at boundary |
+| Risk-free rate | Configurable (`US_RISK_FREE_RATE`; **fallback** 4.5% — not a live Treasury quote) |
+| Internal IV format | **Percent** (e.g. `22.5` = 22.5%); Yahoo/FMP decimals converted by provider schema |
+| 0DTE time | Fractional year to session close (`America/New_York`) |
+
+## Local CI gate
+
+```bash
+make ci-local          # backend tests + frontend build/vitest + docker compose validate
+make test-e2e          # Playwright (includes us-market-smoke)
+PYTHONPATH=. pytest backend/tests -q
+cd frontend && npx vitest run && npm run build
+```

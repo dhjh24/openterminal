@@ -31,9 +31,6 @@ _US_DEFAULT_CONFIG: dict[str, Any] = {
     "exchanges": {
         "NASDAQ": {"primary": "yahoo", "fallback": ["alpaca"]},
         "NYSE": {"primary": "yahoo", "fallback": ["alpaca"]},
-        "AMEX": {"primary": "yahoo", "fallback": ["alpaca"]},
-        "CME": {"primary": "yahoo", "fallback": []},
-        "CBOE": {"primary": "yahoo", "fallback": []},
         "CRYPTO": {"primary": "crypto", "fallback": ["yahoo"]},
     },
 }

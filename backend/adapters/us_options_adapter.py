@@ -1,45 +1,80 @@
 """US options chain adapter (FMP primary, yfinance fallback).
 
-Internal IV format is **percent** (22.5 = 22.5%). Provider decimals (e.g. yfinance
-``impliedVolatility`` 0.25) are normalized at this boundary via ``normalize_iv_percent``.
-Greeks are always locally calculated (Black-Scholes via mibian) and must be labeled
-``greeks_source: "calculated"`` — never presented as provider-supplied.
+Internal IV format
+------------------
+**Percent** (22.5 = 22.5%). Conversion is driven by **provider schema**, never by
+a numeric threshold (the old ``<= 1.5`` heuristic mis-scaled high-IV contracts
+such as ``1.51`` → 1.51% instead of 151%).
+
+Provider units (documented)
+---------------------------
+* **yfinance / Yahoo**: ``impliedVolatility`` is a **decimal fraction**
+  (``0.25`` = 25%, ``1.51`` = 151%). Always multiply by 100.
+* **FMP** (``/api/v4/option-chain``): ``impliedVolatility`` is a **decimal
+  fraction** per FMP's option-chain schema. Always multiply by 100.
+* **unknown**: reject — return ``None`` so the caller marks the leg invalid.
+
+Greeks are always locally calculated (Black-Scholes via mibian) and must be
+labeled ``greeks_source: "calculated"`` — never presented as provider-supplied.
 """
 
 from __future__ import annotations
 
 import asyncio
 import logging
+import math
 from datetime import date, datetime, timezone
 from typing import Any, Dict, List, Optional
+from zoneinfo import ZoneInfo
 
 import httpx
 import yfinance as yf
 from backend.config.settings import get_settings
+from backend.fno.services.greeks_engine import year_fraction_to_expiry
 from backend.shared.market_profile import get_us_risk_free_rate_pct
 
 logger = logging.getLogger(__name__)
 
-# Decimal IV from Yahoo/FMP is typically <= 1.5 (150%); above that treat as percent.
-_IV_DECIMAL_MAX = 1.5
+ET = ZoneInfo("America/New_York")
+
+# Providers whose documented IV unit is a decimal fraction (0.25 = 25%).
+_DECIMAL_IV_PROVIDERS = frozenset({"yfinance", "yahoo", "fmp"})
 
 
-def normalize_iv_percent(raw_iv: Any) -> float:
-    """Normalize provider IV to internal percent (22.5 = 22.5%)."""
+def normalize_iv_percent(
+    raw_iv: Any,
+    *,
+    provider: str,
+) -> float | None:
+    """Normalize provider IV to internal percent (22.5 = 22.5%).
+
+    Conversion follows the provider schema (see module docstring), not a
+    numeric threshold. Returns ``None`` for null, negative, NaN, infinity, or
+    an unknown provider unit.
+    """
+    if raw_iv is None:
+        return None
     try:
         iv = float(raw_iv)
     except (TypeError, ValueError):
+        return None
+    if not math.isfinite(iv) or iv < 0:
+        return None
+    if iv == 0:
         return 0.0
-    if iv != iv or iv <= 0:
-        return 0.0
-    if 0 < iv <= _IV_DECIMAL_MAX:
+
+    prov = (provider or "").strip().lower()
+    if prov in _DECIMAL_IV_PROVIDERS:
         return iv * 100.0
-    return iv
+    # Unknown unit — do not guess.
+    logger.warning("event=iv_unknown_provider provider=%s raw=%s", provider, raw_iv)
+    return None
 
 
-def _actual_days_to_expiry(expiry: str) -> int:
+def _actual_days_to_expiry(expiry: str, *, now: datetime | None = None) -> int:
     try:
-        return (datetime.strptime(expiry, "%Y-%m-%d").date() - date.today()).days
+        today = (now or datetime.now(ET)).astimezone(ET).date()
+        return (datetime.strptime(expiry, "%Y-%m-%d").date() - today).days
     except Exception:
         return 0
 
@@ -228,9 +263,13 @@ class USOptionsAdapter:
         delay_status: str = "delayed",
     ) -> Dict[str, Any]:
         grouped: dict[float, dict[str, Any]] = {}
-        actual_dte = _actual_days_to_expiry(expiry)
+        now_et = datetime.now(ET)
+        actual_dte = _actual_days_to_expiry(expiry, now=now_et)
+        year_frac = year_fraction_to_expiry(now=now_et, expiry=expiry)
         greeks_engine = self._get_greeks_engine()
         rfr = self.risk_free_rate
+        # Map adapter source labels to IV provider schema keys.
+        iv_provider = "fmp" if source == "fmp" else "yfinance"
 
         for opt in data:
             if not isinstance(opt, dict):
@@ -253,21 +292,38 @@ class USOptionsAdapter:
                 key = "pe"
                 mibian_type = "PE"
 
-            iv = normalize_iv_percent(opt.get("impliedVolatility", opt.get("iv", 0.0)))
+            iv_norm = normalize_iv_percent(
+                opt.get("impliedVolatility", opt.get("iv")),
+                provider=iv_provider,
+            )
+            iv_invalid = iv_norm is None and opt.get("impliedVolatility", opt.get("iv")) is not None
+            iv = float(iv_norm) if iv_norm is not None else 0.0
             ltp = self._to_float(opt.get("lastPrice", opt.get("price", 0.0)))
             bid = self._to_float(opt.get("bid"))
             ask = self._to_float(opt.get("ask"))
             volume = self._to_int(opt.get("volume"))
             oi = self._to_int(opt.get("openInterest"))
 
-            if iv <= 0 and ltp > 0 and spot > 0:
+            if iv <= 0 and not iv_invalid and ltp > 0 and spot > 0:
                 iv = greeks_engine.compute_iv(
-                    spot, strike, actual_dte, ltp, mibian_type, risk_free_rate_pct=rfr
+                    spot,
+                    strike,
+                    actual_dte,
+                    ltp,
+                    mibian_type,
+                    risk_free_rate_pct=rfr,
+                    year_fraction=year_frac,
                 )
 
             greeks = (
                 greeks_engine.compute_greeks(
-                    spot, strike, actual_dte, iv, mibian_type, risk_free_rate_pct=rfr
+                    spot,
+                    strike,
+                    actual_dte,
+                    iv,
+                    mibian_type,
+                    risk_free_rate_pct=rfr,
+                    year_fraction=year_frac,
                 )
                 if spot > 0 and (iv > 0 or ltp > 0)
                 else {"delta": 0.0, "gamma": 0.0, "theta": 0.0, "vega": 0.0, "rho": 0.0}
@@ -277,12 +333,16 @@ class USOptionsAdapter:
             leg_quality = _leg_data_quality(
                 bid=bid, ask=ask, ltp=ltp, iv=iv, volume=volume, oi=oi
             )
+            if iv_invalid:
+                leg_quality = "stale"
 
             leg = {
                 "oi": oi,
                 "oi_change": 0,
                 "volume": volume,
                 "iv": round(iv, 4),
+                "iv_unit": "percent",
+                "iv_valid": not iv_invalid,
                 "ltp": ltp,
                 "bid": bid,
                 "ask": ask,
@@ -291,6 +351,7 @@ class USOptionsAdapter:
                 "greeks_source": "calculated",
                 "data_quality": leg_quality,
                 "days_to_expiry": actual_dte,
+                "year_fraction": year_frac,
             }
             if occ:
                 leg["contract_symbol"] = occ
@@ -319,6 +380,7 @@ class USOptionsAdapter:
             "timestamp": ts,
             "expiry_date": expiry,
             "days_to_expiry": actual_dte,
+            "year_fraction": year_frac,
             "available_expiries": [],
             "atm_strike": self._find_atm(spot, strikes),
             "strikes": strikes,

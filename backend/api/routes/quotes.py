@@ -9,17 +9,16 @@ from fastapi import APIRouter, HTTPException, Query
 
 from backend.adapters.registry import get_adapter_registry
 from backend.api.deps import get_unified_fetcher
-from backend.shared.market_guard import assert_exchange_allowed
+from backend.shared.market_guard import assert_exchange_allowed, assert_symbol_allowed
 
 router = APIRouter()
 
 MAX_SYMBOLS = 50
-# Allow Yahoo-native symbols: optional leading ^ for indices (e.g. ^NSEI, ^GSPC),
+# Allow Yahoo-native symbols: optional leading ^ for indices (e.g. ^GSPC),
 # and = for futures codes (e.g. GC=F, CL=F).
 SYMBOL_RE = re.compile(r"^\^?[A-Z0-9][A-Z0-9._=\-]{0,24}$")
-IN_MARKETS = {"NSE", "BSE"}
 US_MARKETS = {"NYSE", "NASDAQ"}
-SUPPORTED_MARKETS = IN_MARKETS | US_MARKETS
+SUPPORTED_MARKETS = US_MARKETS
 
 
 def _to_float(value: Any) -> float | None:
@@ -40,9 +39,9 @@ def _is_global_symbol(s: str) -> bool:
     """Return True for Yahoo Finance-native symbols that don't need a market suffix.
 
     Covers:
-    - Index symbols starting with ^ (e.g. ^NSEI, ^BSESN, ^IXIC, ^GSPC)
+    - Index symbols starting with ^ (e.g. ^IXIC, ^GSPC)
     - Futures symbols ending with =F (e.g. GC=F, CL=F, SI=F)
-    - Forex symbols ending with =X (e.g. USDINR=X)
+    - Forex symbols ending with =X (e.g. EURUSD=X)
     """
     return s.startswith("^") or s.endswith("=F") or s.endswith("=X")
 
@@ -56,6 +55,7 @@ def _parse_symbols(symbols: str) -> list[str]:
     deduped: list[str] = []
     seen = set()
     for name in names:
+        assert_symbol_allowed(name)
         if not SYMBOL_RE.match(name):
             raise HTTPException(status_code=400, detail=f"Invalid symbol: {name}")
         if name not in seen:
@@ -101,13 +101,18 @@ async def _fetch_yahoo_quotes(fetcher: Any, symbols: list[str], now_iso: str) ->
 
 @router.get("/quotes")
 async def get_quotes(
-    market: str = Query(..., description="NSE|BSE|NYSE|NASDAQ"),
-    symbols: str = Query(..., description="Comma-separated symbols, e.g. RELIANCE,TCS"),
+    market: str = Query(..., description="NYSE|NASDAQ"),
+    symbols: str = Query(..., description="Comma-separated symbols, e.g. AAPL,MSFT"),
 ) -> dict[str, Any]:
     market_code = market.strip().upper()
     assert_exchange_allowed(market_code)
     if market_code not in SUPPORTED_MARKETS:
-        raise HTTPException(status_code=400, detail=f"Unsupported market: {market_code}")
+        from backend.shared.market_profile import unsupported_market_detail
+
+        raise HTTPException(
+            status_code=400,
+            detail=unsupported_market_detail(market_code, input_value=market_code),
+        )
 
     symbol_list = _parse_symbols(symbols)
     now_iso = _now_iso()

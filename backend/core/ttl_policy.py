@@ -1,20 +1,11 @@
 from __future__ import annotations
 
-from datetime import datetime, time, timedelta, timezone
+from backend.shared.market_calendar import equity_market_open_now
 
 
 def market_open_now() -> bool:
-    try:
-        from backend.services.prefetch_worker import is_market_hours
-
-        return bool(is_market_hours())
-    except Exception:
-        # Fallback: simple NSE market window in IST (Mon-Fri, 09:15-15:30).
-        now_ist = datetime.now(timezone.utc) + timedelta(hours=5, minutes=30)
-        if now_ist.weekday() >= 5:
-            return False
-        now_time = now_ist.time()
-        return time(9, 15) <= now_time <= time(15, 30)
+    """True during the U.S. equity regular session (America/New_York)."""
+    return equity_market_open_now()
 
 
 def ttl_seconds(data_type: str, market_open: bool) -> int:

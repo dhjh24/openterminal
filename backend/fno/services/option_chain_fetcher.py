@@ -3,19 +3,23 @@ from __future__ import annotations
 from datetime import date, datetime, timezone
 from typing import Any
 
+from fastapi import HTTPException
+
 from backend.core.ttl_policy import market_open_now
 from backend.fno.services.greeks_engine import get_greeks_engine
 from backend.shared.cache import cache as default_cache
+from backend.shared.market_guard import assert_symbol_allowed
 from backend.shared.market_profile import (
+    US_SUPPORTED_EXCHANGES,
     get_us_risk_free_rate_pct,
     is_india_exchange,
     is_us_only,
     unsupported_market_detail,
 )
 
-INDEX_SYMBOLS = {"NIFTY", "BANKNIFTY", "FINNIFTY", "MIDCPNIFTY", "NIFTYNXT50"}
+INDEX_SYMBOLS = {"NIFTY", "BANKNIFTY", "FINNIFTY", "MIDCPNIFTY", "NIFTYNXT50", "SENSEX"}
 US_INDEX_SYMBOLS = {"SPX", "VIX", "^SPX", "^VIX", "SPXW", "VIXW"}
-US_OPTION_EXCHANGES = {"NASDAQ", "NYSE", "AMEX", "CBOE", "CME"}
+US_OPTION_EXCHANGES = set(US_SUPPORTED_EXCHANGES)
 
 
 class OptionChainFetcher:
@@ -85,35 +89,12 @@ class OptionChainFetcher:
                 return True
         return False
 
-    def _india_unsupported_response(self, symbol: str) -> dict[str, Any]:
-        ts = datetime.now(timezone.utc).isoformat()
-        detail = unsupported_market_detail("NSE")
-        return {
-            "symbol": symbol,
-            "market": "US",
-            "spot_price": 0.0,
-            "timestamp": ts,
-            "expiry_date": "",
-            "days_to_expiry": 0,
-            "available_expiries": [],
-            "atm_strike": 0.0,
-            "strikes": [],
-            "totals": {
-                "ce_oi_total": 0,
-                "pe_oi_total": 0,
-                "ce_volume_total": 0,
-                "pe_volume_total": 0,
-                "pcr_oi": 0.0,
-                "pcr_volume": 0.0,
-            },
-            "source": "unavailable",
-            "delay_status": "unavailable",
-            "data_quality": "empty",
-            "greeks_source": "calculated",
-            "risk_free_rate_pct": self._risk_free_rate_pct,
-            "error": detail["error"],
-            "message": detail["message"],
-        }
+    def _raise_unsupported(self, symbol: str) -> None:
+        """Raise structured HTTP 400 — never return 200 with an error object."""
+        raise HTTPException(
+            status_code=400,
+            detail=unsupported_market_detail(None, input_value=symbol),
+        )
 
     def _empty_chain(self, symbol: str) -> dict[str, Any]:
         ts = datetime.now(timezone.utc).isoformat()
@@ -146,18 +127,20 @@ class OptionChainFetcher:
         if not symbol_u:
             return self._empty_chain("")
 
+        assert_symbol_allowed(symbol_u)
+
         market_classifier = self._get_market_classifier()
         cls = await market_classifier.classify(symbol_u)
 
         if is_us_only():
             if symbol_u in INDEX_SYMBOLS or is_india_exchange(cls.exchange):
-                return self._india_unsupported_response(symbol_u)
+                self._raise_unsupported(symbol_u)
             is_us = True
         else:
             is_us = self._is_us_symbol(symbol_u, cls)
 
         if not is_us:
-            return self._india_unsupported_response(symbol_u)
+            self._raise_unsupported(symbol_u)
 
         cache_key = self._cache.build_key("fno_option_chain", symbol_u, {"expiry": expiry or "", "range": int(strike_range)})
         cached = await self._cache.get(cache_key)
@@ -195,13 +178,15 @@ class OptionChainFetcher:
 
     async def get_expiry_dates(self, symbol: str) -> list[str]:
         symbol_u = symbol.strip().upper()
+        assert_symbol_allowed(symbol_u)
         if is_us_only() and symbol_u in INDEX_SYMBOLS:
-            return []
+            self._raise_unsupported(symbol_u)
         market_classifier = self._get_market_classifier()
         cls = await market_classifier.classify(symbol_u)
         if is_us_only() or self._is_us_symbol(symbol_u, cls):
             return await self._get_us_adapter().get_expiry_dates(symbol_u)
-        return []
+        self._raise_unsupported(symbol_u)
+        return []  # unreachable; keeps type checkers happy
 
 
 _option_chain_fetcher = OptionChainFetcher()

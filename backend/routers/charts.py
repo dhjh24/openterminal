@@ -48,7 +48,7 @@ async def get_chart_data(
     session_filter: Optional[str] = None,
     date_from: Optional[str] = None,
     date_to: Optional[str] = None,
-    market: str = "IN",
+    market: str = "NASDAQ",
     service: ExtendedHoursService = Depends(get_extended_hours_service),
 ):
     """
@@ -74,10 +74,10 @@ async def get_chart_data(
         "extended": extended,
         "bars": bars,
         "sessionMeta": {
-            "hasPreMarket": any(b.get("session") in ["pre", "pre_open"] for b in bars),
-            "hasAfterHours": any(b.get("session") in ["post", "closing"] for b in bars),
-            "preMarketBars": sum(1 for b in bars if b.get("session") in ["pre", "pre_open"]),
-            "afterHoursBars": sum(1 for b in bars if b.get("session") in ["post", "closing"]),
+            "hasPreMarket": any(b.get("session") == "pre" for b in bars),
+            "hasAfterHours": any(b.get("session") == "post" for b in bars),
+            "preMarketBars": sum(1 for b in bars if b.get("session") == "pre"),
+            "afterHoursBars": sum(1 for b in bars if b.get("session") == "post"),
         }
     }
 
@@ -87,7 +87,7 @@ async def get_volume_profile(
     symbol: str,
     period: str = Query(default="20d"),
     bins: int = Query(default=50, ge=10, le=200),
-    market: str = Query(default="NSE"),
+    market: str = Query(default="NASDAQ"),
     service: ExtendedHoursService = Depends(get_extended_hours_service),
 ):
     """

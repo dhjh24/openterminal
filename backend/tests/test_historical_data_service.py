@@ -16,15 +16,15 @@ class _FakeProvider:
 
 
 def test_symbol_normalization_maps_provider_symbol() -> None:
-    s = normalize_symbol("reliance", "NSE")
-    assert s.canonical == "RELIANCE"
-    assert s.provider_symbol == "RELIANCE.NS"
+    s = normalize_symbol("aapl", "NASDAQ")
+    assert s.canonical == "AAPL"
+    assert s.provider_symbol == "AAPL"
 
 
 def test_historical_service_uses_provider_and_limit() -> None:
     service = HistoricalDataService(provider=_FakeProvider())
-    symbol, bars = service.fetch_daily_ohlcv("reliance", market="NSE", start="2026-01-01", end="2026-01-03", limit=1)
-    assert symbol.canonical == "RELIANCE"
+    symbol, bars = service.fetch_daily_ohlcv("aapl", market="NASDAQ", start="2026-01-01", end="2026-01-03", limit=1)
+    assert symbol.canonical == "AAPL"
     assert len(bars) == 1
     assert bars[0].date == "2026-01-02"
 
@@ -34,12 +34,12 @@ def test_ohlcv_route_returns_mocked_payload(monkeypatch) -> None:
     monkeypatch.setattr(data_route, "get_historical_data_service", lambda: service)
     result = asyncio.run(
         data_route.get_ohlcv(
-            symbol="reliance",
-            market="NSE",
+            symbol="aapl",
+            market="NASDAQ",
             start="2026-01-01",
             end="2026-01-10",
             limit=2,
         )
     )
-    assert result["symbol"] == "RELIANCE"
+    assert result["symbol"] == "AAPL"
     assert len(result["bars"]) == 2

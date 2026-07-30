@@ -15,11 +15,11 @@ from backend.shared.db import SessionLocal
 
 router = APIRouter()
 DEFAULT_FUTURES_UNDERLYINGS = [
-    "NIFTY",
-    "BANKNIFTY",
-    "FINNIFTY",
-    "MIDCPNIFTY",
-    "NIFTYNXT50",
+    "SPY",
+    "QQQ",
+    "IWM",
+    "DIA",
+    "ES",
 ]
 
 

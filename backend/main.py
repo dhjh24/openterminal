@@ -25,9 +25,16 @@ from backend.config.security import validate_runtime_secrets
 from backend.config.settings import get_settings
 from backend.shared.cache import cache as cache_instance
 from backend.shared.db import init_db
+from backend.shared.market_profile import MarketProfileError, get_market_profile
 from backend.shared.ws_manager import get_marketdata_hub
 
 load_local_env()
+
+# Fail fast on unsupported market profiles (IN / INDIA / MULTI / ALL).
+try:
+    get_market_profile()
+except MarketProfileError as exc:
+    raise SystemExit(f"Configuration error: {exc}") from exc
 
 if sys.platform.startswith("win"):
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
