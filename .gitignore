@@ -87,3 +87,4 @@ dist/
 
 # Accidental landing-page upload dumps (full-repo copies)
 frontend/public/landing/uploads/
+.cursor/

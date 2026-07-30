@@ -261,6 +261,7 @@ export function HomePage() {
   const [performanceLabels, setPerformanceLabels] = useState<string[]>([]);
   const [selectedHeatId, setSelectedHeatId] = useState<string | null>(INITIAL_MARKET_ROWS[0]?.symbol ?? null);
   const [initializing, setInitializing] = useState(() => sessionStorage.getItem(TRANSITION_FLAG_KEY) === "1");
+  const [showDeskSettings, setShowDeskSettings] = useState(false);
 
   const loadSnapshot = useCallback(async () => {
     const [portfolioRes, watchlistRes, backtestRes, chainRes, benchmarkRes] = await Promise.allSettled([
@@ -608,7 +609,7 @@ export function HomePage() {
 
   return (
     <TerminalShell
-      contentClassName="bg-terminal-bg pb-16 md:pb-0"
+      contentClassName="bg-terminal-bg pb-20 md:pb-0"
       hideTickerLoader
       showMobileBottomNav
       showWorkspaceControls={false}
@@ -626,15 +627,16 @@ export function HomePage() {
 
         {!initializing ? (
           <main className="flex min-h-full flex-col gap-3 p-3 md:p-4" aria-label="Mission Control Dashboard">
-            <section className="rounded-sm border border-terminal-border bg-terminal-panel/80 p-3" aria-label="Home Header">
+            {/* ── Desktop header (≥768px) ── */}
+            <section className="hidden md:block rounded-sm border border-terminal-border bg-terminal-panel/80 p-3" aria-label="Home Header">
               <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
                 <div className="space-y-2">
-                  <p className="ot-type-panel-title ot-home-title-mobile uppercase tracking-[0.18em] text-terminal-accent">Mission Control</p>
-                  <h1 className="text-2xl font-semibold uppercase ot-home-heading-mobile tracking-[0.12em] text-terminal-text">{presetConfig.landing.headline}</h1>
+                  <p className="ot-type-panel-title uppercase tracking-[0.18em] text-terminal-accent">Mission Control</p>
+                  <h1 className="text-2xl font-semibold uppercase tracking-[0.12em] text-terminal-text">{presetConfig.landing.headline}</h1>
                   <p className="max-w-3xl text-sm text-terminal-muted">
                     {presetConfig.landing.description}
                   </p>
-                  <div className="flex flex-wrap gap-1.5 text-[11px] uppercase ot-home-badge-mobile tracking-[0.12em] text-terminal-muted">
+                  <div className="flex flex-wrap gap-2 text-[11px] uppercase tracking-[0.12em] text-terminal-muted">
                     <span className="rounded-sm border border-terminal-border px-2 py-1">
                       Desk {(user?.email || "unknown").toUpperCase()}
                     </span>
@@ -658,28 +660,28 @@ export function HomePage() {
                   <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
-                      className="rounded-sm border border-terminal-border px-2 py-1.5 text-[11px] uppercase ot-home-badge-mobile tracking-[0.12em] text-terminal-muted hover:border-terminal-accent hover:text-terminal-accent"
+                      className="rounded-sm border border-terminal-border px-3 py-1.5 text-[11px] uppercase tracking-[0.12em] text-terminal-muted hover:border-terminal-accent hover:text-terminal-accent"
                       onClick={() => navigate("/equity/portfolio")}
                     >
                       Portfolio HQ
                     </button>
                     <button
                       type="button"
-                      className="rounded-sm border border-terminal-accent px-2 py-1.5 text-[11px] uppercase ot-home-badge-mobile tracking-[0.12em] text-terminal-accent hover:bg-terminal-accent/10"
+                      className="rounded-sm border border-terminal-accent px-3 py-1.5 text-[11px] uppercase tracking-[0.12em] text-terminal-accent hover:bg-terminal-accent/10"
                       onClick={() => navigate(presetConfig.landing.primaryRoute)}
                     >
                       {presetConfig.landing.primaryLabel}
                     </button>
                     <button
                       type="button"
-                      className="rounded-sm border border-terminal-border px-2 py-1.5 text-[11px] uppercase ot-home-badge-mobile tracking-[0.12em] text-terminal-muted hover:border-terminal-accent hover:text-terminal-accent"
+                      className="rounded-sm border border-terminal-border px-3 py-1.5 text-[11px] uppercase tracking-[0.12em] text-terminal-muted hover:border-terminal-accent hover:text-terminal-accent"
                       onClick={() => navigate("/equity/launchpad")}
                     >
                       Launchpad
                     </button>
                     <button
                       type="button"
-                      className="rounded-sm border border-terminal-border px-2 py-1.5 text-[11px] uppercase ot-home-badge-mobile tracking-[0.12em] text-terminal-muted hover:border-terminal-accent hover:text-terminal-accent"
+                      className="rounded-sm border border-terminal-border px-3 py-1.5 text-[11px] uppercase tracking-[0.12em] text-terminal-muted hover:border-terminal-accent hover:text-terminal-accent"
                       onClick={() => navigate("/equity/news")}
                     >
                       Intel Wire
@@ -689,6 +691,100 @@ export function HomePage() {
               </div>
 
               <div className="mt-3">
+                <MarketHeatStrip
+                  ariaLabel="Market heat strip"
+                  items={heatItems}
+                  selectedItemId={selectedHeatId}
+                  formatValue={(value) => (typeof value === "number" ? formatPrice(value) : "--")}
+                  onSelect={(item) => setSelectedHeatId(item.id)}
+                />
+              </div>
+            </section>
+
+            {/* ── Mobile header (<768px) ── */}
+            <section className="block md:hidden rounded-sm border border-terminal-border bg-terminal-panel/80 p-2.5" aria-label="Mobile Home Header">
+              {/* Top row: short title + desk toggle */}
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11px] uppercase tracking-wider text-terminal-accent leading-tight">Mission Control</p>
+                  <h1 className="text-sm font-semibold uppercase tracking-normal text-terminal-text truncate">
+                    {presetConfig.landing.headline}
+                  </h1>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowDeskSettings((v) => !v)}
+                  className="shrink-0 rounded-sm border border-terminal-border px-2 py-1 text-[10px] uppercase tracking-wider text-terminal-muted hover:border-terminal-accent hover:text-terminal-accent"
+                  aria-expanded={showDeskSettings}
+                  aria-label="Desk settings"
+                >
+                  {showDeskSettings ? "▲ Desk" : "▼ Desk"}
+                </button>
+              </div>
+
+              {/* Status row: market / connection / primary action */}
+              <div className="mt-2 flex items-center justify-between gap-2">
+                <span className="text-[11px] text-terminal-muted truncate">
+                  {selectedMarket} · {realtimeMode === "ws" ? "LIVE" : "POLL"} · {updatedLabel}
+                </span>
+                <button
+                  type="button"
+                  className="shrink-0 rounded-sm border border-terminal-accent px-2 py-1 text-[10px] uppercase tracking-wider text-terminal-accent hover:bg-terminal-accent/10"
+                  onClick={() => navigate(presetConfig.landing.primaryRoute)}
+                >
+                  {presetConfig.landing.primaryLabel}
+                </button>
+              </div>
+
+              {/* Expandable desk settings panel */}
+              {showDeskSettings ? (
+                <div className="mt-2 border-t border-terminal-border pt-2 space-y-2">
+                  <LiveClockStrip />
+                  <div className="flex flex-wrap gap-1.5 text-[10px] uppercase tracking-wider text-terminal-muted">
+                    <span className="rounded-sm border border-terminal-border px-1.5 py-0.5">
+                      Desk {(user?.email || "unknown").toUpperCase()}
+                    </span>
+                    <span className="rounded-sm border border-terminal-border px-1.5 py-0.5">
+                      {selectedMarket}
+                    </span>
+                    <span className="rounded-sm border border-terminal-accent/60 px-1.5 py-0.5 text-terminal-accent">
+                      {presetConfig.label}
+                    </span>
+                    <span className="rounded-sm border border-terminal-border px-1.5 py-0.5">
+                      {displayCurrency}
+                    </span>
+                    <span className="rounded-sm border border-terminal-border px-1.5 py-0.5">
+                      {newsAutoRefresh ? `${newsRefreshSec}s` : "Manual"}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    <button
+                      type="button"
+                      className="rounded-sm border border-terminal-border px-2 py-1 text-[10px] uppercase tracking-wider text-terminal-muted hover:border-terminal-accent hover:text-terminal-accent"
+                      onClick={() => navigate("/equity/portfolio")}
+                    >
+                      Portfolio HQ
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded-sm border border-terminal-border px-2 py-1 text-[10px] uppercase tracking-wider text-terminal-muted hover:border-terminal-accent hover:text-terminal-accent"
+                      onClick={() => navigate("/equity/launchpad")}
+                    >
+                      Launchpad
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded-sm border border-terminal-border px-2 py-1 text-[10px] uppercase tracking-wider text-terminal-muted hover:border-terminal-accent hover:text-terminal-accent"
+                      onClick={() => navigate("/equity/news")}
+                    >
+                      Intel Wire
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+
+              {/* MarketHeatStrip — always visible on mobile */}
+              <div className="mt-2">
                 <MarketHeatStrip
                   ariaLabel="Market heat strip"
                   items={heatItems}
