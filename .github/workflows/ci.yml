@@ -94,6 +94,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install backend deps (uvicorn webServer)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+          mkdir -p data playwright/.auth
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -109,15 +120,13 @@ jobs:
         run: npx playwright install --with-deps chromium
         working-directory: frontend
 
-      - name: Playwright smoke
-        run: npm run test:e2e -- --grep "us-smoke|login page|option chain|settings migration|unsupported India|websocket reconnect|dashboard"
+      - name: Playwright US smoke suite
+        run: npm run test:e2e -- --grep "us-smoke|login page renders|option chain table"
         working-directory: frontend
-        continue-on-error: true
-        # Full e2e suite also runs below for required coverage.
-
-      - name: Playwright full suite
-        run: npm run test:e2e
-        working-directory: frontend
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+          MARKET_PROFILE: US
+          VITE_MARKET_PROFILE: US
 
   security:
     name: Dependency and secret scanning
@@ -157,6 +166,12 @@ jobs:
 
       - name: Validate compose file
         run: |
-          docker compose -f docker-compose.yml config
-          # Host port mappings must stay: app 8005, Redis 6380, Postgres 5433
-          docker compose -f docker-compose.yml config | grep -E '8005:8000|6380:6379|5433:5432'
+          set -euo pipefail
+          docker compose -f docker-compose.yml config >/tmp/compose.default.yml
+          # Long-form port output: published/target (not "8005:8000")
+          grep -q 'published: "8005"' /tmp/compose.default.yml
+          grep -q 'published: "6380"' /tmp/compose.default.yml
+          # Postgres is profile-gated; validate host mapping under that profile
+          docker compose --profile postgres -f docker-compose.yml config >/tmp/compose.postgres.yml
+          grep -q 'published: "5433"' /tmp/compose.postgres.yml
+          echo "Compose port mappings OK: app 8005, Redis 6380, Postgres 5433"

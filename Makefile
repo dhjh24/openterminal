@@ -42,8 +42,12 @@ build-frontend:
 	cd frontend && npm run build
 
 docker-validate:
-	docker compose -f docker-compose.yml config
-	docker compose -f docker-compose.yml config | grep -E '8005:8000|6380:6379|5433:5432'
+	docker compose -f docker-compose.yml config >/tmp/compose.default.yml
+	grep -q 'published: "8005"' /tmp/compose.default.yml
+	grep -q 'published: "6380"' /tmp/compose.default.yml
+	docker compose --profile postgres -f docker-compose.yml config >/tmp/compose.postgres.yml
+	grep -q 'published: "5433"' /tmp/compose.postgres.yml
+	@echo "Compose port mappings OK: app 8005, Redis 6380, Postgres 5433"
 
 security-scan:
 	python -m pip install -q pip-audit && pip-audit -r backend/requirements.txt || true
