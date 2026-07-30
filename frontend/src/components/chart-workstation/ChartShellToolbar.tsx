@@ -1,4 +1,4 @@
-import type { KeyboardEvent } from "react";
+import { useState, type KeyboardEvent } from "react";
 import { LayoutSelector } from "./LayoutSelector";
 import { TickerDropdown } from "./TickerDropdown";
 import { TerminalBadge } from "../terminal/TerminalBadge";
@@ -377,6 +377,7 @@ export function ChartShellToolbar({
     : "Select a pane to drive shell actions";
   const replayScopeLabel = linkSettings.replay && activeLinkGroup !== "off" ? `Replay Link ${activeLinkGroup}` : "Replay Active";
   const rangeScopeLabel = linkSettings.dateRange && activeLinkGroup !== "off" ? `Range Link ${activeLinkGroup}` : "Range Active";
+  const [toolsOpen, setToolsOpen] = useState(false);
 
   return (
     <div
@@ -392,6 +393,9 @@ export function ChartShellToolbar({
               <TerminalBadge variant="accent">{paneLabel}</TerminalBadge>
               <TerminalBadge variant="info">{focusSummary}</TerminalBadge>
               <TerminalBadge variant={dense ? "warn" : "neutral"}>{dense ? "Dense Desktop" : "Comfort Layout"}</TerminalBadge>
+              <TerminalButton type="button" size="sm" variant={toolsOpen ? "accent" : "ghost"} className="px-2" onClick={() => setToolsOpen(!toolsOpen)}>
+                {toolsOpen ? "Hide Tools" : "Tools"}
+              </TerminalButton>
             </div>
             <div className="mt-2 flex flex-wrap items-center gap-1" data-testid="chart-shell-workspace-tabs">
               {workspaceTabs.map((tab) => (
@@ -651,7 +655,7 @@ export function ChartShellToolbar({
             </div>
           </section>
         </div>
-        <div className="hidden gap-2 md:grid xl:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1.05fr)_minmax(0,1.1fr)] [&>section]:min-w-0 [&_.grid]:min-w-0">
+        {toolsOpen && <div className="hidden gap-2 md:grid xl:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1.05fr)_minmax(0,1.1fr)] [&>section]:min-w-0 [&_.grid]:min-w-0">
           <section className="rounded border border-terminal-border bg-terminal-bg/50 p-2 text-[11px]">
             <div className="flex items-center justify-between gap-2">
               <div className="ot-type-label text-terminal-muted">Focus</div>
@@ -981,7 +985,7 @@ export function ChartShellToolbar({
               </div>
             </div>
           </section>
-        </div>
+        </div>}
       </div>
     </div>
   );
