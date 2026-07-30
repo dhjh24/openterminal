@@ -140,10 +140,6 @@ class QuotesWsManager {
       this.wantedCounts.set(token, (this.wantedCounts.get(token) || 0) + 1);
     }
 
-    // #region agent log
-    fetch('http://localhost:7732/ingest/e3dc31c6-26af-4b2c-99d0-d7886b2cd9a5',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'30ea21'},body:JSON.stringify({sessionId:'30ea21',runId:'pre-fix',hypothesisId:'H6',location:'useQuotesStream.ts:subscribe',message:'ws subscribe',data:{market:normalizeMarket(market),symbols:next,count:this.wantedCounts.size},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
-
     this.shouldReconnect = true;
     this.ensureConnected();
     this.flushSubscriptions();
@@ -212,9 +208,6 @@ class QuotesWsManager {
     useQuotesStore.getState().setConnectionState("connecting");
 
     const url = buildQuotesWsUrl();
-    // #region agent log
-    fetch('http://localhost:7732/ingest/e3dc31c6-26af-4b2c-99d0-d7886b2cd9a5',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'30ea21'},body:JSON.stringify({sessionId:'30ea21',runId:'pre-fix',hypothesisId:'H6',location:'useQuotesStream.ts:connect',message:'ws connect',data:{url},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
 
     const ws = new WebSocket(url);
     this.socket = ws;
@@ -312,9 +305,6 @@ class QuotesWsManager {
       if (import.meta.env.DEV) {
         console.warn("[quotes-ws] closed", { code: event.code, reason: event.reason, wasClean: event.wasClean });
       }
-      // #region agent log
-      fetch('http://localhost:7732/ingest/e3dc31c6-26af-4b2c-99d0-d7886b2cd9a5',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'30ea21'},body:JSON.stringify({sessionId:'30ea21',runId:'pre-fix',hypothesisId:'H6',location:'useQuotesStream.ts:onclose',message:'ws close',data:{code:event.code,reason:event.reason,wasClean:event.wasClean},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
 
       if (this.shouldReconnect && this.wantedCounts.size > 0) {
         this.scheduleReconnect();
