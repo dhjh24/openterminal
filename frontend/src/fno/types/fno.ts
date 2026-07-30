@@ -26,7 +26,7 @@ export type StrikeData = {
 
 export type OptionChainResponse = {
   symbol: string;
-  market?: "US" | "NSE";
+  market?: "US";
   spot_price: number;
   timestamp: string;
   expiry_date: string;
@@ -65,7 +65,7 @@ export type OIAnalysis = {
 
 export type ChainSummary = {
   symbol: string;
-  market?: "US" | "NSE";
+  market?: "US";
   expiry_date: string;
   spot_price: number;
   atm_strike: number;
@@ -230,9 +230,6 @@ export function formatUsCompact(value: number): string {
   if (abs >= 1e3) return `${(value / 1e3).toFixed(2)}K`;
   return value.toLocaleString("en-US", { maximumFractionDigits: 0 });
 }
-
-/** @deprecated Use formatUsCompact */
-export const formatIndianCompact = formatUsCompact;
 
 export function formatCurrencyUSD(value: number): string {
   if (!Number.isFinite(value)) return "-";

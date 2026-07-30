@@ -6,9 +6,9 @@ interface Preset {
 }
 
 const US_PRESETS: Preset[] = [
-  { label: "SPY", underlying: "SPY", exchange: "AMEX", strikeStep: 1 },
-  { label: "QQQ", underlying: "QQQ", exchange: "AMEX", strikeStep: 1 },
-  { label: "IWM", underlying: "IWM", exchange: "AMEX", strikeStep: 1 },
+  { label: "SPY", underlying: "SPY", exchange: "NYSE", strikeStep: 1 },
+  { label: "QQQ", underlying: "QQQ", exchange: "NASDAQ", strikeStep: 1 },
+  { label: "IWM", underlying: "IWM", exchange: "NYSE", strikeStep: 1 },
   { label: "AAPL", underlying: "AAPL", exchange: "NASDAQ", strikeStep: 1 },
   { label: "NVDA", underlying: "NVDA", exchange: "NASDAQ", strikeStep: 1 },
   { label: "TSLA", underlying: "TSLA", exchange: "NASDAQ", strikeStep: 1 },

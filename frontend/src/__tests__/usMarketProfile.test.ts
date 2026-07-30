@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { normalizePersistedMarket } from "../store/settingsStore";
 import type { CountryCode, MarketCode } from "../types/markets";
@@ -14,14 +14,20 @@ describe("usMarketProfile", () => {
     expect(normalizePersistedMarket("IN")).toBe("NASDAQ");
   });
 
-  it("allows US exchange codes", () => {
-    const allowed: MarketCode[] = ["NYSE", "NASDAQ", "AMEX", "CBOE", "CME"];
+  it("allows supported US exchange codes only", () => {
+    const allowed: MarketCode[] = ["NYSE", "NASDAQ"];
     for (const market of allowed) {
       expect(normalizePersistedMarket(market)).toBe(market);
     }
   });
 
-  it("migrates persisted IN/NSE/INR settings to US/NASDAQ/USD", async () => {
+  it("maps unsupported former US venues to NASDAQ", () => {
+    expect(normalizePersistedMarket("AMEX")).toBe("NASDAQ");
+    expect(normalizePersistedMarket("CBOE")).toBe("NASDAQ");
+    expect(normalizePersistedMarket("CME")).toBe("NASDAQ");
+  });
+
+  it("migrates persisted IN/NSE/INR settings and drops India recent symbols", async () => {
     localStorage.setItem(
       "ui-settings",
       JSON.stringify({
@@ -29,7 +35,10 @@ describe("usMarketProfile", () => {
           selectedCountry: "IN",
           selectedMarket: "NSE",
           displayCurrency: "INR",
-          recentSecurities: [{ symbol: "RELIANCE", name: "Reliance", assetClass: "equity", market: "IN", visitedAt: 1 }],
+          recentSecurities: [
+            { symbol: "RELIANCE", name: "Reliance", assetClass: "equity", market: "IN", visitedAt: 1 },
+            { symbol: "AAPL", name: "Apple", assetClass: "equity", market: "US", visitedAt: 2 },
+          ],
         },
         version: 0,
       }),
@@ -42,15 +51,16 @@ describe("usMarketProfile", () => {
     expect(state.selectedCountry).toBe("US");
     expect(state.selectedMarket).toBe("NASDAQ");
     expect(state.displayCurrency).toBe("USD");
-    expect(state.recentSecurities[0]?.market).toBe("US");
-    expect(state.recentSecurities[0]?.symbol).toBe("RELIANCE");
+    expect(state.recentSecurities.map((r) => r.symbol)).toEqual(["AAPL"]);
+    expect(state.recentSecurities.every((r) => r.market === "US")).toBe(true);
   });
 
   it("does not require IN in market types", () => {
     const country: CountryCode = "US";
-    const markets: MarketCode[] = ["NASDAQ", "NYSE", "AMEX", "CBOE", "CME"];
+    const markets: MarketCode[] = ["NASDAQ", "NYSE"];
     expect(country).toBe("US");
     expect(markets).not.toContain("NSE" as MarketCode);
     expect(markets).not.toContain("BSE" as MarketCode);
+    expect(markets).not.toContain("AMEX" as MarketCode);
   });
 });
