@@ -4,6 +4,7 @@ import type { Bar } from "oakscriptjs";
 
 import { computeIndicator } from "./IndicatorManager";
 import { resolveIndicatorPaneKey } from "./indicatorCatalog";
+import { safeRemoveSeries } from "./safeChartCleanup";
 import type { IndicatorConfig } from "./types";
 import { terminalColors } from "../../theme/terminal";
 
@@ -44,14 +45,11 @@ function toPlotData(points: Array<{ time: unknown; value: unknown }>): Array<{ t
   return out;
 }
 
-function clearSeries(chart: IChartApi, map: SeriesMap): SeriesMap {
+function clearSeries(chart: IChartApi | null, map: SeriesMap): SeriesMap {
+  if (!chart) return {};
   for (const plotMap of Object.values(map)) {
     for (const series of Object.values(plotMap)) {
-      try {
-        chart.removeSeries(series);
-      } catch {
-        // Chart may already be disposed by TradingChart cleanup (chart.remove()).
-      }
+      safeRemoveSeries(chart, series);
     }
   }
   return {};
@@ -62,17 +60,18 @@ function clearPlacementMap(): SeriesPlacementMap {
 }
 
 function removeIndicatorSeries(
-  chart: IChartApi,
+  chart: IChartApi | null,
   seriesMap: SeriesMap,
   placementMap: SeriesPlacementMap,
   indicatorId: string,
 ): void {
+  if (!chart) {
+    delete seriesMap[indicatorId];
+    delete placementMap[indicatorId];
+    return;
+  }
   for (const series of Object.values(seriesMap[indicatorId] ?? {})) {
-    try {
-      chart.removeSeries(series);
-    } catch {
-      // ignore stale refs / disposed chart
-    }
+    safeRemoveSeries(chart, series);
   }
   delete seriesMap[indicatorId];
   delete placementMap[indicatorId];
@@ -157,11 +156,7 @@ export function useIndicators(
 
       for (const stalePlotId of existingPlotIds) {
         if (incomingPlotIds.has(stalePlotId)) continue;
-        try {
-          chart.removeSeries(seriesMapRef.current[key][stalePlotId]);
-        } catch {
-          // ignore remove failures from stale refs
-        }
+        safeRemoveSeries(chart, seriesMapRef.current[key][stalePlotId]);
         delete seriesMapRef.current[key][stalePlotId];
         delete placementRef.current[key][stalePlotId];
       }
@@ -175,11 +170,7 @@ export function useIndicators(
         const placementChanged =
           placementMeta?.paneIndex !== targetPaneIndex || placementMeta?.priceScaleId !== priceScaleId;
         if (series && placementChanged) {
-          try {
-            chart.removeSeries(series);
-          } catch {
-            // ignore stale refs
-          }
+          safeRemoveSeries(chart, series);
           delete seriesMapRef.current[key][plotId];
           delete placementRef.current[key][plotId];
           series = undefined;
@@ -215,11 +206,7 @@ export function useIndicators(
               });
             }
           } catch {
-            try {
-              chart.removeSeries(series);
-            } catch {
-              // ignore stale refs
-            }
+            safeRemoveSeries(chart, series);
             delete seriesMapRef.current[key][plotId];
             delete placementRef.current[key][plotId];
             continue;
@@ -243,11 +230,7 @@ export function useIndicators(
             });
           }
         } catch {
-          try {
-            chart.removeSeries(series);
-          } catch {
-            // ignore stale refs
-          }
+          safeRemoveSeries(chart, series);
           delete seriesMapRef.current[key][plotId];
           delete placementRef.current[key][plotId];
           continue;
@@ -278,9 +261,12 @@ export function useIndicators(
   useEffect(() => {
     if (!chart) return;
     return () => {
-      seriesMapRef.current = clearSeries(chart, seriesMapRef.current);
+      // Clear owned refs first so a later chart.remove() cannot race with removeSeries.
+      const owned = seriesMapRef.current;
+      seriesMapRef.current = {};
       cacheRef.current = {};
       placementRef.current = clearPlacementMap();
+      clearSeries(chart, owned);
     };
   }, [chart]);
 }

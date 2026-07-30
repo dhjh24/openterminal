@@ -23,8 +23,15 @@ import {
 import type { ChartPoint, CorporateEvent, IndicatorResponse, PitFundamentalsResponse } from "../../types";
 import type { DrawMode } from "./DrawingTools";
 import { chartThemeWithTextSize, resolveChartAxisFontSize } from "../../shared/chart/chartTheme";
-import { useSettingsStore } from "../../store/settingsStore";
 import { useIndicators } from "../../shared/chart/useIndicators";
+import {
+  isValidChartSize,
+  readValidContainerSize,
+  safeDestroyChart,
+  safeRemoveAllSeries,
+  safeRemovePriceLine,
+  safeRemoveSeries,
+} from "../../shared/chart/safeChartCleanup";
 import type { IndicatorConfig } from "../../shared/chart/types";
 import {
   REPLAY_SPEEDS,
@@ -43,6 +50,7 @@ import {
   buildEnhancedVolumeBar,
 } from "../../shared/chart/candlePresentation";
 import { canApplyTailUpdate } from "../../shared/chart/chartUtils";
+import { useSettingsStore } from "../../store/settingsStore";
 import { terminalColors, terminalOverlayPalette } from "../../theme/terminal";
 import type { Bar } from "oakscriptjs";
 import { useQuotesStore, useQuotesStream, type QuoteTick } from "../../realtime/useQuotesStream";
@@ -731,7 +739,7 @@ export function TradingChart({
     applyRealtimeTick(tick);
   }, [applyRealtimeTick, useInternalRealtime]);
 
-  const { subscribe } = useQuotesStream(market || "IN", handleTick);
+  const { subscribe } = useQuotesStream(market || "NASDAQ", handleTick);
 
   useEffect(() => {
     if (!useInternalRealtime) return;
@@ -812,10 +820,7 @@ export function TradingChart({
     [replayParsed],
   );
   const mainPriceScaleId = surfaceSettings.priceScalePlacement === "left" ? "left" : "right";
-  useIndicators(indicatorChartApi, indicatorBars, indicatorConfigs, {
-    nonOverlayPaneStartIndex: 1,
-    mainPriceScaleId,
-  });
+  // useIndicators is registered AFTER chart init (below) so its cleanup runs before chart.remove().
   const showSessionLegend = useMemo(
     () => surfaceSettings.sessionOverlayVisible && hasVisibleSessionShading(replayParsed, extendedHours),
     [replayParsed, extendedHours, surfaceSettings.sessionOverlayVisible],
@@ -1206,10 +1211,92 @@ export function TradingChart({
     if (!chartRef.current || apiRef.current) {
       return;
     }
-    const chart = createChart(chartRef.current, {
+
+    let disposed = false;
+    let chart: IChartApi | null = null;
+    let resizeBatcher: ReturnType<typeof createRafBatcher<{ width: number; height: number }>> | null = null;
+    let observer: ResizeObserver | null = null;
+    let onCrosshairMove: ((param: MouseEventParams<Time>) => void) | null = null;
+    let onClick: ((param: MouseEventParams<Time>) => void) | null = null;
+
+    const destroyChart = (reason: string) => {
+      // #region agent log
+      fetch('http://localhost:7732/ingest/e3dc31c6-26af-4b2c-99d0-d7886b2cd9a5',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'30ea21'},body:JSON.stringify({sessionId:'30ea21',runId:'pre-fix',hypothesisId:'H1',location:'TradingChart.tsx:destroyChart',message:'chart cleanup start',data:{reason,hasChart:Boolean(chart),comparisonCount:comparisonSeriesRef.current.length,overlayCount:overlaySeriesRef.current.length,drawingCount:drawingLineSeriesRef.current.length},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
+      if (observer) {
+        observer.disconnect();
+        observer = null;
+      }
+      resizeBatcher?.cancel();
+      resizeBatcher = null;
+      if (chart && onCrosshairMove) {
+        try {
+          chart.unsubscribeCrosshairMove(onCrosshairMove);
+        } catch {
+          /* already torn down */
+        }
+      }
+      if (chart && onClick) {
+        try {
+          chart.unsubscribeClick(onClick);
+        } catch {
+          /* already torn down */
+        }
+      }
+
+      // Clear owned series refs BEFORE chart.remove() — never removeSeries after destroy.
+      const ownedOverlay = overlaySeriesRef.current.splice(0);
+      const ownedComparison = comparisonSeriesRef.current.splice(0);
+      const ownedDrawings = drawingLineSeriesRef.current.splice(0);
+      const ownedDrawingLines = drawingPriceLinesRef.current.splice(0);
+      const ownedPmLines = pmLevelLinesRef.current.splice(0);
+      const highLine = highLineRef.current;
+      const lowLine = lowLineRef.current;
+      highLineRef.current = null;
+      lowLineRef.current = null;
+
+      if (chart) {
+        safeRemoveAllSeries(chart, [...ownedOverlay, ...ownedComparison, ...ownedDrawings]);
+        const candles = candleRef.current;
+        for (const line of ownedPmLines) safeRemovePriceLine(candles, line);
+        for (const line of ownedDrawingLines) safeRemovePriceLine(candles, line);
+        safeRemovePriceLine(candles, highLine);
+        safeRemovePriceLine(candles, lowLine);
+        safeDestroyChart(chart);
+      }
+
+      // #region agent log
+      fetch('http://localhost:7732/ingest/e3dc31c6-26af-4b2c-99d0-d7886b2cd9a5',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'30ea21'},body:JSON.stringify({sessionId:'30ea21',runId:'pre-fix',hypothesisId:'H1',location:'TradingChart.tsx:destroyChart',message:'chart cleanup complete',data:{reason,removedComparison:ownedComparison.length,removedOverlay:ownedOverlay.length},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
+
+      chart = null;
+      apiRef.current = null;
+      setIndicatorChartApi(null);
+      candleRef.current = null;
+      lineRef.current = null;
+      areaRef.current = null;
+      preSessionAreaRef.current = null;
+      postSessionAreaRef.current = null;
+      volumeRef.current = null;
+      sessionShadingRef.current = null;
+      selectedRef.current = null;
+      hoveredRef.current = null;
+    };
+
+    const createWhenReady = () => {
+      if (disposed || chart || !chartRef.current || apiRef.current) return;
+      const size = readValidContainerSize(chartRef.current, 520);
+      if (!size) {
+        // #region agent log
+        fetch('http://localhost:7732/ingest/e3dc31c6-26af-4b2c-99d0-d7886b2cd9a5',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'30ea21'},body:JSON.stringify({sessionId:'30ea21',runId:'pre-fix',hypothesisId:'H3',location:'TradingChart.tsx:createWhenReady',message:'defer createChart — invalid size',data:{width:chartRef.current.clientWidth,height:chartRef.current.clientHeight},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
+        return;
+      }
+
+      chart = createChart(chartRef.current, {
       ...chartThemeWithTextSize(chartTextSize),
-      width: chartRef.current.clientWidth,
-      height: chartRef.current.clientHeight || 520,
+      width: size.width,
+      height: size.height,
       leftPriceScale: {
         borderColor: terminalColors.border,
         visible: mainPriceScaleId === "left",
@@ -1319,6 +1406,10 @@ export function TradingChart({
     volumeRef.current = volume;
     sessionShadingRef.current = sessionShading;
 
+    // #region agent log
+    fetch('http://localhost:7732/ingest/e3dc31c6-26af-4b2c-99d0-d7886b2cd9a5',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'30ea21'},body:JSON.stringify({sessionId:'30ea21',runId:'pre-fix',hypothesisId:'H3',location:'TradingChart.tsx:createWhenReady',message:'createChart ok',data:size,timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
+
     const extractCandle = (param: MouseEventParams<Time>): CandlePoint | null => {
       const ts = toUnixTime(param.time);
       if (ts === null) return null;
@@ -1360,7 +1451,7 @@ export function TradingChart({
       return { time: ts, price };
     };
 
-    const onCrosshairMove = (param: MouseEventParams<Time>) => {
+    onCrosshairMove = (param: MouseEventParams<Time>) => {
       if (selectedRef.current) {
         return;
       }
@@ -1373,13 +1464,13 @@ export function TradingChart({
       }
     };
 
-    const onClick = (param: MouseEventParams<Time>) => {
+    onClick = (param: MouseEventParams<Time>) => {
       const nextDraw = extractDrawPoint(param);
       const next = extractCandle(param);
       if (drawModeRef.current === "none" && nextDraw) {
         const drawingHit = param.point
           ? findDrawingHit(drawingsRef.current, param.point, {
-              timeToX: (time) => chart.timeScale().timeToCoordinate(time as UTCTimestamp),
+              timeToX: (time) => chart!.timeScale().timeToCoordinate(time as UTCTimestamp),
               priceToY: (price) => candles.priceToCoordinate(price),
               fallbackX: DRAWING_HANDLE_FALLBACK_X,
             })
@@ -1477,45 +1568,36 @@ export function TradingChart({
     chart.subscribeCrosshairMove(onCrosshairMove);
     chart.subscribeClick(onClick);
 
-    const resizeBatcher = createRafBatcher<{ width: number; height: number }>(({ width, height }) => {
+    resizeBatcher = createRafBatcher<{ width: number; height: number }>(({ width, height }) => {
+      if (!chart || !isValidChartSize(width, height)) return;
       chart.applyOptions({ width, height });
     });
-    const observer = new ResizeObserver(() => {
-      if (chartRef.current) {
-        resizeBatcher.schedule({
-          width: chartRef.current.clientWidth,
-          height: chartRef.current.clientHeight || 520,
-        });
+    };
+
+    observer = new ResizeObserver(() => {
+      if (!chartRef.current) return;
+      if (!chart) {
+        createWhenReady();
+        return;
       }
+      const width = chartRef.current.clientWidth;
+      const height = chartRef.current.clientHeight || 520;
+      if (!isValidChartSize(width, height)) return;
+      resizeBatcher?.schedule({ width, height });
     });
     observer.observe(chartRef.current);
+    createWhenReady();
 
     return () => {
-      observer.disconnect();
-      resizeBatcher.cancel();
-      chart.unsubscribeCrosshairMove(onCrosshairMove);
-      chart.unsubscribeClick(onClick);
-      // Drop series refs first; chart.remove() disposes all series. Calling
-      // removeSeries after remove() throws "Value is undefined".
-      overlaySeriesRef.current = [];
-      comparisonSeriesRef.current = [];
-      drawingLineSeriesRef.current = [];
-      chart.remove();
-      apiRef.current = null;
-      setIndicatorChartApi(null);
-      candleRef.current = null;
-      lineRef.current = null;
-      areaRef.current = null;
-      preSessionAreaRef.current = null;
-      postSessionAreaRef.current = null;
-      volumeRef.current = null;
-      sessionShadingRef.current = null;
-      highLineRef.current = null;
-      lowLineRef.current = null;
-      selectedRef.current = null;
-      hoveredRef.current = null;
+      disposed = true;
+      destroyChart("effect-cleanup");
     };
   }, []);
+
+  useIndicators(indicatorChartApi, indicatorBars, indicatorConfigs, {
+    nonOverlayPaneStartIndex: 1,
+    mainPriceScaleId,
+  });
 
   const lastParsedRef = useRef<CandlePoint[]>([]);
 
@@ -1598,7 +1680,7 @@ export function TradingChart({
     const candles = candleRef.current;
     if (candles) {
         for (const line of pmLevelLinesRef.current) {
-            candles.removePriceLine(line);
+            safeRemovePriceLine(candles, line);
         }
         pmLevelLinesRef.current = [];
 
@@ -1681,7 +1763,7 @@ export function TradingChart({
       return;
     }
     for (const series of overlaySeriesRef.current) {
-      chart.removeSeries(series);
+      safeRemoveSeries(chart, series);
     }
     overlaySeriesRef.current = [];
 
@@ -1718,7 +1800,7 @@ export function TradingChart({
     const chart = apiRef.current;
     if (!chart) return;
     for (const s of comparisonSeriesRef.current) {
-      chart.removeSeries(s);
+      safeRemoveSeries(chart, s);
     }
     comparisonSeriesRef.current = [];
     if (!comparisonSeries.length) return;
@@ -1755,11 +1837,11 @@ export function TradingChart({
     }
 
     for (const s of drawingLineSeriesRef.current) {
-      chart.removeSeries(s);
+      safeRemoveSeries(chart, s);
     }
     drawingLineSeriesRef.current = [];
     for (const pl of drawingPriceLinesRef.current) {
-      candles.removePriceLine(pl);
+      safeRemovePriceLine(candles, pl);
     }
     drawingPriceLinesRef.current = [];
 
@@ -1843,11 +1925,11 @@ export function TradingChart({
       return;
     }
     if (highLineRef.current) {
-      series.removePriceLine(highLineRef.current);
+      safeRemovePriceLine(series, highLineRef.current);
       highLineRef.current = null;
     }
     if (lowLineRef.current) {
-      series.removePriceLine(lowLineRef.current);
+      safeRemovePriceLine(series, lowLineRef.current);
       lowLineRef.current = null;
     }
     if (!selectedCandle || !showHighLow) {

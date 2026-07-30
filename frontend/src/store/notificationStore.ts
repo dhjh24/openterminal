@@ -14,6 +14,7 @@ type NotificationFilter = "all" | Notification["type"];
 interface NotificationState {
   notifications: Notification[];
   unreadCount: number;
+  lastError: string | null;
   isOpen: boolean;
   activeFilter: NotificationFilter;
   fetchNotifications: (type?: Notification["type"]) => Promise<void>;
@@ -26,18 +27,35 @@ interface NotificationState {
   setFilter: (filter: NotificationFilter) => void;
 }
 
+function toErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return String(error ?? "Unknown error");
+}
+
 export const useNotificationStore = create<NotificationState>((set, get) => ({
   notifications: [],
   unreadCount: 0,
+  lastError: null,
   isOpen: false,
   activeFilter: "all",
   fetchNotifications: async (type) => {
-    const notifications = await fetchNotifications(type ? { type } : undefined);
-    set({ notifications });
+    try {
+      const notifications = await fetchNotifications(type ? { type } : undefined);
+      set({ notifications, lastError: null });
+    } catch (error) {
+      set({ lastError: toErrorMessage(error) });
+    }
   },
   fetchUnreadCount: async () => {
-    const unreadCount = await fetchNotificationUnreadCount();
-    set({ unreadCount });
+    try {
+      const unreadCount = await fetchNotificationUnreadCount();
+      set({ unreadCount, lastError: null });
+    } catch (error) {
+      set((state) => ({
+        unreadCount: state.unreadCount,
+        lastError: toErrorMessage(error),
+      }));
+    }
   },
   markAsRead: async (id) => {
     const notification = await markNotificationRead(id);

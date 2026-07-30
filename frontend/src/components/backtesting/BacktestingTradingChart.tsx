@@ -15,9 +15,15 @@ import {
 import type { Bar } from "oakscriptjs";
 
 import { chartThemeWithTextSize, resolveChartAxisFontSize } from "../../shared/chart/chartTheme";
-import { useSettingsStore } from "../../store/settingsStore";
+import {
+  isValidChartSize,
+  readValidContainerSize,
+  safeDestroyChart,
+  safeRemoveSeries,
+} from "../../shared/chart/safeChartCleanup";
 import { useIndicators } from "../../shared/chart/useIndicators";
 import type { ChartKind, IndicatorConfig } from "../../shared/chart/types";
+import { useSettingsStore } from "../../store/settingsStore";
 import { terminalColors } from "../../theme/terminal";
 
 type TradeMarker = {
@@ -159,65 +165,45 @@ export function BacktestingTradingChart({
 
   useEffect(() => {
     if (!hostRef.current || chartRef.current) return;
-    const chart = createChart(hostRef.current, {
-      ...chartThemeWithTextSize(chartTextSize),
-      width: hostRef.current.clientWidth,
-      height,
-    });
-    const candles = chart.addSeries(CandlestickSeries, {
-      upColor: terminalColors.candleUp,
-      downColor: terminalColors.candleDown,
-      borderVisible: false,
-      wickUpColor: terminalColors.candleUp,
-      wickDownColor: terminalColors.candleDown,
-      visible: chartType === "candle",
-    });
-    const line = chart.addSeries(LineSeries, {
-      color: terminalColors.info,
-      lineWidth: 2,
-      visible: chartType === "line",
-    });
-    const area = chart.addSeries(AreaSeries, {
-      lineColor: terminalColors.info,
-      topColor: terminalColors.infoAreaTop,
-      bottomColor: terminalColors.infoAreaBottom,
-      visible: chartType === "area",
-    });
-    const volume = chart.addSeries(
-      HistogramSeries,
-      {
-        priceFormat: { type: "volume" },
-        color: terminalColors.candleUpAlpha80,
-        visible: showVolume,
-      },
-      1,
-    );
-    chart.panes()[0]?.setStretchFactor(950);
-    chart.panes()[1]?.setStretchFactor(90);
+    let disposed = false;
+    let chart: IChartApi | null = null;
+    let observer: ResizeObserver | null = null;
 
-    chartRef.current = chart;
-    setChartApi(chart);
-    candleRef.current = candles;
-    lineRef.current = line;
-    areaRef.current = area;
-    volumeRef.current = volume;
+    const destroyChart = () => {
+      if (observer) {
+        observer.disconnect();
+        observer = null;
+      }
+      const chartInstance = chart;
+      chart = null;
+      if (chartInstance) {
+        const refs = referenceSeriesRef.current.splice(0);
+        for (const item of refs) {
+          safeRemoveSeries(chartInstance, item.series);
+        }
+        chartInstance.unsubscribeCrosshairMove(onCrosshairMove);
+        safeDestroyChart(chartInstance);
+      }
+      chartRef.current = null;
+      setChartApi(null);
+      candleRef.current = null;
+      lineRef.current = null;
+      areaRef.current = null;
+      volumeRef.current = null;
+      referenceSeriesRef.current = [];
+    };
 
-    const observer = new ResizeObserver(() => {
-      if (!hostRef.current) return;
-      chart.applyOptions({ width: hostRef.current.clientWidth, height: hostRef.current.clientHeight || height });
-    });
-    observer.observe(hostRef.current);
-      const onCrosshairMove = (param: MouseEventParams<Time>) => {
-        const t = typeof param.time === "number" ? Number(param.time) : null;
-        if (!t) {
-          setCrosshair(null);
-          return;
-        }
-        const row = byTimeRef.current.get(t);
-        if (!row) {
-          setCrosshair(null);
-          return;
-        }
+    const onCrosshairMove = (param: MouseEventParams<Time>) => {
+      const t = typeof param.time === "number" ? Number(param.time) : null;
+      if (!t) {
+        setCrosshair(null);
+        return;
+      }
+      const row = byTimeRef.current.get(t);
+      if (!row) {
+        setCrosshair(null);
+        return;
+      }
       setCrosshair({
         time: t,
         open: Number(row.open),
@@ -226,18 +212,76 @@ export function BacktestingTradingChart({
         close: Number(row.close),
       });
     };
-    chart.subscribeCrosshairMove(onCrosshairMove);
+
+    const createWhenReady = () => {
+      if (disposed || chart || !hostRef.current || chartRef.current) return;
+      const size = readValidContainerSize(hostRef.current, height);
+      if (!size) return;
+
+      const newChart = createChart(hostRef.current, {
+        ...chartThemeWithTextSize(chartTextSize),
+        width: size.width,
+        height: size.height,
+      });
+      const candles = newChart.addSeries(CandlestickSeries, {
+        upColor: terminalColors.candleUp,
+        downColor: terminalColors.candleDown,
+        borderVisible: false,
+        wickUpColor: terminalColors.candleUp,
+        wickDownColor: terminalColors.candleDown,
+        visible: chartType === "candle",
+      });
+      const line = newChart.addSeries(LineSeries, {
+        color: terminalColors.info,
+        lineWidth: 2,
+        visible: chartType === "line",
+      });
+      const area = newChart.addSeries(AreaSeries, {
+        lineColor: terminalColors.info,
+        topColor: terminalColors.infoAreaTop,
+        bottomColor: terminalColors.infoAreaBottom,
+        visible: chartType === "area",
+      });
+      const volume = newChart.addSeries(
+        HistogramSeries,
+        {
+          priceFormat: { type: "volume" },
+          color: terminalColors.candleUpAlpha80,
+          visible: showVolume,
+        },
+        1,
+      );
+      newChart.panes()[0]?.setStretchFactor(950);
+      newChart.panes()[1]?.setStretchFactor(90);
+
+      chart = newChart;
+      chartRef.current = newChart;
+      setChartApi(newChart);
+      candleRef.current = candles;
+      lineRef.current = line;
+      areaRef.current = area;
+      volumeRef.current = volume;
+
+      newChart.subscribeCrosshairMove(onCrosshairMove);
+    };
+
+    observer = new ResizeObserver(() => {
+      if (!hostRef.current) return;
+      if (!chart) {
+        createWhenReady();
+        return;
+      }
+      const width = hostRef.current.clientWidth;
+      const nextHeight = hostRef.current.clientHeight || height;
+      if (!isValidChartSize(width, nextHeight)) return;
+      chart.applyOptions({ width, height: nextHeight });
+    });
+    observer.observe(hostRef.current);
+    createWhenReady();
+
     return () => {
-      observer.disconnect();
-      chart.unsubscribeCrosshairMove(onCrosshairMove);
-      chart.remove();
-      chartRef.current = null;
-      setChartApi(null);
-      candleRef.current = null;
-      lineRef.current = null;
-      areaRef.current = null;
-      volumeRef.current = null;
-      referenceSeriesRef.current = [];
+      disposed = true;
+      destroyChart();
     };
   }, [height]);
 
@@ -329,7 +373,7 @@ export function BacktestingTradingChart({
     const chart = chartRef.current;
     if (!chart) return;
     for (const item of referenceSeriesRef.current) {
-      chart.removeSeries(item.series);
+      safeRemoveSeries(chart, item.series);
     }
     referenceSeriesRef.current = [];
     if (!referenceLines.length || !bars.length) return;

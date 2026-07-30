@@ -1,5 +1,8 @@
 import React from "react";
 
+import { ChunkLoadRecovery } from "./ChunkLoadRecovery";
+import { isRetryableChunkError, recoverFromStaleChunk } from "../../utils/lazyWithRetry";
+
 const BRAND_ICON_SRC = "/favicon.png";
 
 type Props = {
@@ -11,6 +14,8 @@ type State = {
   message: string;
   retrying: boolean;
   retryCount: number;
+  isChunkError: boolean;
+  error: Error | null;
 };
 
 const MAX_AUTO_RETRIES = 2;
@@ -21,16 +26,33 @@ export class ErrorBoundary extends React.Component<Props, State> {
 
   constructor(props: Props) {
     super(props);
-    this.state = { hasError: false, message: "", retrying: false, retryCount: 0 };
+    this.state = {
+      hasError: false,
+      message: "",
+      retrying: false,
+      retryCount: 0,
+      isChunkError: false,
+      error: null,
+    };
   }
 
   static getDerivedStateFromError(error: Error): Partial<State> {
-    return { hasError: true, message: error?.message || "Unknown runtime error" };
+    return {
+      hasError: true,
+      message: error?.message || "Unknown runtime error",
+      isChunkError: isRetryableChunkError(error),
+      error,
+    };
   }
 
   componentDidCatch(error: Error) {
     // eslint-disable-next-line no-console
     console.error("UI runtime error:", error);
+
+    if (isRetryableChunkError(error)) {
+      recoverFromStaleChunk(error);
+      return;
+    }
 
     // Auto-retry if under the limit
     if (this.state.retryCount < MAX_AUTO_RETRIES) {
@@ -55,7 +77,14 @@ export class ErrorBoundary extends React.Component<Props, State> {
   }
 
   private handleManualRetry = () => {
-    this.setState({ hasError: false, message: "", retrying: false, retryCount: 0 });
+    this.setState({
+      hasError: false,
+      message: "",
+      retrying: false,
+      retryCount: 0,
+      isChunkError: false,
+      error: null,
+    });
   };
 
   private handleGoHome = () => {
@@ -64,6 +93,10 @@ export class ErrorBoundary extends React.Component<Props, State> {
 
   render() {
     if (this.state.hasError) {
+      if (this.state.isChunkError) {
+        return <ChunkLoadRecovery error={this.state.error} onRetry={this.handleManualRetry} />;
+      }
+
       const isAutoRetrying = this.state.retrying && this.state.retryCount < MAX_AUTO_RETRIES;
 
       return (

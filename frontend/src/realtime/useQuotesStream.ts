@@ -65,8 +65,16 @@ function normalizeSymbols(symbols: string[]): string[] {
   return Array.from(new Set(symbols.map((s) => s.trim().toUpperCase()).filter(Boolean)));
 }
 
+/** Map India / legacy aliases to US exchange tokens for the US market profile. */
+export function normalizeMarket(market: string): string {
+  const raw = String(market || "").trim().toUpperCase();
+  if (raw === "NYSE" || raw === "NASDAQ") return raw;
+  if (raw === "IN" || raw === "NSE" || raw === "NFO" || raw === "BSE") return "NASDAQ";
+  return raw || "NASDAQ";
+}
+
 function toToken(market: string, symbol: string): string {
-  return `${market.trim().toUpperCase()}:${symbol.trim().toUpperCase()}`;
+  return `${normalizeMarket(market)}:${symbol.trim().toUpperCase()}`;
 }
 
 function parseToken(token: string): { market: string; symbol: string } | null {
@@ -75,29 +83,45 @@ function parseToken(token: string): { market: string; symbol: string } | null {
   return { market, symbol };
 }
 
-function buildQuotesWsUrl(): string {
+const WS_QUOTES_SUFFIX = "/ws/quotes";
+
+function collapseDuplicateApiSegments(path: string): string {
+  return path.replace(/\/api(?:\/api)+/g, "/api");
+}
+
+export function buildQuotesWsUrl(): string {
   const apiBase = String(import.meta.env.VITE_API_BASE_URL || "/api").trim();
   if (apiBase.startsWith("http://") || apiBase.startsWith("https://")) {
     const url = new URL(apiBase);
     url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
-    url.pathname = `${url.pathname.replace(/\/+$/, "")}/ws/quotes`;
+    const basePath = collapseDuplicateApiSegments(url.pathname.replace(/\/+$/, "") || "/api");
+    url.pathname = collapseDuplicateApiSegments(`${basePath}${WS_QUOTES_SUFFIX}`);
     return url.toString();
   }
 
-  if (typeof window === "undefined") return "/api/ws/quotes";
+  if (typeof window === "undefined") return collapseDuplicateApiSegments(`/api${WS_QUOTES_SUFFIX}`);
   const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
   const normalizedBase = apiBase.startsWith("/") ? apiBase : `/${apiBase}`;
-  return `${wsProtocol}//${window.location.host}${normalizedBase.replace(/\/+$/, "")}/ws/quotes`;
+  const path = collapseDuplicateApiSegments(`${normalizedBase.replace(/\/+$/, "")}${WS_QUOTES_SUFFIX}`);
+  return `${wsProtocol}//${window.location.host}${path}`;
 }
+
+const PING_INTERVAL_MS = 25_000;
+const PONG_TIMEOUT_MS = 10_000;
+const MAX_RECONNECT_DELAY_MS = 8_000;
 
 class QuotesWsManager {
   private socket: WebSocket | null = null;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private pingInterval: ReturnType<typeof setInterval> | null = null;
+  private pongTimeout: ReturnType<typeof setTimeout> | null = null;
   private reconnectAttempt = 0;
   private shouldReconnect = false;
   private wantedCounts = new Map<string, number>();
   private sentSubscriptions = new Set<string>();
   private listeners = new Set<(tick: QuoteTick) => void>();
+  lastCloseCode: number | null = null;
+  lastCloseReason: string | null = null;
 
   addListener(cb: (tick: QuoteTick) => void) {
     this.listeners.add(cb);
@@ -115,6 +139,10 @@ class QuotesWsManager {
       const token = toToken(market, symbol);
       this.wantedCounts.set(token, (this.wantedCounts.get(token) || 0) + 1);
     }
+
+    // #region agent log
+    fetch('http://localhost:7732/ingest/e3dc31c6-26af-4b2c-99d0-d7886b2cd9a5',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'30ea21'},body:JSON.stringify({sessionId:'30ea21',runId:'pre-fix',hypothesisId:'H6',location:'useQuotesStream.ts:subscribe',message:'ws subscribe',data:{market:normalizeMarket(market),symbols:next,count:this.wantedCounts.size},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
 
     this.shouldReconnect = true;
     this.ensureConnected();
@@ -149,16 +177,56 @@ class QuotesWsManager {
     this.connect();
   }
 
+  private clearPingTimers() {
+    if (this.pingInterval) {
+      clearInterval(this.pingInterval);
+      this.pingInterval = null;
+    }
+    if (this.pongTimeout) {
+      clearTimeout(this.pongTimeout);
+      this.pongTimeout = null;
+    }
+  }
+
+  private startPing(ws: WebSocket) {
+    this.clearPingTimers();
+    this.pingInterval = setInterval(() => {
+      if (!this.socket || this.socket.readyState !== WebSocket.OPEN) return;
+      try {
+        this.socket.send(JSON.stringify({ op: "ping" }));
+        if (this.pongTimeout) clearTimeout(this.pongTimeout);
+        this.pongTimeout = setTimeout(() => {
+          if (import.meta.env.DEV) {
+            console.warn("[quotes-ws] pong timeout — closing socket to reconnect");
+          }
+          this.socket?.close();
+        }, PONG_TIMEOUT_MS);
+      } catch {
+        this.socket?.close();
+      }
+    }, PING_INTERVAL_MS);
+  }
+
   private connect() {
     this.clearReconnectTimer();
     useQuotesStore.getState().setConnectionState("connecting");
-    const ws = new WebSocket(buildQuotesWsUrl());
+
+    const url = buildQuotesWsUrl();
+    // #region agent log
+    fetch('http://localhost:7732/ingest/e3dc31c6-26af-4b2c-99d0-d7886b2cd9a5',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'30ea21'},body:JSON.stringify({sessionId:'30ea21',runId:'pre-fix',hypothesisId:'H6',location:'useQuotesStream.ts:connect',message:'ws connect',data:{url},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
+
+    const ws = new WebSocket(url);
     this.socket = ws;
 
     ws.onopen = () => {
       this.reconnectAttempt = 0;
       this.sentSubscriptions.clear();
       useQuotesStore.getState().setConnectionState("connected");
+      // #region agent log
+      fetch('http://localhost:7732/ingest/e3dc31c6-26af-4b2c-99d0-d7886b2cd9a5',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'30ea21'},body:JSON.stringify({sessionId:'30ea21',runId:'pre-fix',hypothesisId:'H6',location:'useQuotesStream.ts:onopen',message:'ws open',data:{url},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
+      this.startPing(ws);
       this.flushSubscriptions();
     };
 
@@ -166,6 +234,21 @@ class QuotesWsManager {
       try {
         const payload = JSON.parse(String(event.data));
         if (!payload) return;
+
+        if (payload.type === "pong") {
+          if (this.pongTimeout) {
+            clearTimeout(this.pongTimeout);
+            this.pongTimeout = null;
+          }
+          return;
+        }
+
+        if (payload.type === "error") {
+          if (import.meta.env.DEV) {
+            console.warn("[quotes-ws] server error:", payload);
+          }
+          return;
+        }
 
         if (payload.type === "market_status") {
           useQuotesStore.getState().setMarketStatus(payload.data);
@@ -218,23 +301,38 @@ class QuotesWsManager {
       }
     };
 
-    ws.onclose = () => {
+    ws.onclose = (event) => {
+      this.clearPingTimers();
       this.socket = null;
       this.sentSubscriptions.clear();
+      this.lastCloseCode = event.code;
+      this.lastCloseReason = event.reason || null;
       useQuotesStore.getState().setConnectionState("disconnected");
+
+      if (import.meta.env.DEV) {
+        console.warn("[quotes-ws] closed", { code: event.code, reason: event.reason, wasClean: event.wasClean });
+      }
+      // #region agent log
+      fetch('http://localhost:7732/ingest/e3dc31c6-26af-4b2c-99d0-d7886b2cd9a5',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'30ea21'},body:JSON.stringify({sessionId:'30ea21',runId:'pre-fix',hypothesisId:'H6',location:'useQuotesStream.ts:onclose',message:'ws close',data:{code:event.code,reason:event.reason,wasClean:event.wasClean},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
+
       if (this.shouldReconnect && this.wantedCounts.size > 0) {
         this.scheduleReconnect();
       }
     };
 
     ws.onerror = () => {
+      if (import.meta.env.DEV) {
+        console.warn("[quotes-ws] connection error");
+      }
       ws.close();
     };
   }
 
   private scheduleReconnect() {
     this.clearReconnectTimer();
-    const delay = Math.min(8000, 500 * 2 ** this.reconnectAttempt) + Math.round(Math.random() * 300);
+    const baseDelay = Math.min(MAX_RECONNECT_DELAY_MS, 500 * 2 ** this.reconnectAttempt);
+    const delay = baseDelay + Math.round(Math.random() * 300);
     this.reconnectAttempt += 1;
     this.reconnectTimer = setTimeout(() => {
       this.connect();
@@ -267,6 +365,7 @@ class QuotesWsManager {
 
   private closeSocket() {
     this.clearReconnectTimer();
+    this.clearPingTimers();
     this.sentSubscriptions.clear();
     const ws = this.socket;
     this.socket = null;

@@ -21,6 +21,7 @@ import { executeParsedCommand, parseCommand } from "./commanding";
 import { useSettingsStore } from "../../store/settingsStore";
 import { HudOverlay } from "./HudOverlay";
 import { AlertToasts } from "./AlertToasts";
+import { useAuth } from "../../contexts/AuthContext";
 import { useNotificationStore } from "../../store/notificationStore";
 import type { ThemeVariant } from "../../store/settingsStore";
 import { TerminalSelect } from "../terminal/TerminalSelect";
@@ -268,6 +269,7 @@ export function TerminalShell({
     defaultRightRailOpen,
   );
   const fetchUnreadCount = useNotificationStore((s) => s.fetchUnreadCount);
+  const { isInitializing, isAuthenticated } = useAuth();
 
   useKeyboardShortcuts();
 
@@ -285,12 +287,22 @@ export function TerminalShell({
   );
 
   useEffect(() => {
-    void fetchUnreadCount();
+    if (isInitializing || !isAuthenticated) return;
+
+    const poll = async () => {
+      try {
+        await fetchUnreadCount();
+      } catch {
+        // Non-fatal: store already records lastError without rethrowing.
+      }
+    };
+
+    void poll();
     const timer = window.setInterval(() => {
-      void fetchUnreadCount();
+      void poll();
     }, 30_000);
     return () => window.clearInterval(timer);
-  }, [fetchUnreadCount]);
+  }, [fetchUnreadCount, isInitializing, isAuthenticated]);
 
   return (
     <TerminalShellContext.Provider value={shellCtx}>

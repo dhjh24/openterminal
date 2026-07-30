@@ -236,6 +236,16 @@ export const useSettingsStore = create<SettingsState>()(
     {
       name: "ui-settings",
       storage: createJSONStorage(() => localStorage),
+      version: 1,
+      migrate: (persistedState, _version) => {
+        // v0 → v1: drop India-market recent securities so they are never
+        // shown in a US-only product and are purged from localStorage.
+        const ps = (persistedState ?? {}) as Partial<SettingsState>;
+        return {
+          ...ps,
+          recentSecurities: sanitizeRecentSecurities(ps.recentSecurities),
+        };
+      },
       merge: (persistedState, currentState) => {
         const persisted = (persistedState as Partial<SettingsState>) ?? {};
         const current = currentState as SettingsState;
