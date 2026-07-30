@@ -4,7 +4,11 @@
  */
 import { test, expect } from "@playwright/test";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import fs from "node:fs";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const VIEWPORTS = [
   { name: "390x844", width: 390, height: 844 },
