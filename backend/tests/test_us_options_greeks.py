@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -20,21 +20,25 @@ from backend.fno.services.option_chain_fetcher import OptionChainFetcher
 
 
 @pytest.mark.parametrize(
-    ("raw", "expected"),
+    ("raw", "provider", "expected"),
     [
-        (0.25, 25.0),
-        (0.0, 0.0),
-        (-0.1, 0.0),
-        (22.5, 22.5),
-        (1.5, 150.0),
-        (1.51, 1.51),
-        ("0.30", 30.0),
-        (None, 0.0),
-        ("bad", 0.0),
+        (0.25, "yfinance", 25.0),
+        (0.0, "yfinance", 0.0),
+        (22.5 / 100.0, "yfinance", 22.5),
+        (1.5, "yfinance", 150.0),
+        (1.51, "yfinance", 151.0),
+        ("0.30", "fmp", 30.0),
     ],
 )
-def test_normalize_iv_percent(raw, expected) -> None:
-    assert normalize_iv_percent(raw) == expected
+def test_normalize_iv_percent(raw, provider, expected) -> None:
+    assert normalize_iv_percent(raw, provider=provider) == expected
+
+
+def test_normalize_iv_percent_rejects_bad_values() -> None:
+    assert normalize_iv_percent(None, provider="yfinance") is None
+    assert normalize_iv_percent(-0.1, provider="yfinance") is None
+    assert normalize_iv_percent("bad", provider="yfinance") is None
+    assert normalize_iv_percent(0.25, provider="unknown") is None
 
 
 # ---------------------------------------------------------------------------
@@ -42,10 +46,10 @@ def test_normalize_iv_percent(raw, expected) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_bs_days_zero_dte_uses_one_for_math() -> None:
-    assert bs_days(0) == 1
-    assert bs_days(-1) == 1
-    assert bs_days(14) == 14
+def test_bs_days_zero_dte_does_not_floor_to_one() -> None:
+    assert bs_days(0) == 0.0
+    assert bs_days(-1) == 0.0
+    assert bs_days(14) == 14.0
 
 
 def test_greeks_use_configured_risk_free_rate_not_71(monkeypatch) -> None:
@@ -193,8 +197,11 @@ def _sample_provider_rows() -> list[dict]:
 
 
 def test_us_adapter_normalize_iv_and_metadata() -> None:
+    from zoneinfo import ZoneInfo
+
     adapter = USOptionsAdapter()
-    expiry = (date.today() + timedelta(days=7)).isoformat()
+    et_today = datetime.now(ZoneInfo("America/New_York")).date()
+    expiry = (et_today + timedelta(days=7)).isoformat()
     out = adapter._normalize_chain(
         "SPY",
         spot=100.0,
@@ -218,12 +225,14 @@ def test_us_adapter_normalize_iv_and_metadata() -> None:
     assert ce["contract_symbol"] == "SPY250117C00100000"
     assert ce["occ_symbol"] == "SPY250117C00100000"
     assert ce["greeks_source"] == "calculated"
-    assert out["days_to_expiry"] == (date.fromisoformat(expiry) - date.today()).days
+    assert out["days_to_expiry"] == 7
 
 
 def test_us_adapter_zero_dte_exposes_actual_dte() -> None:
+    from zoneinfo import ZoneInfo
+
     adapter = USOptionsAdapter()
-    expiry = date.today().isoformat()
+    expiry = datetime.now(ZoneInfo("America/New_York")).date().isoformat()
     out = adapter._normalize_chain(
         "SPY",
         spot=100.0,
@@ -233,6 +242,7 @@ def test_us_adapter_zero_dte_exposes_actual_dte() -> None:
     )
     assert out["days_to_expiry"] == 0
     assert out["strikes"][0]["ce"]["days_to_expiry"] == 0
+    assert "year_fraction" in out
 
 
 def test_us_adapter_crossed_market_partial_quality() -> None:
@@ -313,12 +323,16 @@ def test_is_us_symbol_detects_indices_and_exchanges() -> None:
 
 @pytest.mark.asyncio
 async def test_fetcher_us_only_rejects_india_symbol(monkeypatch) -> None:
+    from fastapi import HTTPException
+
     monkeypatch.setenv("MARKET_PROFILE", "US")
     fetcher = OptionChainFetcher()
-    out = await fetcher.get_option_chain("NIFTY")
-    assert out["error"] == "unsupported_market"
-    assert out["data_quality"] == "empty"
-    assert out["greeks_source"] == "calculated"
+    with pytest.raises(HTTPException) as exc:
+        await fetcher.get_option_chain("NIFTY")
+    assert exc.value.status_code == 400
+    detail = exc.value.detail
+    assert isinstance(detail, dict)
+    assert detail.get("code") == "unsupported_market" or detail.get("error") == "unsupported_market"
 
 
 @pytest.mark.asyncio
