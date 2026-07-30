@@ -3,6 +3,8 @@ default:
   fallback:
     - alpaca
 
+# First-release coverage: NYSE + NASDAQ only (tested REST + streaming).
+# AMEX / CBOE / CME are intentionally omitted until end-to-end support exists.
 exchanges:
   NASDAQ:
     primary: yahoo
@@ -12,16 +14,6 @@ exchanges:
     primary: yahoo
     fallback:
       - alpaca
-  AMEX:
-    primary: yahoo
-    fallback:
-      - alpaca
-  CME:
-    primary: yahoo
-    fallback: []
-  CBOE:
-    primary: yahoo
-    fallback: []
   CRYPTO:
     primary: crypto
     fallback:

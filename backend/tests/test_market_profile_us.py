@@ -19,8 +19,13 @@ def _us_profile_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("OPENTERMINALUI_MARKET_PROFILE", raising=False)
 
 
-def test_get_market_profile_defaults_to_us() -> None:
-    assert get_market_profile() == "US"
+def test_get_market_profile_rejects_legacy(monkeypatch: pytest.MonkeyPatch) -> None:
+    from backend.shared.market_profile import MarketProfileError
+
+    for value in ("MULTI", "IN", "INDIA", "ALL"):
+        monkeypatch.setenv("MARKET_PROFILE", value)
+        with pytest.raises(MarketProfileError):
+            get_market_profile()
 
 
 def test_unsupported_india_exchange_detail_structure() -> None:
@@ -37,7 +42,18 @@ def test_is_supported_exchange_nasdaq_vs_nse_under_us() -> None:
     assert is_supported_exchange("NYSE") is True
     assert is_supported_exchange("NSE") is False
     assert is_supported_exchange("BSE") is False
+    assert is_supported_exchange("AMEX") is False
+    assert is_supported_exchange("CBOE") is False
+    assert is_supported_exchange("CME") is False
     assert is_supported_exchange(None) is True
+
+
+def test_unsupported_detail_stable_fields() -> None:
+    detail = unsupported_market_detail("NSE")
+    assert detail["code"] == "unsupported_market"
+    assert detail["input"] == "NSE"
+    assert "allowed_markets" in detail
+    assert "NASDAQ" in detail["allowed_markets"]
 
 
 def test_risk_free_rate_percent_vs_decimal_parsing(monkeypatch: pytest.MonkeyPatch) -> None:

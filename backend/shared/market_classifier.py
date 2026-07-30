@@ -1,19 +1,27 @@
+"""U.S. symbol classification (exchange, currency, session status).
+
+Under MARKET_PROFILE=US this module never rewrites ``.NS`` / ``.BO`` symbols into
+U.S. tickers — callers must reject those inputs via ``market_guard`` first.
+"""
+
 from __future__ import annotations
 
 import asyncio
-import csv
 import os
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 from typing import Any
 
 import httpx
 from pydantic import BaseModel
 from zoneinfo import ZoneInfo
 
-from backend.shared.db import SessionLocal
-from backend.db.models import FutureContract
-from backend.shared.market_profile import DEFAULT_EXCHANGE, is_us_only
+from backend.shared.market_calendar import is_extended_hours, is_market_open
+from backend.shared.market_profile import (
+    DEFAULT_EXCHANGE,
+    US_SUPPORTED_EXCHANGES,
+    has_india_suffix,
+    is_us_only,
+)
 
 
 class StockClassification(BaseModel):
@@ -30,25 +38,12 @@ class StockClassification(BaseModel):
 
 
 EXCHANGE_COUNTRY_MAP = {
-    "NSE": {"country_code": "IN", "country_name": "India", "flag_emoji": "🇮🇳", "currency": "INR"},
-    "BSE": {"country_code": "IN", "country_name": "India", "flag_emoji": "🇮🇳", "currency": "INR"},
     "NYSE": {"country_code": "US", "country_name": "United States", "flag_emoji": "🇺🇸", "currency": "USD"},
     "NASDAQ": {"country_code": "US", "country_name": "United States", "flag_emoji": "🇺🇸", "currency": "USD"},
-    "AMEX": {"country_code": "US", "country_name": "United States", "flag_emoji": "🇺🇸", "currency": "USD"},
-    "CBOE": {"country_code": "US", "country_name": "United States", "flag_emoji": "🇺🇸", "currency": "USD"},
-    "CME": {"country_code": "US", "country_name": "United States", "flag_emoji": "🇺🇸", "currency": "USD"},
-    "LSE": {"country_code": "GB", "country_name": "United Kingdom", "flag_emoji": "🇬🇧", "currency": "GBP"},
-    "TSE": {"country_code": "JP", "country_name": "Japan", "flag_emoji": "🇯🇵", "currency": "JPY"},
-    "HKSE": {"country_code": "HK", "country_name": "Hong Kong", "flag_emoji": "🇭🇰", "currency": "HKD"},
-    "ASX": {"country_code": "AU", "country_name": "Australia", "flag_emoji": "🇦🇺", "currency": "AUD"},
-    "TSX": {"country_code": "CA", "country_name": "Canada", "flag_emoji": "🇨🇦", "currency": "CAD"},
-    "XETRA": {"country_code": "DE", "country_name": "Germany", "flag_emoji": "🇩🇪", "currency": "EUR"},
-    "EURONEXT": {"country_code": "FR", "country_name": "France", "flag_emoji": "🇫🇷", "currency": "EUR"},
 }
 
-_US_EXCHANGES = {"NYSE", "NASDAQ", "AMEX", "CBOE", "CME"}
-_NSE_SYMBOLS: set[str] | None = None
-_NSE_LOCK = asyncio.Lock()
+_US_EXCHANGES = set(US_SUPPORTED_EXCHANGES)
+ET = ZoneInfo("America/New_York")
 
 
 def _country_flag_emoji(country_code: str) -> str:
@@ -60,30 +55,23 @@ def _country_flag_emoji(country_code: str) -> str:
 
 def _market_status_for_exchange(exchange: str) -> str:
     ex = (exchange or "").strip().upper()
-    now_utc = datetime.now(timezone.utc)
-    weekday = now_utc.weekday()
-    if weekday >= 5:
+    if ex not in _US_EXCHANGES:
+        ex = DEFAULT_EXCHANGE
+    now = datetime.now(ET)
+    if now.weekday() >= 5:
         return "closed"
-
-    if ex in {"NSE", "BSE"}:
-        local = now_utc.astimezone(ZoneInfo("Asia/Kolkata"))
-        now_min = local.hour * 60 + local.minute
-        if 9 * 60 + 15 <= now_min <= 15 * 60 + 30:
+    try:
+        if is_market_open(ex, now):
             return "open"
-        return "closed"
-
-    if ex in _US_EXCHANGES:
-        local = now_utc.astimezone(ZoneInfo("America/New_York"))
-        now_min = local.hour * 60 + local.minute
-        if 4 * 60 <= now_min < 9 * 60 + 30:
-            return "pre-market"
-        if 9 * 60 + 30 <= now_min < 16 * 60:
-            return "open"
-        if 16 * 60 <= now_min < 20 * 60:
+        if is_extended_hours(ex, now):
+            # Distinguish pre vs post by clock
+            t = now.time()
+            if t.hour < 12:
+                return "pre-market"
             return "post-market"
         return "closed"
-
-    return "closed"
+    except ValueError:
+        return "closed"
 
 
 class MarketClassifier:
@@ -98,29 +86,22 @@ class MarketClassifier:
     async def close(self) -> None:
         await self._http.aclose()
 
-    async def _load_nse_symbols(self) -> set[str]:
-        return set()
-
     async def _fetch_fmp_profile(self, symbol: str) -> dict[str, Any]:
         if not self._fmp_key:
             return {}
-        candidates = [symbol]
-        if "." not in symbol:
-            candidates.extend([f"{symbol}.NS", f"{symbol}.BO"])
-        for cand in candidates:
-            try:
-                resp = await self._http.get(
-                    "https://financialmodelingprep.com/stable/profile",
-                    params={"symbol": cand, "apikey": self._fmp_key},
-                )
-                resp.raise_for_status()
-                payload = resp.json()
-                if isinstance(payload, list) and payload:
-                    first = payload[0]
-                    if isinstance(first, dict):
-                        return first
-            except Exception:
-                continue
+        try:
+            resp = await self._http.get(
+                "https://financialmodelingprep.com/stable/profile",
+                params={"symbol": symbol, "apikey": self._fmp_key},
+            )
+            resp.raise_for_status()
+            payload = resp.json()
+            if isinstance(payload, list) and payload:
+                first = payload[0]
+                if isinstance(first, dict):
+                    return first
+        except Exception:
+            return {}
         return {}
 
     def _country_meta_from_profile(self, profile: dict[str, Any]) -> dict[str, str]:
@@ -134,42 +115,19 @@ class MarketClassifier:
                 "currency": str(profile.get("currency") or "USD"),
             }
         low = country_raw.lower()
-        fallback: dict[str, tuple[str, str, str]] = {
-            "india": ("IN", "India", "INR"),
-            "united states": ("US", "United States", "USD"),
-            "usa": ("US", "United States", "USD"),
-            "united kingdom": ("GB", "United Kingdom", "GBP"),
-            "japan": ("JP", "Japan", "JPY"),
-            "hong kong": ("HK", "Hong Kong", "HKD"),
-            "australia": ("AU", "Australia", "AUD"),
-            "canada": ("CA", "Canada", "CAD"),
-            "germany": ("DE", "Germany", "EUR"),
-            "france": ("FR", "France", "EUR"),
+        if low in {"united states", "usa", "us"}:
+            return {
+                "country_code": "US",
+                "country_name": "United States",
+                "flag_emoji": "🇺🇸",
+                "currency": str(profile.get("currency") or "USD"),
+            }
+        return {
+            "country_code": "US",
+            "country_name": "United States",
+            "flag_emoji": "🇺🇸",
+            "currency": str(profile.get("currency") or "USD"),
         }
-        code, name, currency = fallback.get(low, ("US", country_raw or "Unknown", str(profile.get("currency") or "USD")))
-        return {"country_code": code, "country_name": name, "flag_emoji": _country_flag_emoji(code), "currency": currency}
-
-    async def _has_indian_fo(self, symbol: str) -> bool:
-        base = symbol.strip().upper()
-        if base.endswith(".NS") or base.endswith(".BO"):
-            base = base.split(".", 1)[0]
-
-        def _query() -> bool:
-            db = SessionLocal()
-            try:
-                row = (
-                    db.query(FutureContract.id)
-                    .filter(FutureContract.underlying == base)
-                    .first()
-                )
-                return row is not None
-            finally:
-                db.close()
-
-        try:
-            return await asyncio.to_thread(_query)
-        except Exception:
-            return False
 
     async def classify(self, symbol: str) -> StockClassification:
         input_symbol = symbol.strip().upper()
@@ -179,73 +137,49 @@ class MarketClassifier:
             if cached and cached[0] > now:
                 return cached[1]
 
+        # Never strip .NS/.BO and reinterpret as U.S. — leave suffix intact so
+        # upstream guards can reject; classify as unsupported India exchange.
+        if has_india_suffix(input_symbol):
+            classified = StockClassification(
+                symbol=input_symbol,
+                display_name=input_symbol,
+                exchange="NSE" if input_symbol.endswith(".NS") else "BSE",
+                country_code="IN",
+                country_name="India",
+                flag_emoji="🇮🇳",
+                currency="INR",
+                has_futures=False,
+                has_options=False,
+                market_status="closed",
+            )
+            async with self._cache_lock:
+                self._cache[input_symbol] = (now + self._cache_ttl, classified)
+            return classified
+
         base_symbol = input_symbol
-        exchange = ""
-        profile: dict[str, Any] = {}
+        profile = await self._fetch_fmp_profile(input_symbol)
+        exchange = str(profile.get("exchangeShortName") or profile.get("exchange") or "").strip().upper()
+        if exchange in {"NSE", "BSE", "NFO", "AMEX", "CBOE", "CME"}:
+            # Unsupported under first-release US profile → default listing venue.
+            exchange = DEFAULT_EXCHANGE
+        if exchange not in _US_EXCHANGES:
+            exchange = DEFAULT_EXCHANGE
 
-        if is_us_only():
-            if input_symbol.endswith(".NS") or input_symbol.endswith(".BO"):
-                base_symbol = input_symbol.rsplit(".", 1)[0]
-                exchange = DEFAULT_EXCHANGE
-            else:
-                profile = await self._fetch_fmp_profile(input_symbol)
-                exchange = str(profile.get("exchangeShortName") or profile.get("exchange") or "").strip().upper()
-                if exchange in {"NSE", "BSE", "NFO"}:
-                    exchange = DEFAULT_EXCHANGE
-                if not exchange:
-                    exchange = DEFAULT_EXCHANGE
-        else:
-            if input_symbol.endswith(".NS"):
-                base_symbol = input_symbol[:-3]
-                exchange = "NSE"
-            elif input_symbol.endswith(".BO"):
-                base_symbol = input_symbol[:-3]
-                exchange = "BSE"
-
-            if not exchange:
-                nse_symbols = await self._load_nse_symbols()
-                if input_symbol in nse_symbols:
-                    exchange = "NSE"
-
-            if not exchange:
-                profile = await self._fetch_fmp_profile(input_symbol)
-                exchange = str(profile.get("exchangeShortName") or profile.get("exchange") or "").strip().upper()
-
-            if not exchange:
-                exchange = "NSE" if input_symbol in (await self._load_nse_symbols()) else "NASDAQ"
-
-        ex_meta = EXCHANGE_COUNTRY_MAP.get(exchange)
-        if ex_meta is None and profile:
-            ex_meta = self._country_meta_from_profile(profile)
-        if ex_meta is None:
-            ex_meta = {"country_code": "US", "country_name": "United States", "flag_emoji": "🇺🇸", "currency": "USD"}
-
+        ex_meta = EXCHANGE_COUNTRY_MAP.get(exchange) or self._country_meta_from_profile(profile)
         display_name = str(
-            profile.get("companyName")
-            or profile.get("name")
-            or base_symbol
+            profile.get("companyName") or profile.get("name") or base_symbol
         ).strip() or base_symbol
-
-        if ex_meta["country_code"] == "IN":
-            has_futures = await self._has_indian_fo(base_symbol)
-            has_options = has_futures
-        elif exchange in _US_EXCHANGES:
-            has_futures = False
-            has_options = True
-        else:
-            has_futures = False
-            has_options = False
 
         classified = StockClassification(
             symbol=base_symbol,
             display_name=display_name,
             exchange=exchange,
-            country_code=ex_meta["country_code"],
-            country_name=ex_meta["country_name"],
-            flag_emoji=ex_meta["flag_emoji"] or _country_flag_emoji(ex_meta["country_code"]),
-            currency=str(profile.get("currency") or ex_meta["currency"] or "USD"),
-            has_futures=has_futures,
-            has_options=has_options,
+            country_code="US",
+            country_name="United States",
+            flag_emoji="🇺🇸",
+            currency=str(profile.get("currency") or "USD"),
+            has_futures=False,
+            has_options=True,
             market_status=_market_status_for_exchange(exchange),
         )
 
@@ -257,17 +191,10 @@ class MarketClassifier:
         raw = symbol.strip().upper()
         if raw.startswith("^") or "=" in raw:
             return raw
-        if is_us_only():
-            if raw.endswith(".NS") or raw.endswith(".BO"):
-                return raw.rsplit(".", 1)[0]
+        # Do not strip India suffixes — callers must reject those symbols.
+        if has_india_suffix(raw):
             return raw
-        if raw.endswith(".NS") or raw.endswith(".BO"):
-            return raw
-        cls = await self.classify(raw)
-        if cls.country_code == "IN":
-            suffix = ".BO" if cls.exchange == "BSE" else ".NS"
-            return f"{cls.symbol}{suffix}"
-        return cls.symbol
+        return raw
 
 
 market_classifier = MarketClassifier()
