@@ -33,7 +33,7 @@
 
 OpenTerminalUI is a self-hosted, full-stack financial terminal for **U.S. markets** that combines real-time market data, institutional-grade charting, derivatives analytics, portfolio management, and quant research into a single platform. Built with a terminal-style shell interface inspired by Bloomberg and Refinitiv, it delivers professional-grade workflows to anyone with a browser.
 
-**U.S. exchange coverage** across NASDAQ, NYSE, AMEX, CBOE, and CME, with supported asset classes including **equities**, **U.S. options**, **ETFs**, **futures**, **crypto**, **forex**, and **fixed income**. **70+ technical indicators**, **multi-panel chart workstations**, **Options & Futures chains with locally calculated Greeks**, **backtesting with Model Lab**, **statistical arbitrage with Pair Trading Lab**, **Portfolio Lab and optimizer workflows**, **paper trading and trade journal**, **OMS / ops / data-quality consoles**, **saved views and launchpad workspaces**, a **tool-using AI research agent with multi-agent debate and Strategy Lab**, and an **extensible plugin system** &mdash; all running on your own hardware.
+**U.S. exchange coverage** across **NASDAQ and NYSE** (tested REST quotes and streaming), with supported asset classes including **equities**, **U.S. options**, **ETFs**, **futures**, **crypto**, **forex**, and **fixed income**. **70+ technical indicators**, **multi-panel chart workstations**, **Options & Futures chains with locally calculated Greeks**, **backtesting with Model Lab**, **statistical arbitrage with Pair Trading Lab**, **Portfolio Lab and optimizer workflows**, **paper trading and trade journal**, **OMS / ops / data-quality consoles**, **saved views and launchpad workspaces**, a **tool-using AI research agent with multi-agent debate and Strategy Lab**, and an **extensible plugin system** &mdash; all running on your own hardware.
 
 > **Market profile:** OpenTerminalUI ships as a **U.S.-only** product (`MARKET_PROFILE=US`). For migration notes, provider behavior, and configuration details, see [docs/US_MARKET_MIGRATION.md](docs/US_MARKET_MIGRATION.md).
 
@@ -351,7 +351,7 @@ Captured from the rebuilt Docker image running at `http://localhost:8000`. Accou
 - **Query Builder** &mdash; custom filters with preset formulas and arithmetic operations
 - **Custom Formula Engine** &mdash; write, save, and share custom formulas with server-side evaluation, formula library with descriptions and categories
 - **15+ Visualization Modes** &mdash; tables with sparklines, sector treemaps, heatmaps, scatter plots, radar charts, box plots, bubble charts, waterfall charts, RRG quadrants, gauge dials, distribution histograms, stacked area, and comparison bars
-- **U.S. Market Scanning** &mdash; NASDAQ, NYSE, and AMEX universes with technical and fundamental overlays
+- **U.S. Market Scanning** &mdash; NASDAQ and NYSE universes with technical and fundamental overlays
 - **Preset Management** &mdash; save, load, share, and browse community screens
 - **Score-Based Ranking** &mdash; deterministic scoring with stable ordering and explainable setup detection
 
@@ -726,7 +726,7 @@ Regular U.S. equity session hours are modeled in **America/New_York**:
 | Regular | 09:30 – 16:00 |
 | After-hours | 16:00 – 20:00 |
 
-Extended-hours toggles on charts respect these windows. Futures (CME) and options (CBOE) follow their respective product calendars. Holiday closures use the U.S. equity calendar.
+Extended-hours toggles on charts respect these windows. Equity options use the NYSE/NASDAQ session calendar for 0DTE time-to-expiry. Holiday closures use the U.S. equity calendar in `data/holidays.json`.
 
 ## Paper Trading
 

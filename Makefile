@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: setup setup-backend setup-frontend test test-backend build build-frontend gate up install keys seed-admin
+.PHONY: setup setup-backend setup-frontend test test-backend test-frontend test-e2e build build-frontend gate lint-backend docker-validate security-scan ci-local
 
 # One-command install + launch (auto-detects Docker vs local).
 install up:
@@ -27,9 +27,30 @@ test: test-backend
 test-backend:
 	PYTHONPATH=. python -m compileall backend && PYTHONPATH=. pytest backend/tests -q
 
+test-frontend:
+	cd frontend && npx vitest run
+
+test-e2e:
+	cd frontend && npm run test:e2e
+
+lint-backend:
+	PYTHONPATH=. python -m compileall backend
+
 build: build-frontend
 
 build-frontend:
 	cd frontend && npm run build
 
-gate: test-backend build-frontend
+docker-validate:
+	docker compose -f docker-compose.yml config
+	docker compose -f docker-compose.yml config | grep -E '8005:8000|6380:6379|5433:5432'
+
+security-scan:
+	python -m pip install -q pip-audit && pip-audit -r backend/requirements.txt || true
+	cd frontend && npm audit --omit=dev || true
+
+# Local mirror of required CI gates (backend + frontend build/vitest + compose).
+gate: test-backend build-frontend test-frontend
+
+ci-local: gate docker-validate
+	@echo "CI local gate complete. Run 'make test-e2e' for Playwright smoke."
