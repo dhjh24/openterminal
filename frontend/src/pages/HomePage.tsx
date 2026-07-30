@@ -738,48 +738,98 @@ export function HomePage() {
 
               {/* Expandable desk settings panel */}
               {showDeskSettings ? (
-                <div className="mt-2 border-t border-terminal-border pt-2 space-y-2">
-                  <LiveClockStrip />
-                  <div className="flex flex-wrap gap-1.5 text-[10px] uppercase tracking-wider text-terminal-muted">
-                    <span className="rounded-sm border border-terminal-border px-1.5 py-0.5">
-                      Desk {(user?.email || "unknown").toUpperCase()}
-                    </span>
-                    <span className="rounded-sm border border-terminal-border px-1.5 py-0.5">
-                      {selectedMarket}
-                    </span>
-                    <span className="rounded-sm border border-terminal-accent/60 px-1.5 py-0.5 text-terminal-accent">
-                      {presetConfig.label}
-                    </span>
-                    <span className="rounded-sm border border-terminal-border px-1.5 py-0.5">
-                      {displayCurrency}
-                    </span>
-                    <span className="rounded-sm border border-terminal-border px-1.5 py-0.5">
-                      {newsAutoRefresh ? `${newsRefreshSec}s` : "Manual"}
-                    </span>
+                <div className="mt-2 border-t border-terminal-border pt-3 space-y-3">
+                  {/* Clocks — horizontal swipe rail */}
+                  <div>
+                    <p className="mb-1.5 text-[10px] uppercase tracking-wider text-terminal-muted">Clocks</p>
+                    <LiveClockStrip />
                   </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    <button
-                      type="button"
-                      className="rounded-sm border border-terminal-border px-2 py-1 text-[10px] uppercase tracking-wider text-terminal-muted hover:border-terminal-accent hover:text-terminal-accent"
-                      onClick={() => navigate("/equity/portfolio")}
-                    >
-                      Portfolio HQ
-                    </button>
-                    <button
-                      type="button"
-                      className="rounded-sm border border-terminal-border px-2 py-1 text-[10px] uppercase tracking-wider text-terminal-muted hover:border-terminal-accent hover:text-terminal-accent"
-                      onClick={() => navigate("/equity/launchpad")}
-                    >
-                      Launchpad
-                    </button>
-                    <button
-                      type="button"
-                      className="rounded-sm border border-terminal-border px-2 py-1 text-[10px] uppercase tracking-wider text-terminal-muted hover:border-terminal-accent hover:text-terminal-accent"
-                      onClick={() => navigate("/equity/news")}
-                    >
-                      Intel Wire
-                    </button>
+
+                  {/* Identity & config — two-column grid with 44px min-height touch targets */}
+                  <div>
+                    <p className="mb-1.5 text-[10px] uppercase tracking-wider text-terminal-muted">Desk Config</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="flex min-h-[44px] items-center rounded-sm border border-terminal-border px-2.5 text-[10px] uppercase tracking-wider text-terminal-muted truncate">
+                        {(user?.email || "unknown").toUpperCase()}
+                      </div>
+                      <div className="flex min-h-[44px] items-center rounded-sm border border-terminal-border px-2.5 text-[10px] uppercase tracking-wider text-terminal-muted">
+                        {selectedMarket}
+                      </div>
+                      <div className="flex min-h-[44px] items-center rounded-sm border border-terminal-accent/60 px-2.5 text-[10px] uppercase tracking-wider text-terminal-accent truncate">
+                        {presetConfig.label}
+                      </div>
+                      <div className="flex min-h-[44px] items-center rounded-sm border border-terminal-border px-2.5 text-[10px] uppercase tracking-wider text-terminal-muted">
+                        {displayCurrency}
+                      </div>
+                      <div className="flex min-h-[44px] items-center rounded-sm border border-terminal-border px-2.5 text-[10px] uppercase tracking-wider text-terminal-muted col-span-2">
+                        Refresh {newsAutoRefresh ? `${newsRefreshSec}s auto` : "Manual"}
+                      </div>
+                    </div>
                   </div>
+
+                  {/* Primary shortcuts */}
+                  <div>
+                    <p className="mb-1.5 text-[10px] uppercase tracking-wider text-terminal-muted">Shortcuts</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        className="flex min-h-[44px] items-center justify-center rounded-sm border border-terminal-accent px-3 text-[11px] uppercase tracking-wider text-terminal-accent hover:bg-terminal-accent/10"
+                        onClick={() => navigate("/equity/chart-workstation")}
+                      >
+                        Open Workstation
+                      </button>
+                      <button
+                        type="button"
+                        className="flex min-h-[44px] items-center justify-center rounded-sm border border-terminal-border px-3 text-[11px] uppercase tracking-wider text-terminal-muted hover:border-terminal-accent hover:text-terminal-accent"
+                        onClick={() => navigate("/equity/portfolio")}
+                      >
+                        Portfolio HQ
+                      </button>
+                      <button
+                        type="button"
+                        className="flex min-h-[44px] items-center justify-center rounded-sm border border-terminal-border px-3 text-[11px] uppercase tracking-wider text-terminal-muted hover:border-terminal-accent hover:text-terminal-accent"
+                        onClick={() => navigate("/equity/launchpad")}
+                      >
+                        Launchpad
+                      </button>
+                      <button
+                        type="button"
+                        className="flex min-h-[44px] items-center justify-center rounded-sm border border-terminal-border px-3 text-[11px] uppercase tracking-wider text-terminal-muted hover:border-terminal-accent hover:text-terminal-accent"
+                        onClick={() => navigate("/equity/news")}
+                      >
+                        Intel Wire
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Secondary / reset actions */}
+                  <details className="group">
+                    <summary className="flex min-h-[44px] cursor-pointer items-center gap-2 rounded-sm border border-terminal-border px-2.5 text-[10px] uppercase tracking-wider text-terminal-muted hover:border-terminal-accent hover:text-terminal-accent list-none">
+                      <span className="transition-transform group-open:rotate-90">▶</span>
+                      Advanced
+                    </summary>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        className="flex min-h-[40px] items-center justify-center rounded-sm border border-terminal-border px-3 text-[10px] uppercase tracking-wider text-terminal-muted hover:border-rose-500 hover:text-rose-400"
+                        onClick={() => {
+                          if (typeof window !== "undefined" && window.confirm("Reset all trader settings?")) {
+                            localStorage.clear();
+                            window.location.reload();
+                          }
+                        }}
+                      >
+                        Reset Trader
+                      </button>
+                      <button
+                        type="button"
+                        className="flex min-h-[40px] items-center justify-center rounded-sm border border-terminal-border px-3 text-[10px] uppercase tracking-wider text-terminal-muted hover:border-terminal-accent hover:text-terminal-accent"
+                        onClick={() => navigate("/equity/settings")}
+                      >
+                        All Settings
+                      </button>
+                    </div>
+                  </details>
                 </div>
               ) : null}
 
