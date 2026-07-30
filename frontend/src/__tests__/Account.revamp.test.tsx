@@ -57,6 +57,24 @@ vi.mock("../store/settingsStore", () => ({
   useSettingsStore: (selector: (state: typeof settingsState) => unknown) => selector(settingsState),
 }));
 
+vi.mock("@tanstack/react-query", async () => {
+  const actual = await vi.importActual<typeof import("@tanstack/react-query")>("@tanstack/react-query");
+  return {
+    ...actual,
+    useQuery: () => ({
+      data: {
+        finnhub_configured: true,
+        fmp_configured: true,
+        yahoo_fallback: "available",
+        google_news_rss_fallback: "available",
+        news_scheduler: "running",
+      },
+      isLoading: false,
+      error: null,
+    }),
+  };
+});
+
 function renderPage() {
   return render(
     <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
@@ -107,9 +125,6 @@ function seedLocalState() {
   localStorage.setItem(
     "ot.account.aggregators",
     JSON.stringify({
-      marketDataApiKey: "md-key",
-      executionApiKey: "exec-key",
-      newsApiKey: "news-key",
       webhookUrl: "https://hooks.example.dev/account",
     }),
   );

@@ -1206,9 +1206,6 @@ export type AccountConnectionSettings = {
 };
 
 export type AccountAggregatorSettings = {
-  marketDataApiKey: string;
-  executionApiKey: string;
-  newsApiKey: string;
   webhookUrl: string;
 };
 

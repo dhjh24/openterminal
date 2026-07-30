@@ -45,3 +45,25 @@ async def datasource_health() -> dict[str, Any]:
 
     overall = "ok" if all(r["status"] == "ok" for r in results) else "degraded"
     return {"status": overall, "sources": list(results)}
+
+
+@router.get("/health/news-providers")
+async def news_provider_health() -> dict[str, Any]:
+    """Boolean-only news provider readiness (never returns secret values)."""
+    from backend.bg_services.news_ingestor import get_news_ingestor
+    from backend.services.news_provider_status import build_news_provider_status
+
+    fetcher = await get_unified_fetcher()
+    ingestor = get_news_ingestor()
+    scheduler = getattr(ingestor, "_scheduler", None)
+    scheduler_running = bool(scheduler is not None and getattr(scheduler, "running", False))
+    status = build_news_provider_status(
+        finnhub_key=getattr(fetcher.finnhub, "api_key", None),
+        fmp_key=getattr(fetcher.fmp, "api_key", None),
+        news_scheduler_running=scheduler_running,
+    )
+    return {
+        "status": "ok",
+        "providers": status,
+        "ingest": ingestor.status_snapshot(),
+    }

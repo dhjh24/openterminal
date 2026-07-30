@@ -84,6 +84,25 @@ async def lifespan(app: FastAPI):
     if _scanner_alert_scheduler:
         await _scanner_alert_scheduler.start(hub, interval_seconds=900)
 
+    # Safe startup summary (booleans / availability only — never print secret values).
+    from backend.services.news_provider_status import (
+        build_news_provider_status,
+        format_news_startup_summary,
+    )
+
+    scheduler_running = bool(
+        _news_ingestor
+        and getattr(_news_ingestor, "_scheduler", None) is not None
+        and getattr(getattr(_news_ingestor, "_scheduler", None), "running", False)
+    )
+    news_status = build_news_provider_status(
+        finnhub_key=getattr(fetcher.finnhub, "api_key", None),
+        fmp_key=getattr(fetcher.fmp, "api_key", None),
+        news_scheduler_running=scheduler_running,
+    )
+    summary = format_news_startup_summary(news_status)
+    print(summary, flush=True)
+
     yield
 
     if _prefetch_worker:

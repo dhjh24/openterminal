@@ -92,3 +92,13 @@ async def get_stock_emotion(
         ttl=ttl_seconds("news_latest", market_open_now()),
     )
     return payload
+
+
+@router.get("/v1/sentiment/emotion/{ticker}")
+async def v1_get_stock_emotion(
+    ticker: str,
+    days: int = Query(default=7, ge=1, le=30),
+    market: str | None = Query(default=None),
+    limit: int = Query(default=6, ge=3, le=30),
+) -> dict[str, Any]:
+    return await get_stock_emotion(ticker=ticker, days=days, market=market, limit=limit)

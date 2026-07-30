@@ -56,12 +56,12 @@ class FinnhubClient:
             return response.json()
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 403 or e.response.status_code == 429:
-                logger.warning(f"Finnhub Limit/Error: {e}")
+                logger.warning("Finnhub Limit/Error: HTTP %s", e.response.status_code)
                 if e.response.status_code == 403:
                     self.disabled = True
             return {}
         except Exception as e:
-            logger.error(f"Finnhub Request Error: {e}")
+            logger.error("Finnhub Request Error: %s", type(e).__name__)
             return {}
 
     async def get_company_profile(self, symbol: str) -> Dict[str, Any]:

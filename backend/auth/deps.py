@@ -121,4 +121,10 @@ def auth_exempt_path(path: str) -> bool:
         return True
     if path.startswith("/api/public"):
         return True
+    # Read-only datasource / news-provider readiness (booleans only).
+    if path.startswith("/api/health"):
+        return True
+    # Market news / sentiment reads are public (no secrets). Auth still required for writes.
+    if path.startswith("/api/news") or path.startswith("/api/sentiment"):
+        return True
     return False

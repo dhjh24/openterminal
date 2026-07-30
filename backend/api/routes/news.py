@@ -304,12 +304,17 @@ async def get_symbol_news(
     if market_code in IN_MARKETS:
         # For Indian markets, use our news fallback mechanism (Yahoo search)
         items = await _fetch_news_fallback(f"{ticker} NSE", limit=limit)
-        return {"items": items[:limit]}
+        return {"items": items[:limit], "results": items[:limit]}
 
     fetcher = await get_unified_fetcher()
     rows = await fetcher.get_company_news(ticker, limit=limit)
     items = _normalize_items(rows if isinstance(rows, list) else [])
-    return {"items": items[:limit]}
+    if not items:
+        for term in _ticker_fallback_terms(ticker, market_code):
+            items = await _fetch_news_fallback(term, limit=limit)
+            if items:
+                break
+    return {"items": items[:limit], "results": items[:limit]}
 
 
 @router.get("/news/market")
@@ -322,12 +327,15 @@ async def get_market_news(
     if market_code in IN_MARKETS:
         # Use fallback for Indian market news
         items = await _fetch_news_fallback("NSE Nifty Indian Stock Market", limit=limit)
-        return {"items": items[:limit]}
+        return {"items": items[:limit], "results": items[:limit]}
 
     fetcher = await get_unified_fetcher()
     rows = await fetcher.get_market_news(category="general", limit=limit)
     items = _normalize_items(rows if isinstance(rows, list) else [])
-    return {"items": items[:limit]}
+    if not items:
+        items = await _fetch_news_fallback("US stock market Wall Street Nasdaq S&P 500", limit=limit)
+    return {"items": items[:limit], "results": items[:limit]}
+
 
 
 @router.get("/news/latest")
@@ -569,6 +577,93 @@ async def get_market_sentiment(
     return payload
 
 
+@router.get("/news/sentiment/summary")
+async def get_news_sentiment_summary(
+    days: int = Query(default=7, ge=1, le=30),
+    limit: int = Query(default=200, ge=20, le=1000),
+) -> dict[str, Any]:
+    cache_key = cache_instance.build_key("news_latest", "sentiment:summary", {"days": days, "limit": limit})
+    cached = await cache_instance.get(cache_key)
+    if cached:
+        return cached
+
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+    cutoff_iso = cutoff.isoformat()
+
+    db = SessionLocal()
+    try:
+        rows = (
+            db.query(NewsArticle)
+            .filter(NewsArticle.published_at >= cutoff_iso)
+            .order_by(desc(NewsArticle.published_at))
+            .limit(limit)
+            .all()
+        )
+    except OperationalError:
+        rows = []
+    finally:
+        db.close()
+
+    if not rows:
+        fallback_items = await _fallback_latest_news(limit=min(200, limit))
+        labels = {"Bullish": 0, "Bearish": 0, "Neutral": 0}
+        scores: list[float] = []
+        for item in fallback_items:
+            sent = item.get("sentiment") if isinstance(item, dict) else {}
+            score = float((sent or {}).get("score", 0.0))
+            label = str((sent or {}).get("label") or _label_from_score(score))
+            if label not in labels:
+                label = _label_from_score(score)
+            labels[label] += 1
+            scores.append(score)
+        total = len(scores)
+        avg = (sum(scores) / total) if total else 0.0
+        payload = {
+            "period_days": days,
+            "total_articles": total,
+            "average_score": round(avg, 4),
+            "overall_label": _label_from_score(avg),
+            "distribution": {
+                "bullish_pct": round((labels["Bullish"] * 100.0 / total), 1) if total else 0.0,
+                "bearish_pct": round((labels["Bearish"] * 100.0 / total), 1) if total else 0.0,
+                "neutral_pct": round((labels["Neutral"] * 100.0 / total), 1) if total else 0.0,
+            },
+            "top_sources": [],
+        }
+        await cache_instance.set(cache_key, payload, ttl=ttl_seconds("news_latest", market_open_now()))
+        return payload
+
+    source_counts: dict[str, int] = defaultdict(int)
+    labels = {"Bullish": 0, "Bearish": 0, "Neutral": 0}
+    scores: list[float] = []
+    for row in rows:
+        source_counts[str(row.source or "Unknown").strip() or "Unknown"] += 1
+        sentiment = _row_sentiment(row)
+        score = float(sentiment.get("score", 0.0))
+        label = str(sentiment.get("label") or _label_from_score(score))
+        if label not in labels:
+            label = _label_from_score(score)
+        labels[label] += 1
+        scores.append(score)
+
+    total = len(scores)
+    avg = (sum(scores) / total) if total else 0.0
+    top_sources = [{"source": src, "count": count} for src, count in sorted(source_counts.items(), key=lambda kv: kv[1], reverse=True)[:10]]
+    payload = {
+        "period_days": days,
+        "total_articles": total,
+        "average_score": round(avg, 4),
+        "overall_label": _label_from_score(avg),
+        "distribution": {
+            "bullish_pct": round((labels["Bullish"] * 100.0 / total), 1) if total else 0.0,
+            "bearish_pct": round((labels["Bearish"] * 100.0 / total), 1) if total else 0.0,
+            "neutral_pct": round((labels["Neutral"] * 100.0 / total), 1) if total else 0.0,
+        },
+        "top_sources": top_sources,
+    }
+    await cache_instance.set(cache_key, payload, ttl=ttl_seconds("news_latest", market_open_now()))
+    return payload
+
 @router.get("/news/sentiment/{ticker}")
 async def get_news_sentiment(
     ticker: str,
@@ -677,89 +772,55 @@ async def get_news_sentiment(
     return payload
 
 
-@router.get("/news/sentiment/summary")
-async def get_news_sentiment_summary(
+
+# ---------------------------------------------------------------------------
+# Legacy /api/v1/* aliases (auth-exempt prefix). Keep payloads identical to the
+# canonical /api/news/* and /api/news/sentiment/* handlers.
+# ---------------------------------------------------------------------------
+
+
+@router.get("/v1/news/latest")
+async def v1_get_latest_news(limit: int = Query(default=50, ge=1, le=200)) -> dict[str, Any]:
+    return await get_latest_news(limit=limit)
+
+
+@router.get("/v1/news/search")
+async def v1_search_news(
+    q: str = Query(..., min_length=1, max_length=100),
+    limit: int = Query(default=50, ge=1, le=200),
+) -> dict[str, Any]:
+    return await search_news(q=q, limit=limit)
+
+
+@router.get("/v1/news/ticker/{ticker}")
+async def v1_get_news_by_ticker(
+    ticker: str,
+    limit: int = Query(default=50, ge=1, le=200),
+    market: str | None = Query(default=None),
+) -> dict[str, Any]:
+    return await get_news_by_ticker(ticker=ticker, limit=limit, market=market)
+
+
+@router.get("/v1/sentiment/market")
+async def v1_get_market_sentiment(
+    days: int = Query(default=7, ge=1, le=30),
+    market: str | None = Query(default=None),
+) -> dict[str, Any]:
+    return await get_market_sentiment(days=days, market=market)
+
+
+@router.get("/v1/sentiment/summary")
+async def v1_get_news_sentiment_summary(
     days: int = Query(default=7, ge=1, le=30),
     limit: int = Query(default=200, ge=20, le=1000),
 ) -> dict[str, Any]:
-    cache_key = cache_instance.build_key("news_latest", "sentiment:summary", {"days": days, "limit": limit})
-    cached = await cache_instance.get(cache_key)
-    if cached:
-        return cached
+    return await get_news_sentiment_summary(days=days, limit=limit)
 
-    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
-    cutoff_iso = cutoff.isoformat()
 
-    db = SessionLocal()
-    try:
-        rows = (
-            db.query(NewsArticle)
-            .filter(NewsArticle.published_at >= cutoff_iso)
-            .order_by(desc(NewsArticle.published_at))
-            .limit(limit)
-            .all()
-        )
-    except OperationalError:
-        rows = []
-    finally:
-        db.close()
-
-    if not rows:
-        fallback_items = await _fallback_latest_news(limit=min(200, limit))
-        labels = {"Bullish": 0, "Bearish": 0, "Neutral": 0}
-        scores: list[float] = []
-        for item in fallback_items:
-            sent = item.get("sentiment") if isinstance(item, dict) else {}
-            score = float((sent or {}).get("score", 0.0))
-            label = str((sent or {}).get("label") or _label_from_score(score))
-            if label not in labels:
-                label = _label_from_score(score)
-            labels[label] += 1
-            scores.append(score)
-        total = len(scores)
-        avg = (sum(scores) / total) if total else 0.0
-        payload = {
-            "period_days": days,
-            "total_articles": total,
-            "average_score": round(avg, 4),
-            "overall_label": _label_from_score(avg),
-            "distribution": {
-                "bullish_pct": round((labels["Bullish"] * 100.0 / total), 1) if total else 0.0,
-                "bearish_pct": round((labels["Bearish"] * 100.0 / total), 1) if total else 0.0,
-                "neutral_pct": round((labels["Neutral"] * 100.0 / total), 1) if total else 0.0,
-            },
-            "top_sources": [],
-        }
-        await cache_instance.set(cache_key, payload, ttl=ttl_seconds("news_latest", market_open_now()))
-        return payload
-
-    source_counts: dict[str, int] = defaultdict(int)
-    labels = {"Bullish": 0, "Bearish": 0, "Neutral": 0}
-    scores: list[float] = []
-    for row in rows:
-        source_counts[str(row.source or "Unknown").strip() or "Unknown"] += 1
-        sentiment = _row_sentiment(row)
-        score = float(sentiment.get("score", 0.0))
-        label = str(sentiment.get("label") or _label_from_score(score))
-        if label not in labels:
-            label = _label_from_score(score)
-        labels[label] += 1
-        scores.append(score)
-
-    total = len(scores)
-    avg = (sum(scores) / total) if total else 0.0
-    top_sources = [{"source": src, "count": count} for src, count in sorted(source_counts.items(), key=lambda kv: kv[1], reverse=True)[:10]]
-    payload = {
-        "period_days": days,
-        "total_articles": total,
-        "average_score": round(avg, 4),
-        "overall_label": _label_from_score(avg),
-        "distribution": {
-            "bullish_pct": round((labels["Bullish"] * 100.0 / total), 1) if total else 0.0,
-            "bearish_pct": round((labels["Bearish"] * 100.0 / total), 1) if total else 0.0,
-            "neutral_pct": round((labels["Neutral"] * 100.0 / total), 1) if total else 0.0,
-        },
-        "top_sources": top_sources,
-    }
-    await cache_instance.set(cache_key, payload, ttl=ttl_seconds("news_latest", market_open_now()))
-    return payload
+@router.get("/v1/sentiment/ticker/{ticker}")
+async def v1_get_news_sentiment(
+    ticker: str,
+    days: int = Query(default=7, ge=1, le=30),
+    market: str | None = Query(default=None),
+) -> dict[str, Any]:
+    return await get_news_sentiment(ticker=ticker, days=days, market=market)

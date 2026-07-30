@@ -4,7 +4,7 @@ import asyncio
 import json
 import logging
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Any
 
 from backend.api.deps import get_unified_fetcher
@@ -45,14 +45,15 @@ def _normalize_tickers(raw: Any) -> list[str]:
 
 
 def _db_tickers(limit: int = 40) -> list[str]:
+    defaults = ["SPY", "QQQ", "AAPL", "MSFT", "NVDA", "AMZN", "META", "TSLA"]
     db = SessionLocal()
     try:
         holdings = [str(r[0]).strip().upper() for r in db.query(Holding.ticker).limit(limit).all() if r and r[0]]
         watchlist = [str(r[0]).strip().upper() for r in db.query(WatchlistItem.ticker).limit(limit).all() if r and r[0]]
-        merged = list(dict.fromkeys([*holdings, *watchlist]))
+        merged = list(dict.fromkeys([*holdings, *watchlist, *defaults]))
         return merged[:limit]
     except Exception:
-        return []
+        return defaults[:limit]
     finally:
         db.close()
 
@@ -186,7 +187,7 @@ class NewsIngestor:
 
         if fetcher.finnhub.api_key:
             items.extend(await self._fetch_finnhub(fetcher))
-        elif fetcher.fmp.api_key:
+        if fetcher.fmp.api_key:
             items.extend(await self._fetch_fmp(fetcher))
 
         if not items:
@@ -245,15 +246,12 @@ class NewsIngestor:
 
     async def _fetch_fmp(self, fetcher: Any) -> list[NormalizedNews]:
         rows: list[dict[str, Any]] = []
-        base = await fetcher.fmp._get("/stock_news", {"limit": 120})
+        base = await fetcher.fmp.get_stock_news_latest(limit=120)
         if isinstance(base, list):
             rows.extend([r for r in base if isinstance(r, dict)])
 
-        today = date.today()
-        frm = (today - timedelta(days=2)).isoformat()
-        to = today.isoformat()
         for ticker in _db_tickers():
-            stock_rows = await fetcher.fmp._get("/stock_news", {"tickers": ticker, "from": frm, "to": to, "limit": 20})
+            stock_rows = await fetcher.fmp.get_stock_news(ticker, limit=20)
             if isinstance(stock_rows, list):
                 rows.extend([r for r in stock_rows if isinstance(r, dict)])
 
