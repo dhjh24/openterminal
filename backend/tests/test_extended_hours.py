@@ -1,8 +1,10 @@
-
 import pytest
 from datetime import datetime
 from zoneinfo import ZoneInfo
+from fastapi import HTTPException
+
 from backend.services.extended_hours_service import ExtendedHoursService
+
 
 @pytest.mark.asyncio
 async def test_tag_session_us():
@@ -29,20 +31,24 @@ async def test_tag_session_us():
     assert tagged["session"] == "post"
     assert tagged["isExtended"] is True
 
+
 @pytest.mark.asyncio
-async def test_tag_session_india():
+async def test_normalize_market_defaults_to_us():
     service = ExtendedHoursService()
+    session_market, hint = service._normalize_market_inputs("")
+    assert session_market == "US"
+    assert hint == "NASDAQ"
 
-    # 9:05 AM IST - Pre-open
-    dt = datetime(2026, 2, 24, 9, 5, tzinfo=ZoneInfo("Asia/Kolkata"))
-    bar = {"time": int(dt.timestamp())}
-    tagged = service._tag_session(bar, "IN")
-    assert tagged["session"] == "pre_open"
-    assert tagged["isExtended"] is True
+    session_market, hint = service._normalize_market_inputs("NASDAQ")
+    assert session_market == "US"
+    assert hint == "NASDAQ"
 
-    # 10:00 AM IST - Regular
-    dt = datetime(2026, 2, 24, 10, 0, tzinfo=ZoneInfo("Asia/Kolkata"))
-    bar = {"time": int(dt.timestamp())}
-    tagged = service._tag_session(bar, "IN")
-    assert tagged["session"] == "rth"
-    assert tagged["isExtended"] is False
+
+@pytest.mark.asyncio
+async def test_normalize_market_rejects_india(monkeypatch):
+    monkeypatch.setenv("MARKET_PROFILE", "US")
+    service = ExtendedHoursService()
+    for market in ("NSE", "BSE", "IN", "NFO"):
+        with pytest.raises(HTTPException) as exc:
+            service._normalize_market_inputs(market)
+        assert exc.value.status_code == 400

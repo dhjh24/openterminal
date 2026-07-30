@@ -3,23 +3,46 @@ from __future__ import annotations
 import asyncio
 from datetime import datetime, timezone
 
+import pytest
+from fastapi import HTTPException
+
 from backend.providers import chart_data
 from backend.providers.chart_data import ChartDataProvider, OHLCVBar
 
 
-def test_resolve_market_explicit_prefixes() -> None:
+def test_resolve_market_us_prefixes(monkeypatch) -> None:
+    monkeypatch.setenv("MARKET_PROFILE", "US")
     provider = ChartDataProvider()
 
     async def _run() -> None:
-        assert await provider.resolve_market("NSE:INFY") == ("IN", "INFY", "INFY.NS")
-        assert await provider.resolve_market("BSE:TCS") == ("IN", "TCS", "TCS.BO")
         assert await provider.resolve_market("NASDAQ:TSLA") == ("US", "TSLA", "TSLA")
         assert await provider.resolve_market("NYSE:BAC") == ("US", "BAC", "BAC")
 
     asyncio.run(_run())
 
 
-def test_resolve_market_uses_hint_before_classifier() -> None:
+def test_resolve_market_rejects_india_under_us(monkeypatch) -> None:
+    monkeypatch.setenv("MARKET_PROFILE", "US")
+    provider = ChartDataProvider()
+
+    async def _run() -> None:
+        with pytest.raises(HTTPException) as exc:
+            await provider.resolve_market("NSE:INFY")
+        assert exc.value.status_code == 400
+
+        with pytest.raises(HTTPException) as exc:
+            await provider.resolve_market("RELIANCE.NS")
+        assert exc.value.status_code == 400
+
+        with pytest.raises(HTTPException) as exc:
+            await provider.resolve_market("AAPL", market_hint="NSE")
+        assert exc.value.status_code == 400
+
+    asyncio.run(_run())
+
+
+def test_resolve_market_uses_hint_before_classifier(monkeypatch) -> None:
+    monkeypatch.setenv("MARKET_PROFILE", "US")
     provider = ChartDataProvider()
 
     async def _boom(symbol: str):  # noqa: ARG001
@@ -30,7 +53,6 @@ def test_resolve_market_uses_hint_before_classifier() -> None:
     try:
         async def _run() -> None:
             assert await provider.resolve_market("AAPL", market_hint="NASDAQ") == ("US", "AAPL", "AAPL")
-            assert await provider.resolve_market("RELIANCE", market_hint="NSE") == ("IN", "RELIANCE", "RELIANCE.NS")
 
         asyncio.run(_run())
     finally:

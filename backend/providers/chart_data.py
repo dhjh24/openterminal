@@ -66,26 +66,26 @@ class ChartDataProvider:
         self._cache = get_ohlcv_cache()
 
     async def resolve_market(self, symbol: str, market_hint: str | None = None) -> tuple[MarketType, str, str]:
-        from backend.shared.market_profile import DEFAULT_EXCHANGE, is_us_only
+        from backend.shared.market_guard import assert_exchange_allowed, assert_symbol_allowed
+        from backend.shared.market_profile import is_us_only
 
         raw = (symbol or "").strip().upper()
         if not raw:
             return ("US", "", "")
 
         if is_us_only():
+            # Never rewrite .NS/.BO or NSE:/BSE: into US symbols — reject instead.
             if ":" in raw:
                 exchange, ticker = raw.split(":", 1)
                 exchange = exchange.strip().upper()
                 ticker = ticker.strip().upper()
-                if exchange in IN_EXCHANGES:
-                    return ("US", ticker, ticker)
+                assert_exchange_allowed(exchange)
+                assert_symbol_allowed(ticker)
                 return ("US", ticker, ticker)
-            if raw.endswith(".NS") or raw.endswith(".BO"):
-                base = raw.rsplit(".", 1)[0]
-                return ("US", base, base)
+            assert_symbol_allowed(raw)
             hint = (market_hint or "").strip().upper()
-            if hint in IN_EXCHANGES:
-                return ("US", raw, raw)
+            if hint:
+                assert_exchange_allowed(hint)
             return ("US", raw, raw)
 
         if ":" in raw:
@@ -93,6 +93,7 @@ class ChartDataProvider:
             exchange = exchange.strip().upper()
             ticker = ticker.strip().upper()
             if exchange in IN_EXCHANGES:
+                # Legacy non-US profile path; US-only never reaches here.
                 suffix = ".BO" if exchange == "BSE" else ".NS"
                 return ("IN", ticker, f"{ticker}{suffix}")
             if exchange in US_EXCHANGES:

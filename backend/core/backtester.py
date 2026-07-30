@@ -12,7 +12,7 @@ class BacktestConfig:
     rebalance_freq: str = "ME"
     top_n: int = 10
     transaction_cost_bps: float = 10.0
-    benchmark: str = "^NSEI"
+    benchmark: str = "^GSPC"
 
 
 def _normalize_rebalance_freq(freq: str) -> str:
@@ -51,11 +51,10 @@ def _perf_metrics(returns: pd.Series, equity_curve: pd.Series) -> dict[str, floa
 
 
 def _download_close(
-    tickers: list[str], start: str, end: str, default_suffix: str = ".NS"
+    tickers: list[str], start: str, end: str, default_suffix: str = ""
 ) -> pd.DataFrame:
     # default_suffix is appended to bare tickers (no "." and not an index "^").
-    # It defaults to ".NS" so existing NSE callers are unchanged; pass "" for
-    # US/Yahoo-native symbols (e.g. AAPL) which take no exchange suffix.
+    # Defaults to "" for US/Yahoo-native symbols (e.g. AAPL).
     norm: list[str] = []
     for t in tickers:
         token = t.strip().upper()
@@ -110,14 +109,14 @@ def backtest_momentum_rotation(
     start: str,
     end: str,
     config: BacktestConfig,
-    default_suffix: str = ".NS",
+    default_suffix: str = "",
 ) -> dict:
     prices = _download_close(tickers, start, end, default_suffix=default_suffix)
     if prices.empty or len(prices.columns) == 0:
         raise ValueError("No price data available for the selected universe/date range.")
     prices = prices.dropna(axis=1, how="all").ffill().dropna(how="all")
     if prices.empty or len(prices.columns) == 0:
-        raise ValueError("No usable ticker data after filtering. Verify NSE symbols and date range.")
+        raise ValueError("No usable ticker data after filtering. Verify symbols and date range.")
     daily_ret = prices.pct_change().fillna(0.0)
     momentum = prices.pct_change(config.lookback_days)
 
