@@ -805,7 +805,7 @@ export function CommandBar({ onExecute }: Props) {
 
       {focused && (previewLoading || preview) && value.trim() ? (
         <div className="pointer-events-none absolute right-3 top-[calc(100%+4px)] z-[55] w-[280px] overflow-hidden rounded-sm border border-terminal-border bg-[#0F141B]/98 shadow-2xl">
-          <div className="flex items-center justify-between border-b border-terminal-border px-3 py-2 text-[10px] uppercase tracking-[0.16em] text-terminal-muted">
+          <div className="flex items-center justify-between border-b border-terminal-border px-3 py-2 ot-type-label-compact uppercase tracking-[0.16em] text-terminal-muted">
             <span>Security Preview</span>
             {preview ? <span>{preview.marketLabel}</span> : null}
           </div>
@@ -837,7 +837,7 @@ export function CommandBar({ onExecute }: Props) {
                   emptyLabel="No sparkline data"
                   className="ot-sparkline"
                 />
-                <div className="flex items-center justify-between text-[10px] uppercase tracking-[0.16em] text-terminal-muted">
+                <div className="flex items-center justify-between ot-type-label-compact uppercase tracking-[0.16em] text-terminal-muted">
                   <span>{preview.assetClassLabel}</span>
                   <span>5D Trend</span>
                 </div>
@@ -969,7 +969,7 @@ export function CommandBar({ onExecute }: Props) {
 
       {isOpen && (suggestions.length > 0 || searchingTickers) ? (
         <div id="command-bar-suggestions" role="listbox" aria-label="Command suggestions" className="absolute left-3 right-3 top-[calc(100%-2px)] z-50 mt-1 overflow-hidden rounded-sm border border-terminal-border bg-[#0F141B] shadow-2xl">
-          <div className="flex items-center justify-between border-b border-terminal-border px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-terminal-muted">
+          <div className="flex items-center justify-between border-b border-terminal-border px-2 py-1 ot-type-label-compact uppercase tracking-[0.16em] text-terminal-muted">
             <div className="inline-flex items-center gap-2">
               {reverseSearchOpen ? <History className="h-3.5 w-3.5" /> : <CommandIcon className="h-3.5 w-3.5" />}
               <span>{reverseSearchOpen ? "Reverse History Search (Ctrl+R)" : "Suggestions"}</span>
@@ -991,7 +991,7 @@ export function CommandBar({ onExecute }: Props) {
                 }`}
               >
                 <span
-                  className={`inline-flex h-5 items-center rounded-sm border px-1.5 text-[10px] ot-type-label ${
+                  className={`inline-flex h-5 items-center rounded-sm border px-1.5 ot-type-label-compact ot-type-label ${
                     item.kind === "function"
                       ? "border-[#FF6B00]/40 text-[#FF6B00]"
                       : item.kind === "hint"

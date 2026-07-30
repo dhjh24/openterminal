@@ -132,6 +132,10 @@ function WorkspaceControlBar({
   const setCustomAccentColor = useSettingsStore((s) => s.setCustomAccentColor);
   const hudOverlayEnabled = useSettingsStore((s) => s.hudOverlayEnabled);
   const setHudOverlayEnabled = useSettingsStore((s) => s.setHudOverlayEnabled);
+  const uiDensity = useSettingsStore((s) => s.uiDensity);
+  const setUiDensity = useSettingsStore((s) => s.setUiDensity);
+  const decorativeEffects = useSettingsStore((s) => s.decorativeEffects);
+  const setDecorativeEffects = useSettingsStore((s) => s.setDecorativeEffects);
 
   const applyPreset = (nextPreset: WorkspacePreset) => {
     setPreset(nextPreset);
@@ -141,14 +145,14 @@ function WorkspaceControlBar({
   return (
     <div className="flex items-center justify-between gap-2 border-b border-terminal-border bg-terminal-panel/90 px-3 py-1.5 backdrop-blur">
       <div className="flex items-center gap-2">
-        <span className="ot-type-label text-terminal-muted">Workspace</span>
+        <span className="ot-type-label-compact text-terminal-muted">Workspace</span>
         <div className="flex flex-wrap items-center gap-1">
           {PRESET_OPTIONS.map((option) => (
             <button
               key={option.id}
               type="button"
               onClick={() => applyPreset(option.id)}
-              className={`rounded-sm border px-2 py-1 ot-type-label ${
+              className={`rounded-sm border px-2 py-1 ot-type-label-compact ${
                 preset === option.id
                   ? "border-terminal-accent bg-terminal-accent/10 text-terminal-accent"
                   : "border-terminal-border text-terminal-muted hover:text-terminal-text"
@@ -186,8 +190,32 @@ function WorkspaceControlBar({
         ) : null}
         <button
           type="button"
+          onClick={() => setUiDensity(uiDensity === "comfortable" ? "compact" : "comfortable")}
+          className={`rounded-sm border px-2 py-1 ot-type-label-compact ${
+            uiDensity === "comfortable"
+              ? "border-terminal-accent text-terminal-accent"
+              : "border-terminal-border text-terminal-muted hover:text-terminal-text"
+          }`}
+          title="Toggle table density"
+        >
+          {uiDensity === "comfortable" ? "Comfortable" : "Compact"}
+        </button>
+        <button
+          type="button"
+          onClick={() => setDecorativeEffects(!decorativeEffects)}
+          className={`rounded-sm border px-2 py-1 ot-type-label-compact ${
+            decorativeEffects
+              ? "border-terminal-accent text-terminal-accent"
+              : "border-terminal-border text-terminal-muted hover:text-terminal-text"
+          }`}
+          title="Toggle scanlines, vignette, and animated background"
+        >
+          {decorativeEffects ? "FX On" : "FX Off"}
+        </button>
+        <button
+          type="button"
           onClick={() => setHudOverlayEnabled(!hudOverlayEnabled)}
-          className={`rounded-sm border px-2 py-1 ot-type-label ${
+          className={`rounded-sm border px-2 py-1 ot-type-label-compact ${
             hudOverlayEnabled
               ? "border-terminal-accent text-terminal-accent"
               : "border-terminal-border text-terminal-muted hover:text-terminal-text"
@@ -199,7 +227,7 @@ function WorkspaceControlBar({
           <button
             type="button"
             onClick={toggleRightRail}
-            className={`hidden xl:inline-flex rounded-sm border px-2 py-1 ot-type-label ${
+            className={`hidden xl:inline-flex rounded-sm border px-2 py-1 ot-type-label-compact ${
               rightRailOpen
                 ? "border-terminal-accent text-terminal-accent"
                 : "border-terminal-border text-terminal-muted hover:text-terminal-text"

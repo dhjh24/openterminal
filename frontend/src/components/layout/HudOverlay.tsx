@@ -37,7 +37,7 @@ export function HudOverlay() {
         <button
           type="button"
           onClick={() => setEnabled(false)}
-          className="pointer-events-auto rounded border border-terminal-border px-1.5 py-0.5 text-[10px] text-terminal-muted hover:text-terminal-text"
+          className="pointer-events-auto rounded border border-terminal-border px-1.5 py-0.5 ot-type-label-compact text-terminal-muted hover:text-terminal-text"
         >
           HIDE
         </button>

@@ -6,7 +6,7 @@ import { AgentLauncher } from "./agent/components/AgentLauncher";
 import { ErrorBoundary } from "./components/common/ErrorBoundary";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { RootRedirect } from "./components/RootRedirect";
-import { TerminalBackground } from "./components/TerminalBackground";
+import { DecorativeEffects } from "./components/layout/DecorativeEffects";
 import { ThemeRuntime } from "./components/layout/ThemeRuntime";
 import { LoginPage } from "./pages/LoginPage";
 import { ForgotAccessPage } from "./pages/Auth/ForgotAccessPage";
@@ -113,11 +113,9 @@ function App() {
   return (
     <div className="ot-app-shell">
       <ThemeRuntime />
-      <TerminalBackground />
+      <DecorativeEffects />
       <AgentConsole />
       <AgentLauncher />
-      <div className="ot-vignette-overlay" />
-      <div className="ot-scanline-overlay" />
       <div className="ot-route-layer">
         <ErrorBoundary>
           <Suspense fallback={RouteLoadingFallback}>

@@ -33,7 +33,7 @@ export function UserAccountPanel() {
         className="w-full rounded border border-terminal-border bg-terminal-bg px-2 py-2 text-left text-[11px] hover:border-terminal-accent/60"
       >
         <div className="mb-1 flex items-center gap-2">
-          <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-terminal-border text-[10px] text-terminal-accent">
+          <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-terminal-border ot-type-label-compact text-terminal-accent">
             {initials}
           </span>
           <span className="text-terminal-accent uppercase">{user.role}</span>
@@ -41,7 +41,7 @@ export function UserAccountPanel() {
         <div className="truncate text-terminal-text" title={user.email}>
           {user.email}
         </div>
-        <div className="mt-1 text-[10px] text-terminal-muted">Open Account Details</div>
+        <div className="mt-1 ot-type-label-compact text-terminal-muted">Open Account Details</div>
       </button>
     </div>
   );

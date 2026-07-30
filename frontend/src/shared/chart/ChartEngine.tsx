@@ -13,7 +13,8 @@ import {
 } from "lightweight-charts";
 import type { Bar } from "oakscriptjs";
 
-import { terminalChartTheme } from "./chartTheme";
+import { chartThemeWithTextSize, resolveChartAxisFontSize } from "./chartTheme";
+import { useSettingsStore } from "../../store/settingsStore";
 import { useIndicators } from "./useIndicators";
 import { useRealtimeChart } from "./useRealtimeChart";
 import type { ChartEngineProps } from "./types";
@@ -118,6 +119,7 @@ export function ChartEngine({
   const [altParams, setAltParams] = useState<AlternativeChartParams>(DEFAULT_ALT_CHART_PARAMS);
   const [footprintCandles, setFootprintCandles] = useState<FootprintCandleLike[]>([]);
   const { event: syncEvent, publish } = useChartSync();
+  const chartTextSize = useSettingsStore((s) => s.chartTextSize);
   const { bars, liveTick, realtimeMeta } = useRealtimeChart(market, symbol, timeframe, historicalData, enableRealtime);
   const chartTypeId = String(chartType);
   const isFootprintMode = chartTypeId === "footprint";
@@ -274,7 +276,7 @@ export function ChartEngine({
   useEffect(() => {
     if (!hostRef.current || chartRef.current) return;
     const chart = createChart(hostRef.current, {
-      ...terminalChartTheme,
+      ...chartThemeWithTextSize(chartTextSize),
       width: hostRef.current.clientWidth,
       height,
     });
@@ -499,6 +501,12 @@ export function ChartEngine({
     // re-populating them, leaving line/area/baseline AND footprint blank. Type/footprint changes are
     // handled by the visibility + data effects instead; the chart is only rebuilt for height / F&O.
   }, [height, symbolIsFnO]);
+
+  useEffect(() => {
+    chartRef.current?.applyOptions({
+      layout: { fontSize: resolveChartAxisFontSize(chartTextSize) },
+    });
+  }, [chartTextSize]);
 
   useEffect(() => {
     const s = seriesRef.current;

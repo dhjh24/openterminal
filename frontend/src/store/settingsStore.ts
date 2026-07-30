@@ -6,6 +6,10 @@ import type { CountryCode, MarketCode } from "../types/markets";
 export type DisplayCurrency = "USD";
 export type RealtimeMode = "polling" | "ws";
 export type ThemeVariant = "terminal-noir" | "classic-bloomberg" | "light-desk" | "custom";
+export type UiDensity = "comfortable" | "compact";
+export type ContrastMode = "standard" | "high";
+export type DataFont = "mono" | "sans";
+export type ChartTextSize = "sm" | "md" | "lg";
 export type RecentSecurityAssetClass = "equity" | "fno" | "crypto" | "commodity" | "forex" | "etf" | "mf";
 export type RecentSecurityMarket = "US";
 
@@ -109,6 +113,12 @@ type SettingsState = {
   themeVariant: ThemeVariant;
   customAccentColor: string;
   hudOverlayEnabled: boolean;
+  uiDensity: UiDensity;
+  contrastMode: ContrastMode;
+  dataFont: DataFont;
+  reducedMotion: boolean;
+  decorativeEffects: boolean;
+  chartTextSize: ChartTextSize;
   recentSecurities: RecentSecurity[];
   setSelectedCountry: (country: CountryCode) => void;
   setSelectedMarket: (market: MarketCode) => void;
@@ -119,6 +129,12 @@ type SettingsState = {
   setThemeVariant: (theme: ThemeVariant) => void;
   setCustomAccentColor: (value: string) => void;
   setHudOverlayEnabled: (enabled: boolean) => void;
+  setUiDensity: (density: UiDensity) => void;
+  setContrastMode: (mode: ContrastMode) => void;
+  setDataFont: (font: DataFont) => void;
+  setReducedMotion: (enabled: boolean) => void;
+  setDecorativeEffects: (enabled: boolean) => void;
+  setChartTextSize: (size: ChartTextSize) => void;
   addRecentSecurity: (security: RecentSecurity) => void;
   clearRecentSecurities: () => void;
 };
@@ -143,6 +159,23 @@ function migratePersistedCurrency(value: unknown): DisplayCurrency {
   return defaultCurrency;
 }
 
+function migrateUiDensity(value: unknown): UiDensity {
+  return value === "compact" ? "compact" : "comfortable";
+}
+
+function migrateContrastMode(value: unknown): ContrastMode {
+  return value === "high" ? "high" : "standard";
+}
+
+function migrateDataFont(value: unknown): DataFont {
+  return value === "sans" ? "sans" : "mono";
+}
+
+function migrateChartTextSize(value: unknown): ChartTextSize {
+  if (value === "sm" || value === "lg") return value;
+  return "md";
+}
+
 export const useSettingsStore = create<SettingsState>()(
   persist(
     (set) => ({
@@ -155,6 +188,12 @@ export const useSettingsStore = create<SettingsState>()(
       themeVariant: "terminal-noir",
       customAccentColor: "#FF6B00",
       hudOverlayEnabled: false,
+      uiDensity: "comfortable",
+      contrastMode: "standard",
+      dataFont: "mono",
+      reducedMotion: false,
+      decorativeEffects: false,
+      chartTextSize: "md",
       recentSecurities: [],
       setSelectedCountry: () => {
         set({
@@ -174,6 +213,12 @@ export const useSettingsStore = create<SettingsState>()(
           customAccentColor: /^#[0-9A-Fa-f]{6}$/.test(value) ? value.toUpperCase() : "#FF6B00",
         }),
       setHudOverlayEnabled: (enabled) => set({ hudOverlayEnabled: enabled }),
+      setUiDensity: (density) => set({ uiDensity: density }),
+      setContrastMode: (mode) => set({ contrastMode: mode }),
+      setDataFont: (font) => set({ dataFont: font }),
+      setReducedMotion: (enabled) => set({ reducedMotion: enabled }),
+      setDecorativeEffects: (enabled) => set({ decorativeEffects: enabled }),
+      setChartTextSize: (size) => set({ chartTextSize: size }),
       addRecentSecurity: (security) =>
         set((state) => {
           const next = sanitizeRecentSecurity(security);
@@ -230,6 +275,16 @@ export const useSettingsStore = create<SettingsState>()(
             typeof persisted.hudOverlayEnabled === "boolean"
               ? persisted.hudOverlayEnabled
               : current.hudOverlayEnabled,
+          uiDensity: migrateUiDensity(persisted.uiDensity),
+          contrastMode: migrateContrastMode(persisted.contrastMode),
+          dataFont: migrateDataFont(persisted.dataFont),
+          reducedMotion:
+            typeof persisted.reducedMotion === "boolean" ? persisted.reducedMotion : current.reducedMotion,
+          decorativeEffects:
+            typeof persisted.decorativeEffects === "boolean"
+              ? persisted.decorativeEffects
+              : current.decorativeEffects,
+          chartTextSize: migrateChartTextSize(persisted.chartTextSize),
           recentSecurities: sanitizeRecentSecurities((persisted as Partial<SettingsState>).recentSecurities),
         };
       },

@@ -426,7 +426,7 @@ export function TopBar({ hideTickerLoader = false, hideMarketMarquee = false }: 
         )}
       </div>
       <div className="border-t border-terminal-border/60 px-3 py-1">
-        <div className="flex flex-wrap items-center gap-1 text-[10px] uppercase tracking-[0.12em]">
+        <div className="flex flex-wrap items-center gap-1 ot-type-label-compact">
           {collapsedBreadcrumbs.map((crumb, index) => {
             const isCurrent = index === collapsedBreadcrumbs.length - 1;
             const isEllipsis = crumb.label === "...";

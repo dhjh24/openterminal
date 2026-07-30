@@ -14,7 +14,8 @@ import {
 } from "lightweight-charts";
 import type { Bar } from "oakscriptjs";
 
-import { terminalChartTheme } from "../../shared/chart/chartTheme";
+import { chartThemeWithTextSize, resolveChartAxisFontSize } from "../../shared/chart/chartTheme";
+import { useSettingsStore } from "../../store/settingsStore";
 import { useIndicators } from "../../shared/chart/useIndicators";
 import type { ChartKind, IndicatorConfig } from "../../shared/chart/types";
 import { terminalColors } from "../../theme/terminal";
@@ -77,6 +78,7 @@ export function BacktestingTradingChart({
   onBrushRangeChange,
   onBrushPreviewRangeChange,
 }: Props) {
+  const chartTextSize = useSettingsStore((s) => s.chartTextSize);
   const hostRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const [chartApi, setChartApi] = useState<IChartApi | null>(null);
@@ -158,7 +160,7 @@ export function BacktestingTradingChart({
   useEffect(() => {
     if (!hostRef.current || chartRef.current) return;
     const chart = createChart(hostRef.current, {
-      ...terminalChartTheme,
+      ...chartThemeWithTextSize(chartTextSize),
       width: hostRef.current.clientWidth,
       height,
     });
@@ -238,6 +240,12 @@ export function BacktestingTradingChart({
       referenceSeriesRef.current = [];
     };
   }, [height]);
+
+  useEffect(() => {
+    chartRef.current?.applyOptions({
+      layout: { fontSize: resolveChartAxisFontSize(chartTextSize) },
+    });
+  }, [chartTextSize]);
 
   useEffect(() => {
     const chart = chartRef.current;
