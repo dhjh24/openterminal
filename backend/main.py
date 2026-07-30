@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import re
 import sys
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
@@ -201,6 +202,15 @@ _frontend_app_entry_paths = {
 }
 
 
+def _cache_headers_for_path(path: str) -> dict[str, str]:
+    basename = Path(path).name
+    if basename in ("index.html", "app.html"):
+        return {"Cache-Control": "no-cache"}
+    if path.startswith("assets/") or re.search(r"\.[a-f0-9]{8,}\.", basename):
+        return {"Cache-Control": "public, max-age=31536000, immutable"}
+    return {}
+
+
 @app.get("/{full_path:path}", include_in_schema=False)
 def spa_entry(full_path: str) -> FileResponse:
     if full_path.split("/", 1)[0] == "api":
@@ -209,19 +219,19 @@ def spa_entry(full_path: str) -> FileResponse:
         raise HTTPException(status_code=404, detail="Frontend bundle not found")
     requested = _frontend_dist / full_path
     if full_path and requested.exists() and requested.is_file():
-        return FileResponse(requested)
+        return FileResponse(requested, headers=_cache_headers_for_path(full_path))
     if full_path and requested.exists() and requested.is_dir():
         directory_index = requested / "index.html"
         if directory_index.exists():
-            return FileResponse(directory_index)
+            return FileResponse(directory_index, headers=_cache_headers_for_path(full_path))
     if full_path and (Path(full_path).suffix or full_path.startswith("assets/")):
         raise HTTPException(status_code=404, detail="Static asset not found")
     first_segment = full_path.split("/", 1)[0] if full_path else ""
     if first_segment in _frontend_app_entry_paths:
         app_file = _frontend_dist / "app.html"
         if app_file.exists():
-            return FileResponse(app_file)
+            return FileResponse(app_file, headers=_cache_headers_for_path("app.html"))
     index_file = _frontend_dist / "index.html"
     if index_file.exists():
-        return FileResponse(index_file)
+        return FileResponse(index_file, headers=_cache_headers_for_path("index.html"))
     raise HTTPException(status_code=404, detail="Frontend entrypoint not found")

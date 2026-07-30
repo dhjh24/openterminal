@@ -54,9 +54,10 @@ test.describe("us-smoke", () => {
     const stored = await page.evaluate(() => localStorage.getItem("ui-settings"));
     expect(stored).toBeTruthy();
     // Store rehydrates on import; assert via page script that RELIANCE is gone after navigation.
-    const symbols = await page.evaluate(async () => {
-      // Give zustand persist a tick to merge
-      await new Promise((r) => setTimeout(r, 100));
+    // Give zustand persist a tick to merge (kept on the Playwright side to avoid context-destroyed
+    // errors if a SPA redirect fires while a browser-side setTimeout is still pending).
+    await page.waitForTimeout(100);
+    const symbols = await page.evaluate(() => {
       const raw = localStorage.getItem("ui-settings");
       if (!raw) return [];
       try {
