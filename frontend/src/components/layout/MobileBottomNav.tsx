@@ -54,7 +54,7 @@ export function MobileBottomNav() {
         </div>
       ) : null}
       <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-terminal-border bg-terminal-panel px-1 pb-[max(0.25rem,env(safe-area-inset-bottom))] pt-1 md:hidden">
-        <div className="grid grid-cols-6 gap-0.5 ot-type-label-compact">
+        <div className="grid grid-cols-6 gap-px ot-bottom-nav-grid ot-type-label-compact">
           {primaryTabs.map((item) => (
             <NavLink
               key={item.path}

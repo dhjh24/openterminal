@@ -629,12 +629,12 @@ export function HomePage() {
             <section className="rounded-sm border border-terminal-border bg-terminal-panel/80 p-3" aria-label="Home Header">
               <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
                 <div className="space-y-2">
-                  <p className="ot-type-panel-title uppercase tracking-[0.18em] text-terminal-accent">Mission Control</p>
-                  <h1 className="text-2xl font-semibold uppercase tracking-[0.12em] text-terminal-text">{presetConfig.landing.headline}</h1>
+                  <p className="ot-type-panel-title ot-home-title-mobile uppercase tracking-[0.18em] text-terminal-accent">Mission Control</p>
+                  <h1 className="text-2xl font-semibold uppercase ot-home-heading-mobile tracking-[0.12em] text-terminal-text">{presetConfig.landing.headline}</h1>
                   <p className="max-w-3xl text-sm text-terminal-muted">
                     {presetConfig.landing.description}
                   </p>
-                  <div className="flex flex-wrap gap-2 text-[11px] uppercase tracking-[0.12em] text-terminal-muted">
+                  <div className="flex flex-wrap gap-1.5 text-[11px] uppercase ot-home-badge-mobile tracking-[0.12em] text-terminal-muted">
                     <span className="rounded-sm border border-terminal-border px-2 py-1">
                       Desk {(user?.email || "unknown").toUpperCase()}
                     </span>
@@ -658,28 +658,28 @@ export function HomePage() {
                   <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
-                      className="rounded-sm border border-terminal-border px-3 py-1.5 text-[11px] uppercase tracking-[0.12em] text-terminal-muted hover:border-terminal-accent hover:text-terminal-accent"
+                      className="rounded-sm border border-terminal-border px-2 py-1.5 text-[11px] uppercase ot-home-badge-mobile tracking-[0.12em] text-terminal-muted hover:border-terminal-accent hover:text-terminal-accent"
                       onClick={() => navigate("/equity/portfolio")}
                     >
                       Portfolio HQ
                     </button>
                     <button
                       type="button"
-                      className="rounded-sm border border-terminal-accent px-3 py-1.5 text-[11px] uppercase tracking-[0.12em] text-terminal-accent hover:bg-terminal-accent/10"
+                      className="rounded-sm border border-terminal-accent px-2 py-1.5 text-[11px] uppercase ot-home-badge-mobile tracking-[0.12em] text-terminal-accent hover:bg-terminal-accent/10"
                       onClick={() => navigate(presetConfig.landing.primaryRoute)}
                     >
                       {presetConfig.landing.primaryLabel}
                     </button>
                     <button
                       type="button"
-                      className="rounded-sm border border-terminal-border px-3 py-1.5 text-[11px] uppercase tracking-[0.12em] text-terminal-muted hover:border-terminal-accent hover:text-terminal-accent"
+                      className="rounded-sm border border-terminal-border px-2 py-1.5 text-[11px] uppercase ot-home-badge-mobile tracking-[0.12em] text-terminal-muted hover:border-terminal-accent hover:text-terminal-accent"
                       onClick={() => navigate("/equity/launchpad")}
                     >
                       Launchpad
                     </button>
                     <button
                       type="button"
-                      className="rounded-sm border border-terminal-border px-3 py-1.5 text-[11px] uppercase tracking-[0.12em] text-terminal-muted hover:border-terminal-accent hover:text-terminal-accent"
+                      className="rounded-sm border border-terminal-border px-2 py-1.5 text-[11px] uppercase ot-home-badge-mobile tracking-[0.12em] text-terminal-muted hover:border-terminal-accent hover:text-terminal-accent"
                       onClick={() => navigate("/equity/news")}
                     >
                       Intel Wire
@@ -713,7 +713,7 @@ export function HomePage() {
               <div className="rounded-sm border border-terminal-border bg-terminal-panel/80 p-3">
                 <div className="flex flex-col gap-3 border-b border-terminal-border pb-3 lg:flex-row lg:items-start lg:justify-between">
                   <div>
-                    <h2 className="ot-type-panel-title uppercase tracking-[0.14em] text-terminal-accent">Portfolio HQ</h2>
+                    <h2 className="ot-type-panel-title ot-home-title-mobile uppercase tracking-[0.14em] text-terminal-accent">Portfolio HQ</h2>
                     <p className="mt-1 text-sm text-terminal-muted">
                       Equity valuation, derivatives posture, and performance telemetry anchored to the current home snapshot.
                     </p>
@@ -750,14 +750,14 @@ export function HomePage() {
                       <div className="flex flex-wrap gap-2">
                         <button
                           type="button"
-                          className="rounded-sm border border-terminal-border px-2 py-1 text-[11px] uppercase tracking-[0.12em] text-terminal-muted hover:border-terminal-accent hover:text-terminal-accent"
+                          className="rounded-sm border border-terminal-border px-2 py-1.5 text-[11px] uppercase ot-home-badge-mobile tracking-[0.12em] text-terminal-muted hover:border-terminal-accent hover:text-terminal-accent"
                           onClick={() => navigate("/equity/portfolio")}
                         >
                           Open Portfolio
                         </button>
                         <button
                           type="button"
-                          className="rounded-sm border border-terminal-border px-2 py-1 text-[11px] uppercase tracking-[0.12em] text-terminal-muted hover:border-terminal-accent hover:text-terminal-accent"
+                          className="rounded-sm border border-terminal-border px-2 py-1.5 text-[11px] uppercase ot-home-badge-mobile tracking-[0.12em] text-terminal-muted hover:border-terminal-accent hover:text-terminal-accent"
                           onClick={() => navigate("/backtesting")}
                         >
                           Run Backtests
@@ -838,7 +838,7 @@ export function HomePage() {
                 <div className="mt-3 rounded-sm border border-terminal-border bg-terminal-bg/40 p-3">
                   <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                     <div>
-                      <h3 className="ot-type-panel-title uppercase tracking-[0.14em] text-terminal-accent">30D Performance</h3>
+                      <h3 className="ot-type-panel-title ot-home-title-mobile uppercase tracking-[0.14em] text-terminal-accent">30D Performance</h3>
                       <p className="mt-1 text-xs text-terminal-muted">
                         Portfolio trajectory normalized against the benchmark overlay from the portfolio analytics feed.
                       </p>
@@ -862,7 +862,7 @@ export function HomePage() {
                 {showHomeSection("health") ? (
                 <section className="rounded-sm border border-terminal-border bg-terminal-panel/80 p-3" aria-label="System Health">
                   <div className="mb-3">
-                    <h2 className="ot-type-panel-title uppercase tracking-[0.14em] text-terminal-accent">System Health</h2>
+                    <h2 className="ot-type-panel-title ot-home-title-mobile uppercase tracking-[0.14em] text-terminal-accent">System Health</h2>
                     <p className="mt-1 text-sm text-terminal-muted">
                       Auth, relay mode, news cadence, and derivatives signal surfaced as a single mission-control rail.
                     </p>
@@ -887,14 +887,14 @@ export function HomePage() {
                 <section className="rounded-sm border border-terminal-border bg-terminal-panel/80 p-3" aria-label="Intel Wire">
                   <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                     <div>
-                      <h2 className="ot-type-panel-title uppercase tracking-[0.14em] text-terminal-accent">Intel Wire</h2>
+                      <h2 className="ot-type-panel-title ot-home-title-mobile uppercase tracking-[0.14em] text-terminal-accent">Intel Wire</h2>
                       <p className="mt-1 text-sm text-terminal-muted">
                         Latest headlines from the existing news polling loop with sentiment carried through from the API payload.
                       </p>
                     </div>
                     <button
                       type="button"
-                      className="rounded-sm border border-terminal-border px-2 py-1 text-[11px] uppercase tracking-[0.12em] text-terminal-muted hover:border-terminal-accent hover:text-terminal-accent"
+                      className="rounded-sm border border-terminal-border px-2 py-1.5 text-[11px] uppercase ot-home-badge-mobile tracking-[0.12em] text-terminal-muted hover:border-terminal-accent hover:text-terminal-accent"
                       onClick={() => navigate("/equity/news")}
                     >
                       Open News
@@ -985,7 +985,7 @@ export function HomePage() {
             <section className="rounded-sm border border-terminal-border bg-terminal-panel/80 p-3" aria-label="Launch Matrix">
               <div className="mb-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                 <div>
-                  <h2 className="ot-type-panel-title uppercase tracking-[0.14em] text-terminal-accent">Launch Matrix</h2>
+                  <h2 className="ot-type-panel-title ot-home-title-mobile uppercase tracking-[0.14em] text-terminal-accent">Launch Matrix</h2>
                   <p className="mt-1 text-sm text-terminal-muted">
                     Dense function-key style routing into equity, derivatives, research, and settings workspaces.
                   </p>
@@ -993,14 +993,14 @@ export function HomePage() {
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
-                    className="rounded-sm border border-terminal-border px-2 py-1 text-[11px] uppercase tracking-[0.12em] text-terminal-muted hover:border-terminal-accent hover:text-terminal-accent"
+                    className="rounded-sm border border-terminal-border px-2 py-1.5 text-[11px] uppercase ot-home-badge-mobile tracking-[0.12em] text-terminal-muted hover:border-terminal-accent hover:text-terminal-accent"
                     onClick={() => navigate("/equity/chart-workstation")}
                   >
                     Open Workstation
                   </button>
                   <button
                     type="button"
-                    className="rounded-sm border border-terminal-border px-2 py-1 text-[11px] uppercase tracking-[0.12em] text-terminal-muted hover:border-terminal-accent hover:text-terminal-accent"
+                    className="rounded-sm border border-terminal-border px-2 py-1.5 text-[11px] uppercase ot-home-badge-mobile tracking-[0.12em] text-terminal-muted hover:border-terminal-accent hover:text-terminal-accent"
                     onClick={() => navigate("/equity/screener")}
                   >
                     Open Screener

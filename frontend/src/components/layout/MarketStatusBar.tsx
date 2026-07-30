@@ -81,7 +81,7 @@ export function MarketStatusBar(_props: { tickerOverride?: string | null } = {})
 
   return (
     <div className="border-t border-terminal-border bg-[#0D1117] px-3 py-0.5 text-[11px]">
-      <div className="grid h-5 grid-cols-[auto_1fr_auto] items-center gap-3 text-terminal-muted">
+      <div className="grid h-5 grid-cols-[auto_1fr_auto] items-center gap-3 text-terminal-muted ot-status-bar-grid">
         <div className="inline-flex items-center gap-3 ot-type-data whitespace-nowrap">
           <span><span className="text-terminal-text">ET</span> {formatZone(now, "America/New_York")}</span>
           <span><span className="text-terminal-text">UTC</span> {formatZone(now, "UTC")}</span>
