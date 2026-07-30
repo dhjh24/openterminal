@@ -1,6 +1,7 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { execSync } from "node:child_process";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 function resolveGitCommit(): string {
@@ -15,8 +16,20 @@ const buildDate = new Date().toISOString();
 const gitCommit = resolveGitCommit();
 const appVersion = process.env.npm_package_version ?? "0.0.0";
 
+function injectServiceWorkerBuildId() {
+  return {
+    name: "otui-sw-build-id",
+    closeBundle() {
+      const swPath = resolve(__dirname, "dist/sw.js");
+      if (!existsSync(swPath)) return;
+      const content = readFileSync(swPath, "utf8");
+      writeFileSync(swPath, content.replaceAll("__OTUI_BUILD_ID__", gitCommit));
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), injectServiceWorkerBuildId()],
   define: {
     __BUILD_DATE__: JSON.stringify(buildDate),
     __GIT_COMMIT__: JSON.stringify(gitCommit),

@@ -12,6 +12,8 @@ import type { PaperOrder, PaperPosition } from "../../types";
 import { useQuotesStore } from "../../realtime/useQuotesStream";
 import { useSettingsStore } from "../../store/settingsStore";
 import { useStockStore } from "../../store/stockStore";
+import { useNetworkStatus } from "../../hooks/useNetworkStatus";
+import { OFFLINE_BANNER_TEXT } from "../../lib/offlineGuard";
 
 const PAPER_PORTFOLIO_KEY = "ot:paper:selected-portfolio:v1";
 
@@ -95,6 +97,7 @@ export function HotKeyPanel({
   const ticker = useStockStore((state) => state.ticker);
   const stock = useStockStore((state) => state.stock);
   const tick = useQuotesStore((state) => state.ticksByToken[resolveQuoteToken(selectedMarket, ticker || "AAPL")]);
+  const { online } = useNetworkStatus();
   const [selectedPortfolioId, setSelectedPortfolioId] = useState<string>(() => readStoredPortfolioId());
   const [focused, setFocused] = useState(autoFocus);
   const [quantity, setQuantity] = useState(1);
@@ -497,10 +500,16 @@ export function HotKeyPanel({
           </div>
         </div>
 
+        {!online ? (
+          <div className="rounded-sm border border-amber-700/50 bg-amber-950/40 px-2 py-1 text-[11px] text-amber-100">
+            {OFFLINE_BANNER_TEXT}
+          </div>
+        ) : null}
+
         <div className="grid gap-2 sm:grid-cols-2">
           <button
             type="button"
-            disabled={!selectedPortfolioId || submitOrder.isPending}
+            disabled={!online || !selectedPortfolioId || submitOrder.isPending}
             onClick={() => handleSubmit("buy", orderMode)}
             className="rounded-sm border border-emerald-500/60 bg-emerald-500/12 px-3 py-2 text-sm font-semibold text-emerald-300 disabled:cursor-not-allowed disabled:opacity-50"
           >
@@ -508,7 +517,7 @@ export function HotKeyPanel({
           </button>
           <button
             type="button"
-            disabled={!selectedPortfolioId || submitOrder.isPending}
+            disabled={!online || !selectedPortfolioId || submitOrder.isPending}
             onClick={() => handleSubmit("sell", orderMode)}
             className="rounded-sm border border-red-500/60 bg-red-500/12 px-3 py-2 text-sm font-semibold text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
           >
@@ -519,15 +528,17 @@ export function HotKeyPanel({
         <div className="grid gap-2 sm:grid-cols-3">
           <button
             type="button"
+            disabled={!online}
             onClick={handleFlatten}
-            className="rounded-sm border border-terminal-border px-3 py-2 text-[11px] uppercase tracking-[0.16em] text-terminal-muted hover:text-terminal-text"
+            className="rounded-sm border border-terminal-border px-3 py-2 text-[11px] uppercase tracking-[0.16em] text-terminal-muted hover:text-terminal-text disabled:cursor-not-allowed disabled:opacity-50"
           >
             Flatten (F)
           </button>
           <button
             type="button"
+            disabled={!online}
             onClick={handleReverse}
-            className="rounded-sm border border-terminal-border px-3 py-2 text-[11px] uppercase tracking-[0.16em] text-terminal-muted hover:text-terminal-text"
+            className="rounded-sm border border-terminal-border px-3 py-2 text-[11px] uppercase tracking-[0.16em] text-terminal-muted hover:text-terminal-text disabled:cursor-not-allowed disabled:opacity-50"
           >
             Reverse (R)
           </button>

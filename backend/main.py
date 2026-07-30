@@ -225,6 +225,8 @@ def _cache_headers_for_path(path: str) -> dict[str, str]:
     basename = Path(path).name
     if basename in ("index.html", "app.html"):
         return {"Cache-Control": "no-cache"}
+    if basename in ("sw.js", "manifest.json"):
+        return {"Cache-Control": "no-cache"}
     if path.startswith("assets/") or re.search(r"\.[a-f0-9]{8,}\.", basename):
         return {"Cache-Control": "public, max-age=31536000, immutable"}
     return {}

@@ -5,6 +5,7 @@ import type {
   AlertTriggerEvent,
   AlertDeliveryOptions,
 } from "../types";
+import { assertOnlineForAction } from "../lib/offlineGuard";
 
 export async function fetchAlerts(): Promise<AlertRule[]> {
   try {
@@ -42,6 +43,7 @@ export async function createAlert(payload: {
   note?: string;
   channels?: string[];
 }): Promise<{ status: string; alert: AlertRule }> {
+  assertOnlineForAction("Alert creation");
   try {
     const { data } = await api.post<{ status: string; alert: AlertRule }>("/alerts", payload);
     return data;

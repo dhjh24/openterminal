@@ -10,6 +10,8 @@ import { useLocation, useNavigate } from "react-router-dom";
 
 import { ErrorBoundary } from "../common/ErrorBoundary";
 import { InstallPromptBanner } from "./InstallPromptBanner";
+import { OfflineBanner } from "./OfflineBanner";
+import { UpdateAvailableBanner } from "./UpdateAvailableBanner";
 import { MobileBottomNav } from "./MobileBottomNav";
 import { IconRail } from "./IconRail";
 import { StatusBar } from "./StatusBar";
@@ -144,10 +146,10 @@ function WorkspaceControlBar({
   };
 
   return (
-    <div className="flex items-center justify-between gap-2 border-b border-terminal-border bg-terminal-panel/90 px-3 py-1.5 backdrop-blur">
-      <div className="flex items-center gap-2">
-        <span className="ot-type-label-compact text-terminal-muted">Workspace</span>
-        <div className="flex flex-wrap items-center gap-1">
+    <div className="flex items-center justify-between gap-2 overflow-x-auto border-b border-terminal-border bg-terminal-panel/90 px-3 py-1.5 backdrop-blur">
+      <div className="flex min-w-0 shrink-0 items-center gap-2">
+        <span className="ot-type-label-compact hidden text-terminal-muted sm:inline">Workspace</span>
+        <div className="flex flex-nowrap items-center gap-1">
           {PRESET_OPTIONS.map((option) => (
             <button
               key={option.id}
@@ -164,8 +166,8 @@ function WorkspaceControlBar({
           ))}
         </div>
       </div>
-      <div className="flex items-center gap-2">
-        <label className="inline-flex items-center gap-1 text-[11px] text-terminal-muted">
+      <div className="flex shrink-0 items-center gap-2">
+        <label className="hidden items-center gap-1 text-[11px] text-terminal-muted md:inline-flex">
           Theme
           <TerminalSelect
             size="sm"
@@ -183,7 +185,7 @@ function WorkspaceControlBar({
         {themeVariant === "custom" ? (
           <input
             type="color"
-            className="h-6 w-8 cursor-pointer rounded-sm border border-terminal-border bg-transparent p-0"
+            className="hidden h-6 w-8 cursor-pointer rounded-sm border border-terminal-border bg-transparent p-0 md:block"
             aria-label="Custom accent color"
             value={customAccentColor}
             onChange={(e) => setCustomAccentColor(e.target.value)}
@@ -192,7 +194,7 @@ function WorkspaceControlBar({
         <button
           type="button"
           onClick={() => setUiDensity(uiDensity === "comfortable" ? "compact" : "comfortable")}
-          className={`rounded-sm border px-2 py-1 ot-type-label-compact ${
+          className={`hidden rounded-sm border px-2 py-1 ot-type-label-compact sm:inline-flex ${
             uiDensity === "comfortable"
               ? "border-terminal-accent text-terminal-accent"
               : "border-terminal-border text-terminal-muted hover:text-terminal-text"
@@ -204,7 +206,7 @@ function WorkspaceControlBar({
         <button
           type="button"
           onClick={() => setDecorativeEffects(!decorativeEffects)}
-          className={`rounded-sm border px-2 py-1 ot-type-label-compact ${
+          className={`hidden rounded-sm border px-2 py-1 ot-type-label-compact md:inline-flex ${
             decorativeEffects
               ? "border-terminal-accent text-terminal-accent"
               : "border-terminal-border text-terminal-muted hover:text-terminal-text"
@@ -216,7 +218,7 @@ function WorkspaceControlBar({
         <button
           type="button"
           onClick={() => setHudOverlayEnabled(!hudOverlayEnabled)}
-          className={`rounded-sm border px-2 py-1 ot-type-label-compact ${
+          className={`hidden rounded-sm border px-2 py-1 ot-type-label-compact lg:inline-flex ${
             hudOverlayEnabled
               ? "border-terminal-accent text-terminal-accent"
               : "border-terminal-border text-terminal-muted hover:text-terminal-text"
@@ -310,6 +312,7 @@ export function TerminalShell({
         <IconRail />
 
         <div className="relative z-10 flex min-w-0 flex-1 flex-col">
+          <OfflineBanner />
           <CommandBar
             onExecute={async (command) => {
               const parsed = parseCommand(command);
@@ -342,6 +345,7 @@ export function TerminalShell({
           <StatusBar tickerOverride={statusBarTickerOverride} />
         </div>
 
+        <UpdateAvailableBanner />
         {showInstallPrompt ? <InstallPromptBanner /> : null}
         {showMobileBottomNav ? <MobileBottomNav /> : null}
         <HotKeyPanelFloat />
