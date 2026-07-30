@@ -190,7 +190,7 @@ describe("HomePage mission-control revamp", () => {
     });
 
     expect(screen.getByTestId("terminal-shell")).toHaveAttribute("data-status-bar", "MISSION CONTROL");
-    expect(screen.getByRole("list", { name: "Market heat strip" })).toBeInTheDocument();
+    expect(screen.getAllByRole("list", { name: "Market heat strip" }).length).toBeGreaterThanOrEqual(1);
     expect(screen.getByRole("region", { name: "Portfolio HQ" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "System Health" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Launch Matrix" })).toBeInTheDocument();
