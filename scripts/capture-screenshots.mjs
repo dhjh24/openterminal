@@ -1,20 +1,22 @@
 #!/usr/bin/env node
 /**
  * Capture before/after screenshots of the Home page at multiple viewport sizes.
- * Usage: node capture-screenshots.mjs <before|after>
  *
- * Requires: vite dev server running on http://localhost:5173 or PORT env var
+ * Usage:
+ *   cd frontend && node ../scripts/capture-screenshots.mjs <before|after>
+ *
+ * Requires: vite dev server running on http://localhost:5173
  * Output: docs/screenshots/<before|after>/<viewport>-home.png
  */
 import { chromium } from "playwright";
-import { mkdirSync, writeFileSync } from "fs";
+import { mkdirSync } from "fs";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const OUT_DIR = resolve(__dirname, "../../docs/screenshots");
+const OUT_DIR = resolve(__dirname, "../docs/screenshots");
 const PORT = process.env.PORT || 5173;
-const BASE_URL = `http://localhost:${PORT}`;
+const BASE_URL = `http://127.0.0.1:${PORT}`;
 
 const VIEWPORTS = [
   { name: "390x844", width: 390, height: 844 },
@@ -37,11 +39,7 @@ mkdirSync(outDir, { recursive: true });
 
 async function main() {
   const browser = await chromium.launch({ headless: true });
-  const ctx = await browser.newContext({
-    deviceScaleFactor: 1,
-    isMobile: false,
-    hasTouch: false,
-  });
+  const ctx = await browser.newContext({ deviceScaleFactor: 1 });
 
   for (const vp of VIEWPORTS) {
     const page = await ctx.newPage();
@@ -52,16 +50,11 @@ async function main() {
         waitUntil: "networkidle",
         timeout: 15000,
       });
-
-      // Wait for the main content to render
       await page.waitForSelector("main", { timeout: 10000 }).catch(() => {});
-
-      // Small delay for any animations
       await page.waitForTimeout(500);
-
       const filePath = resolve(outDir, `${vp.name}-home.png`);
       await page.screenshot({ path: filePath, fullPage: false });
-      console.log(`✓ ${vp.name} -> ${filePath}`);
+      console.log(`✓ ${vp.name}`);
     } catch (err) {
       console.error(`✗ ${vp.name}: ${err.message}`);
     } finally {
@@ -70,7 +63,7 @@ async function main() {
   }
 
   await browser.close();
-  console.log(`\nDone. Screenshots in ${outDir}`);
+  console.log(`\nDone → ${outDir}`);
 }
 
 main().catch((err) => {
