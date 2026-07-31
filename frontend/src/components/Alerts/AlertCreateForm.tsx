@@ -18,9 +18,9 @@ const CONDITION_OPTIONS = [
 export function AlertCreateForm({ onCreated }: Props) {
   const [symbol, setSymbol] = useState("NASDAQ:AAPL");
   const [conditionType, setConditionType] = useState("price_above");
-  const [threshold, setThreshold] = useState(3000);
+  const [threshold, setThreshold] = useState<number | "">("");
   const [cooldownSeconds, setCooldownSeconds] = useState(0);
-  const [customExpression, setCustomExpression] = useState("ltp > 3000 and change_pct > 1");
+  const [customExpression, setCustomExpression] = useState("ltp > 200 and change_pct > 1");
   const [channels, setChannels] = useState<string[]>(["in_app"]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -29,18 +29,24 @@ export function AlertCreateForm({ onCreated }: Props) {
     setLoading(true);
     setError(null);
     try {
+      if (conditionType !== "custom_expression" && (threshold === "" || !Number.isFinite(Number(threshold)))) {
+        setError("Enter a USD threshold or use current market price");
+        setLoading(false);
+        return;
+      }
       // Fire-and-forget: don't block the alert creation on the notification permission dialog.
       if (typeof Notification !== "undefined" && Notification.permission === "default") {
         void Notification.requestPermission().catch(() => undefined);
       }
+      const numericThreshold = Number(threshold);
       const parameters: Record<string, unknown> = {};
       if (conditionType === "custom_expression") {
         parameters.expression = customExpression;
       } else if (conditionType === "volume_spike") {
-        parameters.multiplier = Math.max(1, threshold);
+        parameters.multiplier = Math.max(1, numericThreshold);
         parameters.lookback = 20;
       } else {
-        parameters.threshold = threshold;
+        parameters.threshold = numericThreshold;
       }
       await createAlert({
         symbol: symbol.trim().toUpperCase(),
@@ -83,15 +89,15 @@ export function AlertCreateForm({ onCreated }: Props) {
             className="rounded border border-terminal-border bg-terminal-bg px-2 py-1 text-xs md:col-span-2"
             value={customExpression}
             onChange={(e) => setCustomExpression(e.target.value)}
-            placeholder="ltp > 3000 and change_pct > 1"
+            placeholder="ltp > 200 and change_pct > 1"
           />
         ) : (
           <input
             type="number"
             className="rounded border border-terminal-border bg-terminal-bg px-2 py-1 text-xs"
             value={threshold}
-            onChange={(e) => setThreshold(Number(e.target.value))}
-            placeholder="Threshold"
+            onChange={(e) => setThreshold(e.target.value === "" ? "" : Number(e.target.value))}
+            placeholder="USD price (blank)"
           />
         )}
         <input

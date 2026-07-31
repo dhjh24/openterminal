@@ -7,10 +7,10 @@ import { formatUsd } from "../../utils/formatters";
 export function TaxLotManager({ data, onRefresh }: { data: TaxLotSummary | null; onRefresh: () => Promise<void> }) {
   const [ticker, setTicker] = useState("AAPL");
   const [qty, setQty] = useState(10);
-  const [buyPrice, setBuyPrice] = useState(1000);
+  const [buyPrice, setBuyPrice] = useState<number | "">("");
   const [buyDate, setBuyDate] = useState(new Date().toISOString().slice(0, 10));
   const [sellQty, setSellQty] = useState(5);
-  const [sellPrice, setSellPrice] = useState(1200);
+  const [sellPrice, setSellPrice] = useState<number | "">("");
   const [sellDate, setSellDate] = useState(new Date().toISOString().slice(0, 10));
   const [method, setMethod] = useState<"FIFO" | "LIFO" | "SPECIFIC">("FIFO");
   const [message, setMessage] = useState<string>("");
@@ -28,17 +28,22 @@ export function TaxLotManager({ data, onRefresh }: { data: TaxLotSummary | null;
       <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
         <input className="rounded border border-terminal-border bg-terminal-bg px-2 py-2 text-xs" value={ticker} onChange={(e) => setTicker(e.target.value.toUpperCase())} />
         <input className="rounded border border-terminal-border bg-terminal-bg px-2 py-2 text-xs" type="number" value={qty} onChange={(e) => setQty(Number(e.target.value))} />
-        <input className="rounded border border-terminal-border bg-terminal-bg px-2 py-2 text-xs" type="number" value={buyPrice} onChange={(e) => setBuyPrice(Number(e.target.value))} />
-        <input className="rounded border border-terminal-border bg-terminal-bg px-2 py-2 text-xs" type="date" value={buyDate} onChange={(e) => setBuyDate(e.target.value)} />
+        <input className="rounded border border-terminal-border bg-terminal-bg px-2 py-2 text-base md:text-xs" type="number" value={buyPrice} onChange={(e) => setBuyPrice(e.target.value === "" ? "" : Number(e.target.value))} placeholder="Buy price USD" />
+        <input className="rounded border border-terminal-border bg-terminal-bg px-2 py-2 text-base md:text-xs" type="date" value={buyDate} onChange={(e) => setBuyDate(e.target.value)} />
       </div>
       <div className="mt-2 flex flex-wrap gap-2">
         <button
           className="rounded border border-terminal-accent px-3 py-2 text-xs text-terminal-accent"
           onClick={async () => {
             try {
-              await addTaxLot({ ticker, quantity: qty, buy_price: buyPrice, buy_date: buyDate });
+              if (buyPrice === "" || Number(buyPrice) <= 0) {
+                setMessage("Enter a realistic USD buy price");
+                return;
+              }
+              await addTaxLot({ ticker, quantity: qty, buy_price: Number(buyPrice), buy_date: buyDate });
               await onRefresh();
               setMessage("Tax lot added");
+              setBuyPrice("");
             } catch (e) {
               setMessage(e instanceof Error ? e.message : "Failed to add tax lot");
             }
@@ -49,10 +54,10 @@ export function TaxLotManager({ data, onRefresh }: { data: TaxLotSummary | null;
       </div>
 
       <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-5">
-        <input className="rounded border border-terminal-border bg-terminal-bg px-2 py-2 text-xs" type="number" value={sellQty} onChange={(e) => setSellQty(Number(e.target.value))} />
-        <input className="rounded border border-terminal-border bg-terminal-bg px-2 py-2 text-xs" type="number" value={sellPrice} onChange={(e) => setSellPrice(Number(e.target.value))} />
-        <input className="rounded border border-terminal-border bg-terminal-bg px-2 py-2 text-xs" type="date" value={sellDate} onChange={(e) => setSellDate(e.target.value)} />
-        <select className="rounded border border-terminal-border bg-terminal-bg px-2 py-2 text-xs" value={method} onChange={(e) => setMethod(e.target.value as "FIFO" | "LIFO" | "SPECIFIC") }>
+        <input className="rounded border border-terminal-border bg-terminal-bg px-2 py-2 text-base md:text-xs" type="number" value={sellQty} onChange={(e) => setSellQty(Number(e.target.value))} />
+        <input className="rounded border border-terminal-border bg-terminal-bg px-2 py-2 text-base md:text-xs" type="number" value={sellPrice} onChange={(e) => setSellPrice(e.target.value === "" ? "" : Number(e.target.value))} placeholder="Sell price USD" />
+        <input className="rounded border border-terminal-border bg-terminal-bg px-2 py-2 text-base md:text-xs" type="date" value={sellDate} onChange={(e) => setSellDate(e.target.value)} />
+        <select className="rounded border border-terminal-border bg-terminal-bg px-2 py-2 text-base md:text-xs" value={method} onChange={(e) => setMethod(e.target.value as "FIFO" | "LIFO" | "SPECIFIC") }>
           <option value="FIFO">FIFO</option>
           <option value="LIFO">LIFO</option>
           <option value="SPECIFIC">Specific</option>
@@ -61,10 +66,15 @@ export function TaxLotManager({ data, onRefresh }: { data: TaxLotSummary | null;
           className="rounded border border-terminal-border px-3 py-2 text-xs text-terminal-text"
           onClick={async () => {
             try {
+              if (sellPrice === "" || Number(sellPrice) <= 0) {
+                setMessage("Enter a realistic USD sell price");
+                return;
+              }
               const specific_lot_ids = method === "SPECIFIC" ? lotsByTicker.slice(0, Math.ceil(sellQty)).map((x) => x.id) : undefined;
-              const out = await realizeTaxLots({ ticker, quantity: sellQty, sell_price: sellPrice, sell_date: sellDate, method, specific_lot_ids });
+              const out = await realizeTaxLots({ ticker, quantity: sellQty, sell_price: Number(sellPrice), sell_date: sellDate, method, specific_lot_ids });
               await onRefresh();
               setMessage(`Realized gain: ${formatUsd(out.realized_gain_total)} | STCG ${formatUsd(out.short_term_gain)} | LTCG ${formatUsd(out.long_term_gain)}`);
+              setSellPrice("");
             } catch (e) {
               setMessage(e instanceof Error ? e.message : "Failed to realize lots");
             }

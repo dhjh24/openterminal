@@ -203,9 +203,41 @@ nav.fixed.bottom-0 {
   /* Chart workstation: keep chart visible above the fold */
   [data-testid="chart-workstation"] .chart-panel-body,
   [data-testid="chart-workstation"] .ot-chart-host,
-  .chart-panel-body {
+  .chart-panel-body,
+  .ot-chart-host {
     min-height: 320px;
-    height: min(52dvh, calc(100dvh - 50px - 96px - 3.75rem - env(safe-area-inset-bottom, 0px)));
+    height: min(52dvh, calc(100dvh - 50px - 120px - 3.75rem - env(safe-area-inset-bottom, 0px)));
+  }
+
+  [data-testid="chart-workstation"] .chart-grid {
+    min-height: 320px;
+  }
+
+  /* Single-column cards; kill desktop min-widths that overflow phones */
+  .ot-route-layer [class*="min-w-["],
+  .ot-route-layer [class*="w-["] {
+    max-width: 100%;
+  }
+
+  .ot-route-layer table {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Touch targets for primary page actions — avoid shrinking icon rows */
+  .ot-route-layer .ot-btn,
+  .ot-route-layer button.ot-btn,
+  .ot-mobile-bottom-nav a,
+  .ot-mobile-bottom-nav button,
+  .ot-mobile-header button {
+    min-height: 44px;
+  }
+
+  .ot-route-layer .ot-type-label-compact {
+    font-size: 12px !important;
   }
 
   /* Page headings / values */

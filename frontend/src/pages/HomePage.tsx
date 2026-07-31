@@ -612,7 +612,7 @@ export function HomePage() {
       contentClassName="bg-terminal-bg pb-20 md:pb-0"
       hideTickerLoader
       showMobileBottomNav
-      showWorkspaceControls={false}
+      showWorkspaceControls
       statusBarTickerOverride="MISSION CONTROL"
     >
       <div className="relative min-h-full bg-terminal-bg">

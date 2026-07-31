@@ -55,11 +55,11 @@ const METHOD_OPTIONS: Array<{ id: PositionSizingMethod; label: string; descripti
 ];
 
 const DEFAULT_INPUTS: PositionSizerInputs = {
-  accountSize: 1_000_000,
+  accountSize: 100_000,
   riskMode: "percent",
   riskValue: 1,
-  entryPrice: 2_500,
-  stopLossPrice: 2_450,
+  entryPrice: 190,
+  stopLossPrice: 185,
   targetPrice: null,
   atrValue: null,
   method: "fixed_fractional",

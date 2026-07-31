@@ -873,7 +873,7 @@ export function PortfolioPage() {
                   // Reset form on success
                   setTicker("");
                   setQuantity(1);
-                  setAvgBuyPrice(0);
+                  setAvgBuyPrice("");
                 } catch (e: any) {
                   const status = e.response?.status;
                   if (status === 401 || status === 403) {

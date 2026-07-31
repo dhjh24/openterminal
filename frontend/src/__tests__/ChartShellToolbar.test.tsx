@@ -192,53 +192,60 @@ describe("ChartShellToolbar", () => {
     expect(screen.getByTestId("chart-shell-shortcuts")).toHaveTextContent("Focus a pane with `1-9` or click a chart");
     expect(screen.getByTestId("chart-shell-shortcuts")).toHaveTextContent("I");
     expect(screen.getByTestId("chart-shell-shortcuts")).toHaveTextContent("Indicators");
+    expect(screen.getByTestId("chart-shell-mobile-layout")).toBeInTheDocument();
+
+    // Advanced desktop controls live behind the Tools drawer.
+    fireEvent.click(screen.getByRole("button", { name: "Tools" }));
+    expect(screen.getByRole("button", { name: "Hide Tools" })).toBeInTheDocument();
+
     expect(screen.getByTestId("chart-shell-timeframe-buttons")).toBeInTheDocument();
     expect(screen.queryByTestId("chart-shell-dense-selects")).not.toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: /Layout /i })).toHaveLength(5);
+    expect(screen.getAllByRole("button", { name: /Layout /i }).length).toBeGreaterThanOrEqual(5);
 
-    fireEvent.click(screen.getByRole("button", { name: "Layout 2x2" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Layout 2x2" })[0]);
     expect(onLayoutChange).toHaveBeenCalledWith({ cols: 2, rows: 2, arrangement: "grid" });
 
     fireEvent.click(within(screen.getByTestId("chart-shell-timeframe-buttons")).getByRole("button", { name: "15m" }));
     expect(onTimeframeChange).toHaveBeenCalledWith("15m");
 
-    fireEvent.click(screen.getByRole("button", { name: "Line" }));
+    fireEvent.click(within(screen.getByTestId("chart-shell-timeframe-buttons").parentElement as HTMLElement).getByRole("button", { name: "Line" }));
     expect(onChartTypeChange).toHaveBeenCalledWith("line");
 
     fireEvent.keyDown(screen.getByTestId("chart-shell-compare-input-desktop"), { key: "Enter" });
     expect(onAddCompareSymbol).toHaveBeenCalledTimes(1);
 
-    fireEvent.click(within(screen.getAllByTestId("chart-shell-link-matrix")[1]).getByRole("button", { name: "SYM On" }));
+    const linkMatrices = screen.getAllByTestId("chart-shell-link-matrix");
+    fireEvent.click(within(linkMatrices[linkMatrices.length - 1]).getByRole("button", { name: "SYM On" }));
     expect(onSetLinkDimension).toHaveBeenCalledWith("symbol", false);
 
-    fireEvent.click(screen.getByRole("button", { name: "All Visible" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "All Visible" })[0]);
     expect(onSetComparePlacement).toHaveBeenCalledWith("all");
 
     fireEvent.change(screen.getByTestId("chart-shell-range-select"), { target: { value: "1Y" } });
     expect(onSetRangePreset).toHaveBeenCalledWith("1Y");
 
-    fireEvent.click(screen.getByTestId("chart-shell-replay-toggle"));
+    fireEvent.click(screen.getAllByTestId("chart-shell-replay-toggle")[0]);
     expect(onToggleReplay).toHaveBeenCalledTimes(1);
 
-    fireEvent.click(screen.getByTestId("chart-shell-replay-step-back"));
+    fireEvent.click(screen.getAllByTestId("chart-shell-replay-step-back")[0]);
     expect(onReplayStepBack).toHaveBeenCalledTimes(1);
 
-    fireEvent.click(screen.getByTestId("chart-shell-replay-step-forward"));
+    fireEvent.click(screen.getAllByTestId("chart-shell-replay-step-forward")[0]);
     expect(onReplayStepForward).toHaveBeenCalledTimes(1);
 
-    fireEvent.click(screen.getByTestId("chart-shell-replay-prev-session"));
+    fireEvent.click(screen.getAllByTestId("chart-shell-replay-prev-session")[0]);
     expect(onReplayPrevSession).toHaveBeenCalledTimes(1);
 
-    fireEvent.click(screen.getByTestId("chart-shell-replay-next-session"));
+    fireEvent.click(screen.getAllByTestId("chart-shell-replay-next-session")[0]);
     expect(onReplayNextSession).toHaveBeenCalledTimes(1);
 
-    fireEvent.click(screen.getByTestId("chart-shell-replay-go-date"));
+    fireEvent.click(screen.getAllByTestId("chart-shell-replay-go-date")[0]);
     expect(onCommitReplayDate).toHaveBeenCalledTimes(1);
 
     fireEvent.click(screen.getByRole("button", { name: "Alert Center" }));
     expect(onOpenAlerts).toHaveBeenCalledTimes(1);
 
-    fireEvent.click(screen.getByRole("button", { name: "Maximize Active" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Maximize Active" })[0]);
     expect(onToggleMaximize).toHaveBeenCalledTimes(1);
 
     fireEvent.click(screen.getByRole("button", { name: "Save Default" }));
@@ -267,9 +274,27 @@ describe("ChartShellToolbar", () => {
 
   it("switches dense desktop into compact menu-based controls", () => {
     renderToolbar(true);
+    fireEvent.click(screen.getByRole("button", { name: "Tools" }));
 
     expect(screen.getByTestId("chart-shell-toolbar")).toHaveAttribute("data-density", "dense");
     expect(screen.getByTestId("chart-shell-dense-selects")).toBeInTheDocument();
     expect(screen.queryByTestId("chart-shell-timeframe-buttons")).not.toBeInTheDocument();
+  });
+
+  it("keeps mobile primary controls outside the Tools drawer", () => {
+    const { onTimeframeChange, onChartTypeChange } = renderToolbar(false);
+
+    expect(screen.getByTestId("chart-shell-mobile-layout")).toBeInTheDocument();
+    expect(screen.queryByTestId("chart-shell-tools-drawer-mobile")).not.toBeInTheDocument();
+
+    fireEvent.click(within(screen.getByTestId("chart-shell-mobile-layout")).getByRole("button", { name: "15m" }));
+    expect(onTimeframeChange).toHaveBeenCalledWith("15m");
+
+    fireEvent.click(within(screen.getByTestId("chart-shell-mobile-layout")).getByRole("button", { name: "Line" }));
+    expect(onChartTypeChange).toHaveBeenCalledWith("line");
+
+    fireEvent.click(screen.getByRole("button", { name: "Tools" }));
+    expect(screen.getByTestId("chart-shell-tools-drawer-mobile")).toBeInTheDocument();
+    expect(screen.getByTestId("chart-shell-compare-input-mobile")).toBeInTheDocument();
   });
 });

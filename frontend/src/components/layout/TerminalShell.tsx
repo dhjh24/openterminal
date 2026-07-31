@@ -129,10 +129,8 @@ function WorkspaceControlBar({
   rightRailEnabled,
   rightRailOpen,
   toggleRightRail,
-  onOpenPresetSheet,
 }: Pick<TerminalShellContextValue, "preset" | "setPreset" | "rightRailOpen" | "toggleRightRail"> & {
   rightRailEnabled: boolean;
-  onOpenPresetSheet: () => void;
 }) {
   const themeVariant = useSettingsStore((s) => s.themeVariant);
   const setThemeVariant = useSettingsStore((s) => s.setThemeVariant);
@@ -153,9 +151,8 @@ function WorkspaceControlBar({
   return (
     <div className="flex items-center justify-between gap-2 overflow-x-auto border-b border-terminal-border bg-terminal-panel/90 px-3 py-1.5 backdrop-blur">
       <div className="flex min-w-0 shrink-0 items-center gap-2">
-        <span className="ot-type-label-compact hidden text-terminal-muted sm:inline md:inline">Workspace preset</span>
-        <WorkspacePresetTrigger preset={preset} onOpen={onOpenPresetSheet} />
-        <div className="hidden flex-nowrap items-center gap-1 md:flex" role="group" aria-label="Workspace presets">
+        <span className="ot-type-label-compact text-terminal-muted">Workspace preset</span>
+        <div className="flex flex-nowrap items-center gap-1" role="group" aria-label="Workspace presets">
           {PRESET_OPTIONS.map((option) => (
             <button
               key={option.id}
@@ -366,7 +363,6 @@ export function TerminalShell({
                 rightRailEnabled={hasRightRail}
                 rightRailOpen={rightRailOpen}
                 toggleRightRail={() => setRightRailOpen(!rightRailOpen)}
-                onOpenPresetSheet={() => setPresetSheetOpen(true)}
               />
             </div>
           ) : null}

@@ -20,9 +20,9 @@ function pct(value: number): string {
 }
 
 function classifyCurrency(item: PortfolioItem, market: string): string {
-  const exchange = (item.exchange || "").toUpperCase();
-  const country = (item.country_code || "").toUpperCase();
-  if (exchange.includes("NSE") || exchange.includes("BSE") || country === "IN" || market === "NSE" || market === "BSE") return "INR";
+  // U.S.-only terminal: always report USD exposure.
+  void item;
+  void market;
   return "USD";
 }
 
@@ -47,7 +47,7 @@ function currencyCells(items: PortfolioItem[], market: string): ExposureCell[] {
   return [...byCurrency.entries()].map(([label, value]) => ({
     label,
     value: total > 0 ? (value / total) * 100 : 0,
-    context: label === "INR" ? "India" : "US",
+    context: "US",
     tone: "neutral" as const,
   }));
 }

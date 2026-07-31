@@ -44,7 +44,7 @@ export function SettingsPage() {
   const [ticker, setTicker] = useState("AAPL");
   const [alertType, setAlertType] = useState("price");
   const [condition, setCondition] = useState("above");
-  const [threshold, setThreshold] = useState(200);
+  const [threshold, setThreshold] = useState<number | "">("");
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [scheduled, setScheduled] = useState<ScheduledReport[]>([]);
@@ -169,14 +169,24 @@ export function SettingsPage() {
             <option value="below">below</option>
             <option value="crosses">crosses</option>
           </TerminalInput>
-          <TerminalInput type="number" value={threshold} onChange={(e) => setThreshold(Number(e.target.value))} />
+          <TerminalInput
+            type="number"
+            value={threshold}
+            onChange={(e) => setThreshold(e.target.value === "" ? "" : Number(e.target.value))}
+            placeholder="USD threshold"
+          />
           <TerminalInput value={note} onChange={(e) => setNote(e.target.value)} placeholder="note" />
           <TerminalButton
             variant="accent"
             onClick={async () => {
               try {
-                await createAlert({ ticker, alert_type: alertType, condition, threshold, note });
+                if (threshold === "" || !Number.isFinite(Number(threshold))) {
+                  setError("Enter a USD threshold near the current market price");
+                  return;
+                }
+                await createAlert({ ticker, alert_type: alertType, condition, threshold: Number(threshold), note });
                 await load();
+                setThreshold("");
               } catch (e) {
                 setError(e instanceof Error ? e.message : "Failed to create alert");
               }
