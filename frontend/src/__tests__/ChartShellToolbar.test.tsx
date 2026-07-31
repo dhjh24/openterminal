@@ -199,16 +199,18 @@ describe("ChartShellToolbar", () => {
     fireEvent.click(screen.getByRole("button", { name: "Layout 2x2" }));
     expect(onLayoutChange).toHaveBeenCalledWith({ cols: 2, rows: 2, arrangement: "grid" });
 
-    fireEvent.click(within(screen.getByTestId("chart-shell-timeframe-buttons")).getByRole("button", { name: "15m" }));
+    const chartControls = within(screen.getByTestId("chart-shell-timeframe-buttons"));
+
+    fireEvent.click(chartControls.getByRole("button", { name: "15m" }));
     expect(onTimeframeChange).toHaveBeenCalledWith("15m");
 
-    fireEvent.click(screen.getByRole("button", { name: "Line" }));
+    fireEvent.click(chartControls.getByRole("button", { name: "Line" }));
     expect(onChartTypeChange).toHaveBeenCalledWith("line");
 
     fireEvent.keyDown(screen.getByTestId("chart-shell-compare-input-desktop"), { key: "Enter" });
     expect(onAddCompareSymbol).toHaveBeenCalledTimes(1);
 
-    fireEvent.click(within(screen.getAllByTestId("chart-shell-link-matrix")[1]).getByRole("button", { name: "SYM On" }));
+    fireEvent.click(within(screen.getByTestId("chart-shell-link-matrix")).getByRole("button", { name: "SYM On" }));
     expect(onSetLinkDimension).toHaveBeenCalledWith("symbol", false);
 
     fireEvent.click(screen.getByRole("button", { name: "All Visible" }));

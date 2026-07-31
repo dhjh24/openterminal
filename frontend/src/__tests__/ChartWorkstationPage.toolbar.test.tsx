@@ -133,11 +133,12 @@ describe("ChartWorkstationPage shell workflow", () => {
 
     await waitFor(() => expect(listChartTemplatesMock).toHaveBeenCalled());
     expect(screen.getByTestId("chart-shell-active-pane")).toHaveTextContent("Pane 1: AAPL");
+    const chartControls = within(screen.getByTestId("chart-shell-timeframe-buttons"));
 
     fireEvent.click(screen.getByRole("button", { name: "MSFT" }));
     expect(screen.getByTestId("chart-shell-active-pane")).toHaveTextContent("Pane 2: MSFT");
 
-    fireEvent.click(screen.getByRole("button", { name: "15m" }));
+    fireEvent.click(chartControls.getByRole("button", { name: "15m" }));
 
     const state = useChartWorkstationStore.getState();
     expect(state.slots.find((slot) => slot.id === "slot-1")?.timeframe).toBe("1D");
@@ -270,12 +271,13 @@ describe("ChartWorkstationPage shell workflow", () => {
 
     await waitFor(() => expect(listChartTemplatesMock).toHaveBeenCalled());
     expect(chartPanelPropsBySlot.get("slot-1")?.isFullscreen).toBeFalsy();
+    const chartControls = within(screen.getByTestId("chart-shell-timeframe-buttons"));
 
     fireEvent.click(screen.getByRole("button", { name: "Maximize Active" }));
     await waitFor(() => expect(chartPanelPropsBySlot.get("slot-1")?.isFullscreen).toBe(true));
 
     fireEvent.click(screen.getByRole("button", { name: "Save Default" }));
-    fireEvent.click(screen.getByRole("button", { name: "15m" }));
+    fireEvent.click(chartControls.getByRole("button", { name: "15m" }));
     expect(useChartWorkstationStore.getState().slots.find((slot) => slot.id === "slot-1")?.timeframe).toBe("15m");
 
     fireEvent.click(screen.getAllByRole("button", { name: "Load Default" })[0]);
@@ -287,6 +289,7 @@ describe("ChartWorkstationPage shell workflow", () => {
 
     await waitFor(() => expect(listChartTemplatesMock).toHaveBeenCalled());
     const originalIds = useChartWorkstationStore.getState().slots.map((slot) => slot.id);
+    const chartControls = within(screen.getByTestId("chart-shell-timeframe-buttons"));
 
     fireEvent.click(screen.getByRole("button", { name: "+ Tab" }));
     await waitFor(() => {
@@ -295,7 +298,7 @@ describe("ChartWorkstationPage shell workflow", () => {
     });
 
     fireEvent.click(screen.getAllByRole("button", { name: "Save Snapshot" })[0]);
-    fireEvent.click(screen.getByRole("button", { name: "15m" }));
+    fireEvent.click(chartControls.getByRole("button", { name: "15m" }));
     expect(useChartWorkstationStore.getState().slots[0]?.timeframe).toBe("15m");
 
     const idsAfterEdit = useChartWorkstationStore.getState().slots.map((slot) => slot.id);
