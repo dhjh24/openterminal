@@ -9,28 +9,35 @@ import { formatUsd, formatInr } from "../utils/formatters";
 import { formatMoney } from "../lib/format";
 
 describe("WorkspacePresetSheet", () => {
-  it("presents presets as configuration choices with descriptions", () => {
-    const onSelect = vi.fn();
+  it("presents workspaces with purpose, pins, and apply actions", () => {
+    const onApply = vi.fn();
+    const onApplyAndOpen = vi.fn();
     const onClose = vi.fn();
     render(
-      <WorkspacePresetSheet open preset="trader" onSelect={onSelect} onClose={onClose} />,
+      <WorkspacePresetSheet
+        open
+        preset="trader"
+        onApply={onApply}
+        onApplyAndOpen={onApplyAndOpen}
+        onClose={onClose}
+      />,
     );
 
     expect(screen.getByTestId("workspace-preset-sheet")).toBeInTheDocument();
     expect(screen.getByText(/not separate pages/i)).toBeInTheDocument();
-    expect(screen.getByText(/Charts, watchlist, alerts/i)).toBeInTheDocument();
-    expect(screen.getByText(/Screener, backtests/i)).toBeInTheDocument();
+    expect(screen.getByText(/Active trading desk/i)).toBeInTheDocument();
+    expect(screen.getByText(/Research desk for screeners/i)).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: /Quant/i }));
-    expect(onSelect).toHaveBeenCalledWith("quant");
+    fireEvent.click(screen.getByTestId("workspace-apply-quant"));
+    expect(onApply).toHaveBeenCalledWith("quant");
     expect(onClose).toHaveBeenCalled();
   });
 
-  it("trigger shows current preset with candlestick affordance", () => {
+  it("trigger shows current workspace with candlestick affordance", () => {
     const onOpen = vi.fn();
     render(<WorkspacePresetTrigger preset="risk" onOpen={onOpen} />);
     const trigger = screen.getByTestId("workspace-preset-trigger");
-    expect(trigger).toHaveTextContent("Risk");
+    expect(trigger).toHaveTextContent("Risk workspace");
     fireEvent.click(trigger);
     expect(onOpen).toHaveBeenCalled();
   });

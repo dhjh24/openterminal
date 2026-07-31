@@ -25,6 +25,7 @@ async function seedAuth(page: import("@playwright/test").Page) {
     ([at, rt]) => {
       localStorage.setItem("ot-access-token", at);
       localStorage.setItem("ot-refresh-token", rt);
+      localStorage.setItem("ot:workspace:onboarding:v1", "1");
     },
     [accessToken, refreshToken],
   );
@@ -85,7 +86,7 @@ test.describe("mobile UX acceptance", () => {
     await trigger.click();
     await expect(page.getByTestId("workspace-preset-sheet")).toBeVisible();
     await expect(page.getByText(/not separate pages/i)).toBeVisible();
-    await page.getByRole("button", { name: /Quant/i }).click();
+    await page.getByTestId("workspace-apply-quant").click();
     await expect(page.getByTestId("workspace-preset-sheet")).toHaveCount(0);
   });
 

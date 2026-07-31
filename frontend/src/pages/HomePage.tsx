@@ -519,12 +519,20 @@ export function HomePage() {
   );
 
   useEffect(() => {
-    const onStorage = () => setActivePreset(readWorkspacePreset());
-    window.addEventListener("storage", onStorage);
-    window.addEventListener("ot:preset-change", onStorage);
+    const syncFromStorage = () => setActivePreset(readWorkspacePreset());
+    const onPresetChange = (event: Event) => {
+      const detail = (event as CustomEvent<unknown>).detail;
+      if (detail === "trader" || detail === "quant" || detail === "pm" || detail === "risk" || detail === "ops") {
+        setActivePreset(detail);
+        return;
+      }
+      syncFromStorage();
+    };
+    window.addEventListener("storage", syncFromStorage);
+    window.addEventListener("ot:preset-change", onPresetChange as EventListener);
     return () => {
-      window.removeEventListener("storage", onStorage);
-      window.removeEventListener("ot:preset-change", onStorage);
+      window.removeEventListener("storage", syncFromStorage);
+      window.removeEventListener("ot:preset-change", onPresetChange as EventListener);
     };
   }, []);
 
@@ -631,7 +639,15 @@ export function HomePage() {
             <section className="hidden md:block rounded-sm border border-terminal-border bg-terminal-panel/80 p-3" aria-label="Home Header">
               <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
                 <div className="space-y-2">
-                  <p className="ot-type-panel-title uppercase tracking-[0.18em] text-terminal-accent">Mission Control</p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="ot-type-panel-title uppercase tracking-[0.18em] text-terminal-accent">Mission Control</p>
+                    <span
+                      className="rounded-sm border border-terminal-accent/60 px-2 py-1 text-[11px] uppercase tracking-[0.12em] text-terminal-accent"
+                      data-testid="active-workspace-badge"
+                    >
+                      {presetConfig.label} workspace
+                    </span>
+                  </div>
                   <h1 className="text-2xl font-semibold uppercase tracking-[0.12em] text-terminal-text">{presetConfig.landing.headline}</h1>
                   <p className="max-w-3xl text-sm text-terminal-muted">
                     {presetConfig.landing.description}
@@ -643,15 +659,27 @@ export function HomePage() {
                     <span className="rounded-sm border border-terminal-border px-2 py-1">
                       Market {selectedMarket}
                     </span>
-                    <span className="rounded-sm border border-terminal-accent/60 px-2 py-1 text-terminal-accent">
-                      Preset {presetConfig.label}
-                    </span>
                     <span className="rounded-sm border border-terminal-border px-2 py-1">
                       Currency {displayCurrency}
                     </span>
                     <span className="rounded-sm border border-terminal-border px-2 py-1">
                       Refresh {newsAutoRefresh ? `${newsRefreshSec}s` : "Manual"}
                     </span>
+                  </div>
+                  <div className="pt-1" data-testid="home-pinned-tools">
+                    <p className="mb-1.5 text-[11px] uppercase tracking-[0.12em] text-terminal-muted">Pinned tools</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {presetConfig.quickLinks.map((link) => (
+                        <button
+                          key={link.to}
+                          type="button"
+                          className="rounded-sm border border-terminal-border px-2 py-1 text-[11px] uppercase tracking-[0.1em] text-terminal-text hover:border-terminal-accent hover:text-terminal-accent"
+                          onClick={() => navigate(link.to)}
+                        >
+                          {link.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
@@ -669,6 +697,7 @@ export function HomePage() {
                       type="button"
                       className="rounded-sm border border-terminal-accent px-3 py-1.5 text-[11px] uppercase tracking-[0.12em] text-terminal-accent hover:bg-terminal-accent/10"
                       onClick={() => navigate(presetConfig.landing.primaryRoute)}
+                      data-testid="home-primary-action"
                     >
                       {presetConfig.landing.primaryLabel}
                     </button>
@@ -710,6 +739,9 @@ export function HomePage() {
                   <h1 className="text-sm font-semibold uppercase tracking-normal text-terminal-text truncate">
                     {presetConfig.landing.headline}
                   </h1>
+                  <p className="mt-0.5 text-[11px] text-terminal-accent" data-testid="active-workspace-badge-mobile">
+                    {presetConfig.label} workspace
+                  </p>
                 </div>
                 <button
                   type="button"
@@ -731,9 +763,26 @@ export function HomePage() {
                   type="button"
                   className="shrink-0 rounded-sm border border-terminal-accent px-2 py-1 text-[10px] uppercase tracking-wider text-terminal-accent hover:bg-terminal-accent/10"
                   onClick={() => navigate(presetConfig.landing.primaryRoute)}
+                  data-testid="home-primary-action-mobile"
                 >
                   {presetConfig.landing.primaryLabel}
                 </button>
+              </div>
+
+              <div className="mt-2" data-testid="home-pinned-tools-mobile">
+                <p className="mb-1 text-[10px] uppercase tracking-wider text-terminal-muted">Pinned tools</p>
+                <div className="flex gap-1.5 overflow-x-auto pb-1">
+                  {presetConfig.quickLinks.map((link) => (
+                    <button
+                      key={link.to}
+                      type="button"
+                      className="shrink-0 rounded-sm border border-terminal-border px-2 py-1 text-[10px] uppercase tracking-wider text-terminal-text"
+                      onClick={() => navigate(link.to)}
+                    >
+                      {link.label}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* Expandable desk settings panel */}
