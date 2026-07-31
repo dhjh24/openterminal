@@ -19,6 +19,7 @@
 .ot-agent-panel--closed {
   transform: translateX(100%);
   pointer-events: none;
+  visibility: hidden;
 }
 @media (prefers-reduced-motion: reduce) {
   .ot-agent-panel { transition: none; }

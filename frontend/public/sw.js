@@ -5,6 +5,7 @@ const ASSET_CACHE = "otui-assets-v1";
 const PRECACHE_ASSETS = [
   "/manifest.json",
   "/favicon.png",
+  "/offline.html",
   "/icons/icon-192.png",
   "/icons/icon-512.png",
   "/icons/icon-maskable-192.png",
@@ -103,6 +104,7 @@ self.addEventListener("fetch", (event) => {
           return (
             (await caches.match("/app.html")) ||
             (await caches.match("/index.html")) ||
+            (await caches.match("/offline.html")) ||
             Response.error()
           );
         }),

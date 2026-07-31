@@ -10,6 +10,8 @@ import App from "./App";
 import "./styles/fonts.css";
 import "./index.css";
 import "./styles/terminal-theme.css";
+import "./styles/mobile-responsive.css";
+import "./lib/pwaUpdate";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

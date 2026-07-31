@@ -3,280 +3,253 @@ import { useNavigate } from "react-router-dom";
 import { Search, X } from "lucide-react";
 
 import { searchSymbols, type SearchSymbolItem } from "../../api/client";
-import { inferRecentSecurityAssetClass, inferRecentSecurityMarket, useRecentSecurities } from "../../hooks/useRecentSecurities";
+import { useRecentSecurities } from "../../hooks/useRecentSecurities";
 import { useSettingsStore } from "../../store/settingsStore";
 import { useStockStore } from "../../store/stockStore";
-import { COMMAND_FUNCTIONS, executeParsedCommand, parseCommand } from "./commanding";
-import { MobileBottomSheet } from "./MobileBottomSheet";
+import { parseCommand, executeParsedCommand } from "./commanding";
 
 type Props = {
   open: boolean;
   onClose: () => void;
 };
 
-type Row =
-  | { kind: "recent"; key: string; symbol: string; name: string }
-  | { kind: "symbol"; key: string; item: SearchSymbolItem }
-  | { kind: "command"; key: string; code: string; label: string; description: string }
-  | { kind: "page"; key: string; label: string; path: string; description: string };
+type Suggestion =
+  | { kind: "symbol"; item: SearchSymbolItem }
+  | { kind: "recent"; symbol: string; name?: string }
+  | { kind: "page"; label: string; path: string }
+  | { kind: "command"; label: string; command: string };
 
-const PAGE_SUGGESTIONS: Array<{ label: string; path: string; description: string; aliases: string[] }> = [
-  { label: "Home", path: "/home", description: "Mission Control", aliases: ["home", "desk"] },
-  { label: "Watchlist", path: "/equity/watchlist", description: "Saved symbols", aliases: ["watch", "wl"] },
-  { label: "Stocks", path: "/equity/stocks", description: "Equity search", aliases: ["stocks", "quote"] },
-  { label: "Options", path: "/fno", description: "Option chain", aliases: ["options", "opt"] },
-  { label: "Chart Workstation", path: "/equity/chart-workstation", description: "Charts", aliases: ["chart", "workstation"] },
-  { label: "Portfolio", path: "/equity/portfolio", description: "Holdings", aliases: ["portfolio", "pf"] },
-  { label: "News", path: "/equity/news", description: "Market news", aliases: ["news"] },
-  { label: "Alerts", path: "/equity/alerts", description: "Price alerts", aliases: ["alerts"] },
-  { label: "Screener", path: "/equity/screener", description: "Equity screener", aliases: ["screener"] },
-  { label: "Settings", path: "/equity/settings", description: "Preferences", aliases: ["settings"] },
+const PAGE_SHORTCUTS: Array<{ label: string; path: string; keywords: string }> = [
+  { label: "Home", path: "/home", keywords: "home mission" },
+  { label: "Watchlist", path: "/equity/watchlist", keywords: "watch list" },
+  { label: "Stocks", path: "/equity/stocks", keywords: "stocks quote search" },
+  { label: "Chart Workstation", path: "/equity/chart-workstation", keywords: "chart workstation" },
+  { label: "Options", path: "/fno", keywords: "options chain" },
+  { label: "Options Heatmap", path: "/fno/heatmap", keywords: "heatmap oi" },
+  { label: "Portfolio", path: "/equity/portfolio", keywords: "portfolio holdings" },
+  { label: "News", path: "/equity/news", keywords: "news" },
+  { label: "Alerts", path: "/equity/alerts", keywords: "alerts" },
+  { label: "Screener", path: "/equity/screener", keywords: "screener filter" },
+  { label: "Settings", path: "/equity/settings", keywords: "settings" },
 ];
 
 export function MobileSearchSheet({ open, onClose }: Props) {
   const navigate = useNavigate();
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<SearchSymbolItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const selectedMarket = useSettingsStore((s) => s.selectedMarket);
   const setTicker = useStockStore((s) => s.setTicker);
   const load = useStockStore((s) => s.load);
-  const selectedMarket = useSettingsStore((s) => s.selectedMarket);
-  const selectedCountry = useSettingsStore((s) => s.selectedCountry);
   const { recentSecurities, addRecent } = useRecentSecurities();
-  const [query, setQuery] = useState("");
-  const [symbols, setSymbols] = useState<SearchSymbolItem[]>([]);
-  const inputRef = useRef<HTMLInputElement | null>(null);
-  const requestRef = useRef(0);
+  const requestId = useRef(0);
 
   useEffect(() => {
-    if (!open) {
-      setQuery("");
-      setSymbols([]);
-      return;
-    }
-    const timer = window.setTimeout(() => inputRef.current?.focus(), 50);
-    return () => window.clearTimeout(timer);
+    if (!open) return;
+    setQuery("");
+    setResults([]);
+    const t = window.setTimeout(() => inputRef.current?.focus(), 50);
+    return () => window.clearTimeout(t);
   }, [open]);
 
   useEffect(() => {
+    if (!open) return;
     const q = query.trim();
     if (q.length < 1) {
-      setSymbols([]);
+      setResults([]);
       return;
     }
-    const requestId = ++requestRef.current;
+    const id = ++requestId.current;
+    setLoading(true);
     const timer = window.setTimeout(() => {
-      void searchSymbols(q, selectedMarket)
+      void searchSymbols(q, selectedMarket || "NASDAQ")
         .then((items) => {
-          if (requestRef.current !== requestId) return;
-          setSymbols(Array.isArray(items) ? items.slice(0, 12) : []);
+          if (requestId.current !== id) return;
+          setResults(items.slice(0, 12));
         })
         .catch(() => {
-          if (requestRef.current !== requestId) return;
-          setSymbols([]);
+          if (requestId.current !== id) return;
+          setResults([]);
+        })
+        .finally(() => {
+          if (requestId.current === id) setLoading(false);
         });
     }, 220);
     return () => window.clearTimeout(timer);
-  }, [query, selectedMarket]);
+  }, [open, query, selectedMarket]);
 
-  const rows = useMemo((): Row[] => {
+  const suggestions = useMemo<Suggestion[]>(() => {
     const q = query.trim().toLowerCase();
     if (!q) {
-      return recentSecurities.slice(0, 8).map((item) => ({
+      return recentSecurities.slice(0, 8).map((r) => ({
         kind: "recent" as const,
-        key: `recent:${item.symbol}`,
-        symbol: item.symbol,
-        name: item.name,
+        symbol: r.symbol,
+        name: r.name,
       }));
     }
-
-    const out: Row[] = [];
-    for (const item of symbols) {
-      out.push({ kind: "symbol", key: `sym:${item.ticker}:${item.exchange}`, item });
-    }
-    for (const fn of COMMAND_FUNCTIONS) {
-      const hay = [fn.code, fn.label, ...(fn.aliases ?? [])].join(" ").toLowerCase();
-      if (hay.includes(q) || q.includes(fn.code.toLowerCase())) {
-        out.push({
-          kind: "command",
-          key: `cmd:${fn.code}`,
-          code: fn.code,
-          label: fn.label,
-          description: fn.description,
-        });
-      }
-    }
-    for (const page of PAGE_SUGGESTIONS) {
-      const hay = [page.label, ...page.aliases].join(" ").toLowerCase();
-      if (hay.includes(q)) {
-        out.push({
-          kind: "page",
-          key: `page:${page.path}`,
-          label: page.label,
-          path: page.path,
-          description: page.description,
-        });
-      }
-    }
-    return out.slice(0, 20);
-  }, [query, recentSecurities, symbols]);
+    const pages = PAGE_SHORTCUTS.filter(
+      (p) => p.label.toLowerCase().includes(q) || p.keywords.includes(q),
+    ).map((p) => ({ kind: "page" as const, label: p.label, path: p.path }));
+    const symbols = results.map((item) => ({ kind: "symbol" as const, item }));
+    const commands: Suggestion[] =
+      q.length >= 2
+        ? [{ kind: "command", label: `Run “${query.trim()}”`, command: query.trim() }]
+        : [];
+    return [...symbols, ...pages, ...commands].slice(0, 16);
+  }, [query, recentSecurities, results]);
 
   const selectSymbol = useCallback(
-    async (symbol: string, name?: string, exchange?: string) => {
-      const normalized = symbol.trim().toUpperCase();
-      if (!normalized) return;
-      setTicker(normalized);
-      addRecent(
-        normalized,
-        name || normalized,
-        inferRecentSecurityAssetClass(normalized, exchange),
-        inferRecentSecurityMarket(selectedCountry, exchange || selectedMarket),
-      );
-      await load();
-      navigate(`/equity/stocks?symbol=${encodeURIComponent(normalized)}`);
+    async (symbol: string, name?: string) => {
+      const next = symbol.trim().toUpperCase();
+      if (!next) return;
+      setTicker(next);
+      addRecent(next, name || next, "equity", "US");
+      void load();
       onClose();
+      navigate(`/equity/stocks/${encodeURIComponent(next)}`);
     },
-    [addRecent, load, navigate, onClose, selectedCountry, selectedMarket, setTicker],
+    [addRecent, load, navigate, onClose, setTicker],
   );
 
-  const runQuery = useCallback(async () => {
-    const raw = query.trim();
-    if (!raw) return;
-    const parsed = parseCommand(raw);
-    if (parsed.kind === "ticker") {
-      await selectSymbol(parsed.ticker);
+  const onSubmit = useCallback(async () => {
+    const q = query.trim();
+    if (!q) return;
+    if (results[0]?.ticker) {
+      await selectSymbol(results[0].ticker, results[0].name);
       return;
     }
-    const result = executeParsedCommand(parsed, navigate);
-    if (result.ok) {
-      onClose();
-      return;
-    }
-    // Fallback: treat as ticker
-    await selectSymbol(raw.split(/\s+/)[0] || raw);
-  }, [navigate, onClose, query, selectSymbol]);
+    const parsed = parseCommand(q);
+    await executeParsedCommand(parsed, navigate);
+    onClose();
+  }, [navigate, onClose, query, results, selectSymbol]);
+
+  if (!open) return null;
 
   return (
-    <MobileBottomSheet
-      open={open}
-      onClose={onClose}
-      title="Search"
-      maxHeightClassName="max-h-[65dvh]"
-      aboveBottomNav
-      testId="mobile-search-sheet"
-    >
-      <div className="flex flex-col gap-2 p-3">
-        <div className="flex items-center gap-2 rounded border border-terminal-border bg-terminal-bg px-2">
+    <div className="fixed inset-0 z-50 md:hidden" role="dialog" aria-modal="true" aria-label="Search">
+      <button
+        type="button"
+        className="absolute inset-0 bg-black/55"
+        aria-label="Close search"
+        onClick={onClose}
+      />
+      <div
+        className="ot-mobile-search-sheet absolute bottom-[calc(3.75rem+env(safe-area-inset-bottom,0px))] left-0 right-0 mx-auto flex max-h-[65dvh] w-full max-w-lg flex-col rounded-t-xl border border-terminal-border bg-terminal-panel shadow-2xl"
+        data-testid="mobile-search-sheet"
+      >
+        <div className="flex items-center gap-2 border-b border-terminal-border px-3 py-2">
           <Search size={18} className="shrink-0 text-terminal-muted" aria-hidden="true" />
           <input
             ref={inputRef}
             type="search"
             enterKeyHint="search"
+            autoComplete="off"
+            autoCorrect="off"
+            spellCheck={false}
+            className="min-h-11 min-w-0 flex-1 bg-transparent text-base text-terminal-text outline-none placeholder:text-terminal-muted"
+            placeholder="Search stocks, pages, commands"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 e.preventDefault();
-                void runQuery();
+                void onSubmit();
               }
+              if (e.key === "Escape") onClose();
             }}
-            placeholder="Stocks, commands, pages"
-            className="min-h-11 w-full bg-transparent text-base text-terminal-text outline-none placeholder:text-terminal-muted"
-            aria-label="Search stocks, commands, and pages"
-            data-testid="mobile-search-input"
+            aria-label="Search"
           />
           {query ? (
             <button
               type="button"
-              onClick={() => setQuery("")}
-              className="inline-flex min-h-11 min-w-11 items-center justify-center text-terminal-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-terminal-accent"
+              className="inline-flex h-11 w-11 items-center justify-center text-terminal-muted"
               aria-label="Clear search"
+              onClick={() => setQuery("")}
             >
               <X size={18} aria-hidden="true" />
             </button>
           ) : null}
+          <button
+            type="button"
+            className="min-h-11 rounded-sm border border-terminal-border px-3 text-sm text-terminal-muted"
+            onClick={onClose}
+          >
+            Close
+          </button>
         </div>
 
-        {!query.trim() ? (
-          <div className="text-xs font-medium uppercase tracking-wide text-terminal-muted">Recent</div>
-        ) : null}
-
-        <ul className="flex flex-col gap-1" role="listbox" aria-label="Search results">
-          {rows.map((row) => {
-            if (row.kind === "recent") {
-              return (
-                <li key={row.key}>
-                  <button
-                    type="button"
-                    role="option"
-                    className="flex min-h-11 w-full items-center justify-between gap-2 rounded border border-terminal-border px-3 py-2 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-terminal-accent"
-                    onClick={() => void selectSymbol(row.symbol, row.name)}
-                  >
-                    <span className="font-mono text-base font-semibold text-terminal-text">{row.symbol}</span>
-                    <span className="truncate text-sm text-terminal-muted">{row.name}</span>
-                  </button>
-                </li>
-              );
-            }
-            if (row.kind === "symbol") {
-              return (
-                <li key={row.key}>
-                  <button
-                    type="button"
-                    role="option"
-                    className="flex min-h-11 w-full flex-col items-start gap-0.5 rounded border border-terminal-border px-3 py-2 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-terminal-accent"
-                    onClick={() => void selectSymbol(row.item.ticker, row.item.name, row.item.exchange)}
-                  >
-                    <span className="font-mono text-base font-semibold text-terminal-text">{row.item.ticker}</span>
-                    <span className="truncate text-sm text-terminal-muted">
-                      {row.item.name}
-                      {row.item.exchange ? ` · ${row.item.exchange}` : ""}
-                    </span>
-                  </button>
-                </li>
-              );
-            }
-            if (row.kind === "command") {
-              return (
-                <li key={row.key}>
-                  <button
-                    type="button"
-                    role="option"
-                    className="flex min-h-11 w-full flex-col items-start gap-0.5 rounded border border-terminal-border px-3 py-2 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-terminal-accent"
-                    onClick={() => {
-                      const result = executeParsedCommand(parseCommand(row.code), navigate);
-                      void Promise.resolve(result).then((res) => {
-                        if (res.ok) onClose();
-                      });
-                    }}
-                  >
-                    <span className="text-base font-semibold text-terminal-accent">{row.code}</span>
-                    <span className="text-sm text-terminal-muted">
-                      {row.label} — {row.description}
-                    </span>
-                  </button>
-                </li>
-              );
-            }
-            return (
-              <li key={row.key}>
-                <button
-                  type="button"
-                  role="option"
-                  className="flex min-h-11 w-full flex-col items-start gap-0.5 rounded border border-terminal-border px-3 py-2 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-terminal-accent"
-                  onClick={() => {
-                    navigate(row.path);
-                    onClose();
-                  }}
-                >
-                  <span className="text-base font-semibold text-terminal-text">{row.label}</span>
-                  <span className="text-sm text-terminal-muted">{row.description}</span>
-                </button>
-              </li>
-            );
-          })}
-          {query.trim() && rows.length === 0 ? (
-            <li className="px-2 py-4 text-sm text-terminal-muted">No matches. Press Search to open as a ticker.</li>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 py-2">
+          {!query ? (
+            <div className="px-2 pb-2 text-[12px] uppercase tracking-wide text-terminal-muted">Recent</div>
           ) : null}
-        </ul>
+          {loading ? (
+            <div className="px-3 py-4 text-sm text-terminal-muted">Searching…</div>
+          ) : null}
+          {!loading && suggestions.length === 0 ? (
+            <div className="px-3 py-4 text-sm text-terminal-muted">No matches</div>
+          ) : null}
+          <ul className="space-y-1">
+            {suggestions.map((s, idx) => {
+              if (s.kind === "symbol") {
+                return (
+                  <li key={`sym-${s.item.ticker}-${idx}`}>
+                    <button
+                      type="button"
+                      className="flex min-h-12 w-full items-center justify-between rounded-md border border-terminal-border px-3 py-2 text-left hover:border-terminal-accent"
+                      onClick={() => void selectSymbol(s.item.ticker, s.item.name)}
+                    >
+                      <span className="text-base font-semibold text-terminal-text">{s.item.ticker}</span>
+                      <span className="truncate pl-3 text-sm text-terminal-muted">{s.item.name}</span>
+                    </button>
+                  </li>
+                );
+              }
+              if (s.kind === "recent") {
+                return (
+                  <li key={`rec-${s.symbol}`}>
+                    <button
+                      type="button"
+                      className="flex min-h-12 w-full items-center justify-between rounded-md border border-terminal-border px-3 py-2 text-left hover:border-terminal-accent"
+                      onClick={() => void selectSymbol(s.symbol, s.name)}
+                    >
+                      <span className="text-base font-semibold text-terminal-text">{s.symbol}</span>
+                      <span className="truncate pl-3 text-sm text-terminal-muted">{s.name || "Recent"}</span>
+                    </button>
+                  </li>
+                );
+              }
+              if (s.kind === "page") {
+                return (
+                  <li key={`page-${s.path}`}>
+                    <button
+                      type="button"
+                      className="flex min-h-12 w-full items-center rounded-md border border-terminal-border px-3 py-2 text-left text-base text-terminal-text hover:border-terminal-accent"
+                      onClick={() => {
+                        onClose();
+                        navigate(s.path);
+                      }}
+                    >
+                      {s.label}
+                    </button>
+                  </li>
+                );
+              }
+              return (
+                <li key={`cmd-${idx}`}>
+                  <button
+                    type="button"
+                    className="flex min-h-12 w-full items-center rounded-md border border-terminal-border px-3 py-2 text-left text-base text-terminal-text hover:border-terminal-accent"
+                    onClick={() => void onSubmit()}
+                  >
+                    {s.label}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       </div>
-    </MobileBottomSheet>
+    </div>
   );
 }

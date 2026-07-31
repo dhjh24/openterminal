@@ -20,6 +20,7 @@ function pct(value: number): string {
 }
 
 function classifyCurrency(item: PortfolioItem, market: string): string {
+  // U.S.-only terminal: always report USD exposure.
   void item;
   void market;
   return "USD";

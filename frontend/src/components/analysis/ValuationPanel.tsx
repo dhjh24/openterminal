@@ -1,5 +1,5 @@
 import { useValuation, useDCF } from "../../hooks/useStocks";
-import { formatInr, formatPct } from "../../utils/formatters";
+import { formatUsd, formatPct } from "../../utils/formatters";
 
 type Props = {
   ticker: string;
@@ -26,19 +26,19 @@ export function ValuationPanel({ ticker }: Props) {
           <div className="grid grid-cols-1 gap-2 text-xs md:grid-cols-2 lg:grid-cols-4">
             <div className="rounded border border-terminal-border bg-terminal-bg px-3 py-2">
               <div className="text-[10px] uppercase tracking-wide text-terminal-muted">Enterprise Value</div>
-              <div className="mt-1 font-semibold tabular-nums text-terminal-text">{formatInr(dcf.enterprise_value)}</div>
+              <div className="mt-1 font-semibold tabular-nums text-terminal-text">{formatUsd(dcf.enterprise_value)}</div>
             </div>
             <div className="rounded border border-terminal-border bg-terminal-bg px-3 py-2">
               <div className="text-[10px] uppercase tracking-wide text-terminal-muted">Equity Value</div>
-              <div className="mt-1 font-semibold tabular-nums text-terminal-text">{formatInr(dcf.equity_value)}</div>
+              <div className="mt-1 font-semibold tabular-nums text-terminal-text">{formatUsd(dcf.equity_value)}</div>
             </div>
             <div className="rounded border border-terminal-border bg-terminal-bg px-3 py-2">
               <div className="text-[10px] uppercase tracking-wide text-terminal-muted">Per Share</div>
-              <div className="mt-1 font-semibold tabular-nums text-terminal-text">{formatInr(dcf.per_share_value)}</div>
+              <div className="mt-1 font-semibold tabular-nums text-terminal-text">{formatUsd(dcf.per_share_value)}</div>
             </div>
             <div className="rounded border border-terminal-border bg-terminal-bg px-3 py-2">
               <div className="text-[10px] uppercase tracking-wide text-terminal-muted">Terminal Value</div>
-              <div className="mt-1 font-semibold tabular-nums text-terminal-text">{formatInr(dcf.terminal_value)}</div>
+              <div className="mt-1 font-semibold tabular-nums text-terminal-text">{formatUsd(dcf.terminal_value)}</div>
             </div>
           </div>
         </div>
@@ -51,12 +51,12 @@ export function ValuationPanel({ ticker }: Props) {
             {relative.methods && Object.entries(relative.methods).map(([k, v]) => (
               <div key={k} className="rounded border border-terminal-border bg-terminal-bg px-3 py-2">
                 <div className="text-[10px] uppercase tracking-wide text-terminal-muted">{k.replace(/_/g, " ")}</div>
-                <div className="mt-1 font-semibold tabular-nums text-terminal-text">{formatInr(v)}</div>
+                <div className="mt-1 font-semibold tabular-nums text-terminal-text">{formatUsd(v)}</div>
               </div>
             ))}
             <div className="rounded border border-terminal-border bg-terminal-bg px-3 py-2">
               <div className="text-[10px] uppercase tracking-wide text-terminal-muted">Blended Fair Value</div>
-              <div className="mt-1 font-semibold tabular-nums text-terminal-text">{formatInr(relative.blended_fair_value)}</div>
+              <div className="mt-1 font-semibold tabular-nums text-terminal-text">{formatUsd(relative.blended_fair_value)}</div>
             </div>
             <div className="rounded border border-terminal-border bg-terminal-bg px-3 py-2">
               <div className="text-[10px] uppercase tracking-wide text-terminal-muted">Upside</div>

@@ -54,12 +54,12 @@ export function AiInsightCard({ title, description, fetcher }: Props) {
 
   return (
     <section className="rounded border border-terminal-border bg-terminal-panel p-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0 flex-1">
           <div className="text-sm font-semibold">{title}</div>
-          {description && <div className="text-[11px] text-terminal-muted">{description}</div>}
+          {description && <div className="text-[11px] text-terminal-muted mt-0.5">{description}</div>}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           {status === "done" && (
             <span
               className="rounded border px-1.5 py-0.5 text-[10px] font-semibold"

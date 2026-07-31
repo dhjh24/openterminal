@@ -1,22 +1,21 @@
-import { NavLink, useNavigate } from "react-router-dom";
+import { useCallback, useState } from "react";
+import { NavLink } from "react-router-dom";
 import {
-  Bell,
-  Bot,
-  Briefcase,
-  CandlestickChart,
   Home,
-  LineChart,
   List,
+  LineChart,
   MoreHorizontal,
-  Newspaper,
   Search,
-  Settings2,
+  Briefcase,
+  Bell,
+  Newspaper,
+  Bot,
   SlidersHorizontal,
+  CandlestickChart,
+  Settings2,
 } from "lucide-react";
-import { useState } from "react";
 
 import { useAgentStore } from "../../agent/agentStore";
-import { MobileBottomSheet } from "./MobileBottomSheet";
 
 const primaryTabs = [
   { label: "Home", path: "/home", icon: Home },
@@ -25,7 +24,7 @@ const primaryTabs = [
   { label: "Options", path: "/fno", icon: LineChart },
 ] as const;
 
-const moreItems = [
+const moreTabs = [
   { label: "News", path: "/equity/news", icon: Newspaper },
   { label: "Alerts", path: "/equity/alerts", icon: Bell },
   { label: "Portfolio", path: "/equity/portfolio", icon: Briefcase },
@@ -34,70 +33,94 @@ const moreItems = [
   { label: "Settings", path: "/equity/settings", icon: Settings2 },
 ] as const;
 
-export function MobileBottomNav() {
-  const [moreOpen, setMoreOpen] = useState(false);
-  const toggleAgent = useAgentStore((s) => s.toggleOpen);
+type Props = {
+  forceMoreOpen?: boolean;
+  onMoreOpenChange?: (open: boolean) => void;
+};
+
+export function MobileBottomNav({ forceMoreOpen, onMoreOpenChange }: Props = {}) {
+  const [internalMoreOpen, setInternalMoreOpen] = useState(false);
+  const moreOpen = forceMoreOpen ?? internalMoreOpen;
+  const agentToggleOpen = useAgentStore((s) => s.toggleOpen);
+
+  const setMoreOpen = useCallback(
+    (next: boolean | ((prev: boolean) => boolean)) => {
+      const value = typeof next === "function" ? next(moreOpen) : next;
+      setInternalMoreOpen(value);
+      onMoreOpenChange?.(value);
+    },
+    [moreOpen, onMoreOpenChange],
+  );
+
+  const closeMore = useCallback(() => setMoreOpen(false), [setMoreOpen]);
 
   return (
     <>
-      <MobileBottomSheet
-        open={moreOpen}
-        onClose={() => setMoreOpen(false)}
-        title="More"
-        maxHeightClassName="max-h-[70dvh]"
-        aboveBottomNav
-        testId="mobile-more-sheet"
-      >
-        <div className="flex flex-col gap-1 p-2" role="menu">
-          {moreItems.map((item) => (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              role="menuitem"
-              onClick={() => setMoreOpen(false)}
-              className={({ isActive }) =>
-                `flex min-h-11 items-center gap-3 rounded border px-3 py-2 text-base focus:outline-none focus-visible:ring-2 focus-visible:ring-terminal-accent ${
-                  isActive
-                    ? "border-terminal-accent text-terminal-accent"
-                    : "border-terminal-border text-terminal-text"
-                }`
-              }
-            >
-              <item.icon size={20} aria-hidden="true" />
-              <span>{item.label}</span>
-            </NavLink>
-          ))}
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => {
-              setMoreOpen(false);
-              toggleAgent();
-            }}
-            className="flex min-h-11 items-center gap-3 rounded border border-terminal-border px-3 py-2 text-left text-base text-terminal-text focus:outline-none focus-visible:ring-2 focus-visible:ring-terminal-accent"
+      {moreOpen ? (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 md:hidden"
+          role="presentation"
+          onClick={closeMore}
+          data-testid="mobile-more-sheet-backdrop"
+        >
+          <div
+            className="absolute bottom-[calc(3.75rem+env(safe-area-inset-bottom,0px))] left-2 right-2 mx-auto max-h-[70dvh] max-w-lg overflow-y-auto rounded-xl border border-terminal-border bg-terminal-panel p-2 shadow-2xl"
+            role="menu"
+            aria-label="More destinations"
+            data-testid="mobile-more-sheet"
+            onClick={(e) => e.stopPropagation()}
           >
-            <Bot size={20} aria-hidden="true" />
-            <span>Agent</span>
-          </button>
+            {moreTabs.map((item) => (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                role="menuitem"
+                onClick={closeMore}
+                className={({ isActive }) =>
+                  `mb-1 flex min-h-[44px] items-center gap-3 rounded-md border px-3 py-2 text-sm last:mb-0 ${
+                    isActive
+                      ? "border-terminal-accent text-terminal-accent"
+                      : "border-terminal-border text-terminal-muted"
+                  }`
+                }
+              >
+                <item.icon size={18} aria-hidden="true" />
+                <span>{item.label}</span>
+              </NavLink>
+            ))}
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                agentToggleOpen();
+                closeMore();
+              }}
+              className="flex min-h-[44px] w-full items-center gap-3 rounded-md border border-terminal-border px-3 py-2 text-sm text-terminal-muted hover:border-terminal-accent hover:text-terminal-accent"
+            >
+              <Bot size={18} aria-hidden="true" />
+              <span>Agent</span>
+            </button>
+          </div>
         </div>
-      </MobileBottomSheet>
-
+      ) : null}
       <nav
-        className="fixed bottom-0 left-0 right-0 z-40 border-t border-terminal-border bg-terminal-panel px-1 pb-[env(safe-area-inset-bottom,0px)] pt-1 md:hidden"
+        className="ot-mobile-bottom-nav fixed bottom-0 left-0 right-0 z-40 border-t border-terminal-border bg-terminal-panel px-1 pb-[max(0.25rem,env(safe-area-inset-bottom))] pt-1 md:hidden"
         aria-label="Primary"
         data-testid="mobile-bottom-nav"
-        style={{ ["--ot-mobile-nav-height" as string]: "3.5rem" }}
       >
-        <div className="grid grid-cols-5 gap-0.5">
+        <div className="grid grid-cols-5 gap-1">
           {primaryTabs.map((item) => (
             <NavLink
               key={item.path}
               to={item.path}
               aria-label={item.label}
               className={({ isActive }) =>
-                `flex min-h-11 flex-col items-center justify-center gap-0.5 rounded py-1 text-[11px] font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-terminal-accent ${
-                  isActive ? "text-terminal-accent" : "text-terminal-muted"
-                }`
+                [
+                  "flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-0.5 rounded border py-1 text-[11px] tracking-wide focus-visible:outline focus-visible:outline-2 focus-visible:outline-terminal-accent",
+                  isActive
+                    ? "border-terminal-accent text-terminal-accent"
+                    : "border-transparent text-terminal-muted",
+                ].join(" ")
               }
             >
               <item.icon size={18} aria-hidden="true" />
@@ -108,12 +131,13 @@ export function MobileBottomNav() {
             type="button"
             aria-label="More"
             aria-expanded={moreOpen}
-            aria-haspopup="dialog"
-            onClick={() => setMoreOpen(!moreOpen)}
-            className={`flex min-h-11 flex-col items-center justify-center gap-0.5 rounded py-1 text-[11px] font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-terminal-accent ${
-              moreOpen ? "text-terminal-accent" : "text-terminal-muted"
+            aria-haspopup="menu"
+            onClick={() => setMoreOpen((open) => !open)}
+            className={`flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-0.5 rounded border py-1 text-[11px] tracking-wide focus-visible:outline focus-visible:outline-2 focus-visible:outline-terminal-accent ${
+              moreOpen
+                ? "border-terminal-accent text-terminal-accent"
+                : "border-transparent text-terminal-muted"
             }`}
-            data-testid="mobile-nav-more"
           >
             <MoreHorizontal size={18} aria-hidden="true" />
             <span>More</span>
@@ -121,52 +145,5 @@ export function MobileBottomNav() {
         </div>
       </nav>
     </>
-  );
-}
-
-/** Header More opens the same destinations without duplicating nav chrome */
-export function MobileMoreMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const toggleAgent = useAgentStore((s) => s.toggleOpen);
-  const navigate = useNavigate();
-
-  return (
-    <MobileBottomSheet
-      open={open}
-      onClose={onClose}
-      title="More"
-      maxHeightClassName="max-h-[70dvh]"
-      aboveBottomNav
-      testId="mobile-header-more-sheet"
-    >
-      <div className="flex flex-col gap-1 p-2" role="menu">
-        {moreItems.map((item) => (
-          <button
-            key={item.path}
-            type="button"
-            role="menuitem"
-            onClick={() => {
-              onClose();
-              navigate(item.path);
-            }}
-            className="flex min-h-11 items-center gap-3 rounded border border-terminal-border px-3 py-2 text-left text-base text-terminal-text focus:outline-none focus-visible:ring-2 focus-visible:ring-terminal-accent"
-          >
-            <item.icon size={20} aria-hidden="true" />
-            <span>{item.label}</span>
-          </button>
-        ))}
-        <button
-          type="button"
-          role="menuitem"
-          onClick={() => {
-            onClose();
-            toggleAgent();
-          }}
-          className="flex min-h-11 items-center gap-3 rounded border border-terminal-border px-3 py-2 text-left text-base text-terminal-text focus:outline-none focus-visible:ring-2 focus-visible:ring-terminal-accent"
-        >
-          <Bot size={20} aria-hidden="true" />
-          <span>Agent</span>
-        </button>
-      </div>
-    </MobileBottomSheet>
   );
 }

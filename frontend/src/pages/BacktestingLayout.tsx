@@ -83,6 +83,7 @@ export function BacktestingLayout() {
       rightRailStorageKey="ot:shell:backtesting:right-rail"
       rightRailContent={<BacktestingRightRail />}
       showMobileBottomNav
+      contentClassName="pb-[calc(3.75rem+env(safe-area-inset-bottom,0px))] md:pb-0"
     >
       <Outlet />
     </TerminalShell>

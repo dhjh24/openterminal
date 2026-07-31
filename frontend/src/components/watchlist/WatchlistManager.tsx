@@ -256,8 +256,8 @@ export function WatchlistManager() {
       <aside className="w-full border-r border-terminal-border bg-terminal-panel lg:w-64 flex flex-col shrink-0">
         <div className="flex items-center justify-between border-b border-terminal-border p-3">
           <h2 className="text-xs font-bold uppercase tracking-widest text-terminal-muted">Watchlists</h2>
-          <button onClick={() => setIsCreating(true)} className="text-terminal-muted hover:text-terminal-accent">
-            <Plus size={16} />
+          <button onClick={() => setIsCreating(true)} className="inline-flex h-11 w-11 items-center justify-center text-terminal-muted hover:text-terminal-accent" aria-label="Add watchlist">
+            <Plus size={16} aria-hidden="true" />
           </button>
         </div>
 
@@ -337,16 +337,22 @@ export function WatchlistManager() {
                 </div>
                 <div className="flex rounded border border-terminal-border p-0.5 bg-terminal-bg">
                   <button
+                    type="button"
                     onClick={() => setViewByMode("table")}
-                    className={`p-1 rounded-sm ${viewMode === 'table' ? 'bg-terminal-accent text-terminal-bg' : 'text-terminal-muted'}`}
+                    className={`inline-flex h-11 w-11 items-center justify-center rounded-sm ${viewMode === 'table' ? 'bg-terminal-accent text-terminal-bg' : 'text-terminal-muted'}`}
+                    aria-label="Table view"
+                    aria-pressed={viewMode === "table"}
                   >
-                    <Table size={14} />
+                    <Table size={14} aria-hidden="true" />
                   </button>
                   <button
+                    type="button"
                     onClick={() => setViewByMode("heatmap")}
-                    className={`p-1 rounded-sm ${viewMode === 'heatmap' ? 'bg-terminal-accent text-terminal-bg' : 'text-terminal-muted'}`}
+                    className={`inline-flex h-11 w-11 items-center justify-center rounded-sm ${viewMode === 'heatmap' ? 'bg-terminal-accent text-terminal-bg' : 'text-terminal-muted'}`}
+                    aria-label="Heatmap view"
+                    aria-pressed={viewMode === "heatmap"}
                   >
-                    <Grid3X3 size={14} />
+                    <Grid3X3 size={14} aria-hidden="true" />
                   </button>
                 </div>
               </>

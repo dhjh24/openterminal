@@ -1,6 +1,6 @@
 import React from "react";
 import { useBulkDeals } from "../../hooks/useStocks";
-import { formatInr } from "../../utils/formatters";
+import { formatUsd } from "../../utils/formatters";
 import type { BulkDeal } from "../../types";
 
 export const BulkDealsTable: React.FC = () => {
@@ -47,7 +47,7 @@ export const BulkDealsTable: React.FC = () => {
                                     </span>
                                 </td>
                                 <td className="whitespace-nowrap px-3 py-2 text-right text-terminal-text">{Number(deal.quantity).toLocaleString()}</td>
-                                <td className="whitespace-nowrap px-3 py-2 text-right text-terminal-text">{formatInr(Number(deal.tradePrice))}</td>
+                                <td className="whitespace-nowrap px-3 py-2 text-right text-terminal-text">{formatUsd(Number(deal.tradePrice))}</td>
                             </tr>
                         ))}
                     </tbody>
