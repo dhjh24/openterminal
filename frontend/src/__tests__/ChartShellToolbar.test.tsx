@@ -205,7 +205,9 @@ describe("ChartShellToolbar", () => {
     fireEvent.click(screen.getAllByRole("button", { name: "Layout 2x2" })[0]);
     expect(onLayoutChange).toHaveBeenCalledWith({ cols: 2, rows: 2, arrangement: "grid" });
 
-    fireEvent.click(within(screen.getByTestId("chart-shell-timeframe-buttons")).getByRole("button", { name: "15m" }));
+    const chartControls = within(screen.getByTestId("chart-shell-timeframe-buttons"));
+
+    fireEvent.click(chartControls.getByRole("button", { name: "15m" }));
     expect(onTimeframeChange).toHaveBeenCalledWith("15m");
 
     fireEvent.click(within(screen.getByTestId("chart-shell-timeframe-buttons").parentElement as HTMLElement).getByRole("button", { name: "Line" }));

@@ -74,8 +74,9 @@ export function readValidContainerSize(
   fallbackHeight = 520,
 ): { width: number; height: number } | null {
   if (!el) return null;
-  const width = el.clientWidth;
-  const height = el.clientHeight || fallbackHeight;
+  const width = Math.max(0, Math.floor(el.clientWidth));
+  const measuredHeight = Math.max(0, Math.floor(el.clientHeight));
+  const height = measuredHeight > 0 ? measuredHeight : fallbackHeight;
   if (!isValidChartSize(width, height)) return null;
   return { width, height };
 }

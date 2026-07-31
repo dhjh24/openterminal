@@ -51,7 +51,7 @@ export function SIPCalculator() {
         <TerminalButton onClick={calculateSIP} variant="accent">Calculate</TerminalButton>
         <div className="text-right">
           <div className="text-[11px] uppercase text-terminal-muted">Estimated Future Value</div>
-          <div className="text-xl font-bold text-terminal-pos">USD {totalValue.toLocaleString("en-US")}</div>
+          <div className="text-xl font-bold text-terminal-pos">${totalValue.toLocaleString("en-US")}</div>
         </div>
       </div>
     </div>

@@ -288,7 +288,7 @@ export function TopBar({ hideTickerLoader = false, hideMarketMarquee = false }: 
         >
           <img src={BRAND_ICON_SRC} alt="OpenTerminalUI" className="h-5 w-5 object-contain" />
         </Link>
-        <div className="hidden shrink-0 items-center gap-2 lg:flex">
+        <div className="hidden shrink-0 items-center gap-2 lg:flex" data-testid="topbar-primary-nav">
           <Link className="rounded border border-terminal-border px-2 py-1 text-[11px] text-terminal-muted hover:text-terminal-text" to="/">
             HOME
           </Link>
