@@ -554,7 +554,7 @@ export function HomePage() {
   );
 
   const updatedLabel = snapshot.updatedAt
-    ? new Date(snapshot.updatedAt).toLocaleTimeString("en-IN", { hour12: false })
+    ? new Date(snapshot.updatedAt).toLocaleTimeString("en-US", { hour12: false })
     : "--:--:--";
 
   const profileMissingFields = useMemo(() => {
@@ -608,7 +608,7 @@ export function HomePage() {
 
   return (
     <TerminalShell
-      contentClassName="bg-terminal-bg pb-16 md:pb-0"
+      contentClassName="bg-terminal-bg"
       hideTickerLoader
       showMobileBottomNav
       showWorkspaceControls={false}

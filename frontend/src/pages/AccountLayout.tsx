@@ -7,7 +7,6 @@ export function AccountLayout() {
     <TerminalShell
       hideTickerLoader
       statusBarTickerOverride="ACCOUNT"
-      contentClassName="pb-16 md:pb-0"
       showInstallPrompt
       showMobileBottomNav
       workspacePresetStorageKey="ot:shell:account:preset"

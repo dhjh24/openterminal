@@ -6,13 +6,16 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 import { ErrorBoundary } from "../common/ErrorBoundary";
 import { InstallPromptBanner } from "./InstallPromptBanner";
 import { OfflineBanner } from "./OfflineBanner";
 import { UpdateAvailableBanner } from "./UpdateAvailableBanner";
-import { MobileBottomNav } from "./MobileBottomNav";
+import { MobileBottomNav, MobileMoreMenu } from "./MobileBottomNav";
+import { MobileHeader } from "./MobileHeader";
+import { MobileSearchSheet } from "./MobileSearchSheet";
+import { WorkspacePresetSelector } from "./WorkspacePresetSelector";
 import { IconRail } from "./IconRail";
 import { StatusBar } from "./StatusBar";
 import { TopBar } from "./TopBar";
@@ -30,9 +33,9 @@ import { TerminalSelect } from "../terminal/TerminalSelect";
 import { HotKeyPanelFloat } from "../trading/HotKeyPanelFloat";
 import { useKeyboardShortcuts } from "../../hooks/useKeyboardShortcuts";
 import { ShortcutOverlay } from "../common/ShortcutOverlay";
-import { WORKSPACE_PRESET_STORAGE_KEY } from "../../workspace/presets";
+import { WORKSPACE_PRESET_STORAGE_KEY, type WorkspacePreset } from "../../workspace/presets";
 
-export type WorkspacePreset = "trader" | "quant" | "pm" | "risk" | "ops";
+export type { WorkspacePreset };
 
 type TerminalShellContextValue = {
   preset: WorkspacePreset;
@@ -43,14 +46,6 @@ type TerminalShellContextValue = {
 };
 
 const TerminalShellContext = createContext<TerminalShellContextValue | null>(null);
-
-const PRESET_OPTIONS: Array<{ id: WorkspacePreset; label: string }> = [
-  { id: "trader", label: "Trader" },
-  { id: "quant", label: "Quant" },
-  { id: "pm", label: "PM" },
-  { id: "risk", label: "Risk" },
-  { id: "ops", label: "Ops" },
-];
 
 type RightRailSection = {
   id: string;
@@ -146,99 +141,92 @@ function WorkspaceControlBar({
   };
 
   return (
-    <div className="flex items-center justify-between gap-2 overflow-x-auto border-b border-terminal-border bg-terminal-panel/90 px-3 py-1.5 backdrop-blur">
-      <div className="flex min-w-0 shrink-0 items-center gap-2">
-        <span className="ot-type-label-compact hidden text-terminal-muted sm:inline">Workspace</span>
-        <div className="flex flex-nowrap items-center gap-1">
-          {PRESET_OPTIONS.map((option) => (
-            <button
-              key={option.id}
-              type="button"
-              onClick={() => applyPreset(option.id)}
-              className={`rounded-sm border px-2 py-1 ot-type-label-compact ${
-                preset === option.id
-                  ? "border-terminal-accent bg-terminal-accent/10 text-terminal-accent"
-                  : "border-terminal-border text-terminal-muted hover:text-terminal-text"
-              }`}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
+    <div className="border-b border-terminal-border bg-terminal-panel/90 px-3 py-1.5 backdrop-blur">
+      {/* Phone: single preset selector */}
+      <div className="flex items-center md:hidden" data-testid="workspace-controls-mobile">
+        <WorkspacePresetSelector preset={preset} onSelect={applyPreset} variant="mobile" />
       </div>
-      <div className="flex shrink-0 items-center gap-2">
-        <label className="hidden items-center gap-1 text-[11px] text-terminal-muted md:inline-flex">
-          Theme
-          <TerminalSelect
-            size="sm"
-            tone="ui"
-            className="min-w-36"
-            value={themeVariant}
-            onChange={(e) => setThemeVariant(e.target.value as ThemeVariant)}
-          >
-            <option value="terminal-noir">Terminal Noir</option>
-            <option value="classic-bloomberg">Classic Bloomberg</option>
-            <option value="light-desk">Light Desk</option>
-            <option value="custom">Custom</option>
-          </TerminalSelect>
-        </label>
-        {themeVariant === "custom" ? (
-          <input
-            type="color"
-            className="hidden h-6 w-8 cursor-pointer rounded-sm border border-terminal-border bg-transparent p-0 md:block"
-            aria-label="Custom accent color"
-            value={customAccentColor}
-            onChange={(e) => setCustomAccentColor(e.target.value)}
-          />
-        ) : null}
-        <button
-          type="button"
-          onClick={() => setUiDensity(uiDensity === "comfortable" ? "compact" : "comfortable")}
-          className={`hidden rounded-sm border px-2 py-1 ot-type-label-compact sm:inline-flex ${
-            uiDensity === "comfortable"
-              ? "border-terminal-accent text-terminal-accent"
-              : "border-terminal-border text-terminal-muted hover:text-terminal-text"
-          }`}
-          title="Toggle table density"
-        >
-          {uiDensity === "comfortable" ? "Comfortable" : "Compact"}
-        </button>
-        <button
-          type="button"
-          onClick={() => setDecorativeEffects(!decorativeEffects)}
-          className={`hidden rounded-sm border px-2 py-1 ot-type-label-compact md:inline-flex ${
-            decorativeEffects
-              ? "border-terminal-accent text-terminal-accent"
-              : "border-terminal-border text-terminal-muted hover:text-terminal-text"
-          }`}
-          title="Toggle scanlines, vignette, and animated background"
-        >
-          {decorativeEffects ? "FX On" : "FX Off"}
-        </button>
-        <button
-          type="button"
-          onClick={() => setHudOverlayEnabled(!hudOverlayEnabled)}
-          className={`hidden rounded-sm border px-2 py-1 ot-type-label-compact lg:inline-flex ${
-            hudOverlayEnabled
-              ? "border-terminal-accent text-terminal-accent"
-              : "border-terminal-border text-terminal-muted hover:text-terminal-text"
-          }`}
-        >
-          {hudOverlayEnabled ? "HUD On" : "HUD Off"}
-        </button>
-        {rightRailEnabled ? (
+
+      {/* Hybrid + desktop: chip presets + theme controls */}
+      <div className="hidden items-center justify-between gap-2 overflow-x-auto md:flex">
+        <div className="flex min-w-0 shrink-0 items-center gap-2">
+          <span className="ot-type-label-compact text-terminal-muted">Workspace preset</span>
+          <WorkspacePresetSelector preset={preset} onSelect={applyPreset} variant="desktop" />
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <label className="hidden items-center gap-1 text-[11px] text-terminal-muted lg:inline-flex">
+            Theme
+            <TerminalSelect
+              size="sm"
+              tone="ui"
+              className="min-w-36"
+              value={themeVariant}
+              onChange={(e) => setThemeVariant(e.target.value as ThemeVariant)}
+            >
+              <option value="terminal-noir">Terminal Noir</option>
+              <option value="classic-bloomberg">Classic Bloomberg</option>
+              <option value="light-desk">Light Desk</option>
+              <option value="custom">Custom</option>
+            </TerminalSelect>
+          </label>
+          {themeVariant === "custom" ? (
+            <input
+              type="color"
+              className="hidden h-6 w-8 cursor-pointer rounded-sm border border-terminal-border bg-transparent p-0 lg:block"
+              aria-label="Custom accent color"
+              value={customAccentColor}
+              onChange={(e) => setCustomAccentColor(e.target.value)}
+            />
+          ) : null}
           <button
             type="button"
-            onClick={toggleRightRail}
-            className={`hidden xl:inline-flex rounded-sm border px-2 py-1 ot-type-label-compact ${
-              rightRailOpen
+            onClick={() => setUiDensity(uiDensity === "comfortable" ? "compact" : "comfortable")}
+            className={`hidden rounded-sm border px-2 py-1 ot-type-label-compact md:inline-flex ${
+              uiDensity === "comfortable"
+                ? "border-terminal-accent text-terminal-accent"
+                : "border-terminal-border text-terminal-muted hover:text-terminal-text"
+            }`}
+            title="Toggle table density"
+          >
+            {uiDensity === "comfortable" ? "Comfortable" : "Compact"}
+          </button>
+          <button
+            type="button"
+            onClick={() => setDecorativeEffects(!decorativeEffects)}
+            className={`hidden rounded-sm border px-2 py-1 ot-type-label-compact lg:inline-flex ${
+              decorativeEffects
+                ? "border-terminal-accent text-terminal-accent"
+                : "border-terminal-border text-terminal-muted hover:text-terminal-text"
+            }`}
+            title="Toggle scanlines, vignette, and animated background"
+          >
+            {decorativeEffects ? "FX On" : "FX Off"}
+          </button>
+          <button
+            type="button"
+            onClick={() => setHudOverlayEnabled(!hudOverlayEnabled)}
+            className={`hidden rounded-sm border px-2 py-1 ot-type-label-compact lg:inline-flex ${
+              hudOverlayEnabled
                 ? "border-terminal-accent text-terminal-accent"
                 : "border-terminal-border text-terminal-muted hover:text-terminal-text"
             }`}
           >
-            {rightRailOpen ? "Hide Context Rail" : "Show Context Rail"}
+            {hudOverlayEnabled ? "HUD On" : "HUD Off"}
           </button>
-        ) : null}
+          {rightRailEnabled ? (
+            <button
+              type="button"
+              onClick={toggleRightRail}
+              className={`hidden xl:inline-flex rounded-sm border px-2 py-1 ot-type-label-compact ${
+                rightRailOpen
+                  ? "border-terminal-accent text-terminal-accent"
+                  : "border-terminal-border text-terminal-muted hover:text-terminal-text"
+              }`}
+            >
+              {rightRailOpen ? "Hide Context Rail" : "Show Context Rail"}
+            </button>
+          ) : null}
+        </div>
       </div>
     </div>
   );
@@ -261,7 +249,6 @@ export function TerminalShell({
   rightRailStorageKey,
 }: Props) {
   const navigate = useNavigate();
-  const location = useLocation();
   const [preset, setPreset] = usePersistedState<WorkspacePreset>(
     workspacePresetStorageKey ?? WORKSPACE_PRESET_STORAGE_KEY,
     defaultPreset,
@@ -270,6 +257,8 @@ export function TerminalShell({
     rightRailStorageKey,
     defaultRightRailOpen,
   );
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [headerMoreOpen, setHeaderMoreOpen] = useState(false);
   const fetchUnreadCount = useNotificationStore((s) => s.fetchUnreadCount);
   const { isInitializing, isAuthenticated } = useAuth();
 
@@ -306,21 +295,34 @@ export function TerminalShell({
     return () => window.clearInterval(timer);
   }, [fetchUnreadCount, isInitializing, isAuthenticated]);
 
+  const mobileContentPad = showMobileBottomNav ? "pb-20 md:pb-0" : "";
+
   return (
     <TerminalShellContext.Provider value={shellCtx}>
-      <div className="flex h-screen overflow-hidden bg-terminal-bg text-terminal-text">
+      <div
+        className="flex h-dvh max-h-dvh min-h-dvh overflow-hidden bg-terminal-bg text-terminal-text"
+        data-testid="terminal-shell"
+        style={{ ["--ot-mobile-nav-height" as string]: "3.5rem" }}
+      >
         <IconRail />
 
         <div className="relative z-10 flex min-w-0 flex-1 flex-col">
           <OfflineBanner />
-          <CommandBar
-            onExecute={async (command) => {
-              const parsed = parseCommand(command);
-              return executeParsedCommand(parsed, navigate);
-            }}
-          />
-          <TickerTape />
-          <TopBar hideTickerLoader={hideTickerLoader} />
+          <div className="hidden lg:block">
+            <CommandBar
+              onExecute={async (command) => {
+                const parsed = parseCommand(command);
+                return executeParsedCommand(parsed, navigate);
+              }}
+            />
+          </div>
+          <div className="hidden lg:block">
+            <TickerTape />
+          </div>
+          <MobileHeader onSearch={() => setSearchOpen(true)} onMore={() => setHeaderMoreOpen(true)} />
+          <div className="hidden md:block">
+            <TopBar hideTickerLoader={hideTickerLoader} />
+          </div>
           {showWorkspaceControls ? (
             <WorkspaceControlBar
               preset={preset}
@@ -332,7 +334,10 @@ export function TerminalShell({
           ) : null}
           <div className="min-h-0 flex flex-1 overflow-hidden">
             <ErrorBoundary>
-              <div className={`relative z-0 min-h-0 min-w-0 flex-1 overflow-auto ${contentClassName}`.trim()}>
+              <div
+                className={`relative z-0 min-h-0 min-w-0 flex-1 overflow-auto ${mobileContentPad} ${contentClassName}`.trim()}
+                data-testid="terminal-shell-content"
+              >
                 {children}
               </div>
             </ErrorBoundary>
@@ -342,12 +347,16 @@ export function TerminalShell({
                 )
               : null}
           </div>
-          <StatusBar tickerOverride={statusBarTickerOverride} />
+          <div className="hidden lg:block">
+            <StatusBar tickerOverride={statusBarTickerOverride} />
+          </div>
         </div>
 
         <UpdateAvailableBanner />
         {showInstallPrompt ? <InstallPromptBanner /> : null}
         {showMobileBottomNav ? <MobileBottomNav /> : null}
+        <MobileSearchSheet open={searchOpen} onClose={() => setSearchOpen(false)} />
+        <MobileMoreMenu open={headerMoreOpen} onClose={() => setHeaderMoreOpen(false)} />
         <HotKeyPanelFloat />
         <CommandPalette />
         <HudOverlay />

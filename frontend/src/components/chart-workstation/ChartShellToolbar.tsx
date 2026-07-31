@@ -1,10 +1,12 @@
-import type { KeyboardEvent } from "react";
+import { useState, type KeyboardEvent } from "react";
+import { Settings2, Wrench } from "lucide-react";
 import { LayoutSelector } from "./LayoutSelector";
 import { TickerDropdown } from "./TickerDropdown";
 import { TerminalBadge } from "../terminal/TerminalBadge";
 import { TerminalButton } from "../terminal/TerminalButton";
 import { TerminalDropdown } from "../terminal/TerminalDropdown";
 import { TerminalInput } from "../terminal/TerminalInput";
+import { MobileBottomSheet } from "../layout/MobileBottomSheet";
 import type { ChartSlot, ChartSlotTimeframe, ChartSlotType, GridTemplate, SlotMarket } from "../../store/chartWorkstationStore";
 
 const TIMEFRAMES: ChartSlotTimeframe[] = ["1m", "5m", "15m", "1h", "1D", "1W", "1M"];
@@ -377,14 +379,141 @@ export function ChartShellToolbar({
     : "Select a pane to drive shell actions";
   const replayScopeLabel = linkSettings.replay && activeLinkGroup !== "off" ? `Replay Link ${activeLinkGroup}` : "Replay Active";
   const rangeScopeLabel = linkSettings.dateRange && activeLinkGroup !== "off" ? `Range Link ${activeLinkGroup}` : "Range Active";
+  const [toolsOpen, setToolsOpen] = useState(false);
+  const mobileTimeframes = TIMEFRAMES.filter((tf) => tf !== "1M");
 
   return (
     <div
-      className="rounded border border-terminal-border bg-terminal-bg/40 p-3"
+      className="rounded border border-terminal-border bg-terminal-bg/40 p-2 md:p-3"
       data-density={dense ? "dense" : "comfortable"}
       data-testid="chart-shell-toolbar"
     >
-        <div className="flex flex-col gap-3">
+        <div className="grid gap-2 md:hidden" data-testid="chart-shell-mobile-layout">
+          <div className="flex items-center gap-2">
+            <div className="min-w-0 flex-1">
+              <TickerDropdown
+                value={activeSlot?.ticker ?? null}
+                market={activeSlot?.market ?? "US"}
+                onChange={onTickerChange}
+                className="min-w-0"
+                inputClassName="w-full min-h-11 text-base"
+                placeholder={activeTicker ? activeTicker : "Symbol"}
+                inputTestId="chart-shell-symbol-input-mobile"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => setToolsOpen(true)}
+              className="inline-flex min-h-11 min-w-11 items-center justify-center rounded border border-terminal-border text-terminal-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-terminal-accent"
+              aria-label="Chart tools"
+              aria-expanded={toolsOpen}
+              data-testid="chart-shell-tools-button"
+            >
+              <Wrench size={18} aria-hidden="true" />
+            </button>
+          </div>
+          <div className="flex flex-wrap gap-1" role="group" aria-label="Timeframe">
+            {mobileTimeframes.map((timeframe) => (
+              <button
+                key={timeframe}
+                type="button"
+                onClick={() => onTimeframeChange(timeframe)}
+                aria-pressed={activeSlot?.timeframe === timeframe}
+                className={`min-h-11 min-w-[2.75rem] rounded border px-2 text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-terminal-accent ${
+                  activeSlot?.timeframe === timeframe
+                    ? "border-terminal-accent bg-terminal-accent/15 text-terminal-accent"
+                    : "border-terminal-border text-terminal-muted"
+                }`}
+              >
+                {timeframe}
+              </button>
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-1" role="group" aria-label="Chart type">
+            {CHART_TYPES.map((chartType) => (
+              <button
+                key={chartType}
+                type="button"
+                onClick={() => onChartTypeChange(chartType)}
+                aria-pressed={activeSlot?.chartType === chartType}
+                className={`min-h-11 rounded border px-3 text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-terminal-accent ${
+                  activeSlot?.chartType === chartType
+                    ? "border-terminal-accent bg-terminal-accent/15 text-terminal-accent"
+                    : "border-terminal-border text-terminal-muted"
+                }`}
+              >
+                {chartTypeLabel(chartType)}
+              </button>
+            ))}
+          </div>
+          <MobileBottomSheet
+            open={toolsOpen}
+            onClose={() => setToolsOpen(false)}
+            title="Chart tools"
+            maxHeightClassName="max-h-[70dvh]"
+            aboveBottomNav
+            testId="chart-shell-tools-sheet"
+          >
+            <div className="flex flex-col gap-3 p-3 text-sm">
+              <section className="grid gap-2">
+                <div className="text-xs font-semibold uppercase tracking-wide text-terminal-muted">Compare</div>
+                <div className="flex flex-wrap gap-1">
+                  <TerminalButton type="button" size="sm" variant={actionVariant(compareMode === "normalized")} onClick={() => onSetCompareMode("normalized")}>Perf %</TerminalButton>
+                  <TerminalButton type="button" size="sm" variant={actionVariant(compareMode === "price")} onClick={() => onSetCompareMode("price")}>Price</TerminalButton>
+                </div>
+                <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+                  <TerminalInput size="sm" value={compareInput} data-testid="chart-shell-compare-input-mobile" placeholder="Add compare symbol" disabled={!activeTicker} onChange={(event) => onSetCompareInput(event.target.value)} onKeyDown={(event) => handleEnter(event, onAddCompareSymbol)} className="min-h-11 text-base" />
+                  <TerminalButton type="button" size="sm" variant="default" disabled={!compareInput.trim() || !activeTicker} onClick={onAddCompareSymbol}>Add</TerminalButton>
+                </div>
+                {activeCompareSymbols.map((symbol) => (
+                  <button key={symbol} type="button" className="rounded border border-terminal-border px-2 py-1 text-left text-xs" onClick={() => onRemoveCompareSymbol(symbol)} aria-label={`Remove ${symbol}`}>{symbol} ×</button>
+                ))}
+              </section>
+              <section className="grid gap-2">
+                <div className="text-xs font-semibold uppercase tracking-wide text-terminal-muted">Replay</div>
+                <ReplayNavControls replayScopeLabel={replayScopeLabel} replayDateDraft={replayDateDraft} onToggleReplay={onToggleReplay} onReplayStepBack={onReplayStepBack} onReplayStepForward={onReplayStepForward} onReplayPrevSession={onReplayPrevSession} onReplayNextSession={onReplayNextSession} onSetReplayDateDraft={onSetReplayDateDraft} onCommitReplayDate={onCommitReplayDate} />
+              </section>
+              <section className="grid gap-2">
+                <div className="text-xs font-semibold uppercase tracking-wide text-terminal-muted">Link groups</div>
+                <div className="grid grid-cols-2 gap-2">
+                  <TerminalInput as="select" size="sm" value={activeLinkGroup} onChange={(event) => onLinkGroupChange(event.target.value as WorkspaceLinkGroup)} aria-label="Link group" className="min-h-11 text-base">
+                    <option value="off">Link Off</option>
+                    <option value="A">Link A</option>
+                    <option value="B">Link B</option>
+                    <option value="C">Link C</option>
+                  </TerminalInput>
+                  <TerminalInput as="select" size="sm" value={activeRangePreset} onChange={(event) => onSetRangePreset(event.target.value as RangePresetId)} aria-label="Date range preset" className="min-h-11 text-base">
+                    {RANGE_PRESETS.map((preset) => (
+                      <option key={preset.id} value={preset.id}>{preset.label}</option>
+                    ))}
+                  </TerminalInput>
+                </div>
+                <LinkMatrix linkSettings={linkSettings} onSetLinkDimension={onSetLinkDimension} />
+              </section>
+              <section className="grid gap-2">
+                <div className="text-xs font-semibold uppercase tracking-wide text-terminal-muted">Templates &amp; export</div>
+                <div className="grid grid-cols-2 gap-2">
+                  <TerminalButton type="button" size="sm" variant="ghost" disabled={!hasSavedDefault} onClick={onRestoreWorkspaceDefault}>Apply Template</TerminalButton>
+                  <TerminalButton type="button" size="sm" variant="ghost" onClick={onSaveWorkspaceDefault}>Save View</TerminalButton>
+                  <TerminalButton type="button" size="sm" variant="ghost" onClick={onSaveWorkspaceSnapshot}>Snapshot</TerminalButton>
+                  <TerminalButton type="button" size="sm" variant="ghost" onClick={onExportWorkspaceJson}>Export</TerminalButton>
+                  <TerminalButton type="button" size="sm" variant="ghost" onClick={onCopyShareLink}>Share Link</TerminalButton>
+                  <TerminalButton type="button" size="sm" variant={isMaximized ? "accent" : "ghost"} disabled={!activeTicker} onClick={onToggleMaximize}>{isMaximized ? "Restore" : "Maximize"}</TerminalButton>
+                </div>
+                <LayoutSelector current={gridTemplate} onChange={onLayoutChange} />
+              </section>
+              <section className="grid gap-2">
+                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-terminal-muted">
+                  <Settings2 size={14} aria-hidden="true" /> Advanced
+                </div>
+                <p className="text-sm text-terminal-muted">{rangeScopeLabel}. {linkedSymbolCount} linked.</p>
+                <TerminalButton type="button" size="sm" variant="default" disabled={!activeTicker} onClick={onOpenAlerts}>Create Alert</TerminalButton>
+              </section>
+            </div>
+          </MobileBottomSheet>
+        </div>
+
+        <div className="hidden flex-col gap-3 md:flex">
           <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
@@ -479,7 +608,7 @@ export function ChartShellToolbar({
             </div>
           </div>
         </div>
-        <section className="rounded border border-terminal-border bg-terminal-bg/50 p-2 text-[11px]" data-testid="chart-shell-shortcuts">
+        <section className="hidden rounded border border-terminal-border bg-terminal-bg/50 p-2 text-[11px] lg:block" data-testid="chart-shell-shortcuts">
           <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
             <div className="ot-type-label text-terminal-muted">Keyboard Workflows</div>
             <span className="text-[10px] text-terminal-muted">
@@ -498,160 +627,7 @@ export function ChartShellToolbar({
             ))}
           </div>
         </section>
-        <div className="grid gap-2 md:hidden" data-testid="chart-shell-mobile-layout">
-          <section className="rounded border border-terminal-border bg-terminal-bg/50 p-2 text-[11px]">
-            <div className="flex items-center justify-between gap-2">
-              <div className="ot-type-label text-terminal-muted">Mobile Focus</div>
-              <TerminalBadge variant={activeTicker ? "accent" : "neutral"} size="sm">
-                {activeTicker || "No focus"}
-              </TerminalBadge>
-            </div>
-            <div className="mt-2 grid gap-2">
-              <TickerDropdown
-                value={activeSlot?.ticker ?? null}
-                market={activeSlot?.market ?? "US"}
-                onChange={onTickerChange}
-                className="min-w-0"
-                inputClassName="w-full"
-                placeholder={activeTicker ? `Rotate ${activeTicker}` : "Search active pane symbol"}
-                inputTestId="chart-shell-symbol-input-mobile"
-              />
-              <div className="grid grid-cols-2 gap-2">
-                <TerminalInput
-                  as="select"
-                  size="sm"
-                  value={activeSlot?.timeframe ?? "1D"}
-                  onChange={(event) => onTimeframeChange(event.target.value as ChartSlotTimeframe)}
-                  aria-label="Mobile chart timeframe"
-                >
-                  {TIMEFRAMES.map((timeframe) => (
-                    <option key={timeframe} value={timeframe}>
-                      {timeframe}
-                    </option>
-                  ))}
-                </TerminalInput>
-                <TerminalInput
-                  as="select"
-                  size="sm"
-                  value={activeSlot?.chartType ?? "candle"}
-                  onChange={(event) => onChartTypeChange(event.target.value as ChartSlotType)}
-                  aria-label="Mobile chart type"
-                >
-                  {CHART_TYPES.map((chartType) => (
-                    <option key={chartType} value={chartType}>
-                      {chartTypeLabel(chartType)}
-                    </option>
-                  ))}
-                </TerminalInput>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <TerminalInput
-                  as="select"
-                  size="sm"
-                  value={activeLinkGroup}
-                  onChange={(event) => onLinkGroupChange(event.target.value as WorkspaceLinkGroup)}
-                  aria-label="Mobile link group"
-                >
-                  <option value="off">Link Off</option>
-                  <option value="A">Link A</option>
-                  <option value="B">Link B</option>
-                  <option value="C">Link C</option>
-                </TerminalInput>
-                <TerminalInput
-                  as="select"
-                  size="sm"
-                  value={activeRangePreset}
-                  onChange={(event) => onSetRangePreset(event.target.value as RangePresetId)}
-                  aria-label="Mobile date range preset"
-                >
-                  {RANGE_PRESETS.map((preset) => (
-                    <option key={preset.id} value={preset.id}>
-                      {preset.label}
-                    </option>
-                  ))}
-                </TerminalInput>
-              </div>
-              <LinkMatrix linkSettings={linkSettings} onSetLinkDimension={onSetLinkDimension} />
-              <div className="text-[10px] text-terminal-muted">
-                {replayScopeLabel}. {rangeScopeLabel}.
-              </div>
-            </div>
-          </section>
-
-          <section className="rounded border border-terminal-border bg-terminal-bg/50 p-2 text-[11px]">
-            <div className="flex items-center justify-between gap-2">
-              <div className="ot-type-label text-terminal-muted">Compare + Layout</div>
-              <TerminalBadge variant="neutral" size="sm">{linkedSymbolCount} linked</TerminalBadge>
-            </div>
-            <div className="mt-2 grid gap-2">
-              <div className="flex flex-wrap items-center gap-1">
-                <TerminalButton type="button" size="sm" variant={actionVariant(compareMode === "normalized")} className="px-2" onClick={() => onSetCompareMode("normalized")}>
-                  Perf %
-                </TerminalButton>
-                <TerminalButton type="button" size="sm" variant={actionVariant(compareMode === "price")} className="px-2" onClick={() => onSetCompareMode("price")}>
-                  Price
-                </TerminalButton>
-                <TerminalInput
-                  as="select"
-                  size="sm"
-                  value={comparePlacement}
-                  onChange={(event) => onSetComparePlacement(event.target.value as ComparePlacement)}
-                  aria-label="Mobile compare placement"
-                >
-                  <option value="active">Active Pane</option>
-                  <option value="linked">Linked Panes</option>
-                  <option value="all">All Visible</option>
-                </TerminalInput>
-              </div>
-              <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
-                <TerminalInput
-                  size="sm"
-                  value={compareInput}
-                  data-testid="chart-shell-compare-input-mobile"
-                  placeholder={activeTicker ? `Add compare for ${activeTicker}` : "Select a pane first"}
-                  disabled={!activeTicker}
-                  onChange={(event) => onSetCompareInput(event.target.value)}
-                  onKeyDown={(event) => handleEnter(event, onAddCompareSymbol)}
-                />
-                <TerminalButton type="button" size="sm" variant="default" disabled={!compareInput.trim() || !activeTicker} onClick={onAddCompareSymbol}>
-                  Add
-                </TerminalButton>
-              </div>
-              <ReplayNavControls
-                replayScopeLabel={replayScopeLabel}
-                replayDateDraft={replayDateDraft}
-                onToggleReplay={onToggleReplay}
-                onReplayStepBack={onReplayStepBack}
-                onReplayStepForward={onReplayStepForward}
-                onReplayPrevSession={onReplayPrevSession}
-                onReplayNextSession={onReplayNextSession}
-                onSetReplayDateDraft={onSetReplayDateDraft}
-                onCommitReplayDate={onCommitReplayDate}
-              />
-              <div className="grid grid-cols-2 gap-2">
-                <TerminalButton type="button" size="sm" variant="default" disabled={!activeTicker} onClick={onOpenAlerts}>
-                  Alerts
-                </TerminalButton>
-                <TerminalButton type="button" size="sm" variant={isMaximized ? "accent" : "ghost"} disabled={!activeTicker} onClick={onToggleMaximize}>
-                  {isMaximized ? "Restore Grid" : "Maximize"}
-                </TerminalButton>
-                <TerminalButton type="button" size="sm" variant="ghost" disabled={!hasSavedDefault} onClick={onRestoreWorkspaceDefault}>
-                  Load Default
-                </TerminalButton>
-                <TerminalButton type="button" size="sm" variant="ghost" onClick={onSaveWorkspaceSnapshot}>
-                  Snapshot
-                </TerminalButton>
-                <TerminalButton type="button" size="sm" variant="ghost" onClick={onCopyShareLink}>
-                  Share Link
-                </TerminalButton>
-                <TerminalButton type="button" size="sm" variant="ghost" onClick={onExportWorkspaceJson}>
-                  Export JSON
-                </TerminalButton>
-              </div>
-            </div>
-          </section>
-        </div>
-        <div className="hidden gap-2 md:grid xl:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1.05fr)_minmax(0,1.1fr)] [&>section]:min-w-0 [&_.grid]:min-w-0">
+        <div className="grid gap-2 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1.05fr)_minmax(0,1.1fr)] [&>section]:min-w-0 [&_.grid]:min-w-0] xl:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1.05fr)_minmax(0,1.1fr)] [&>section]:min-w-0 [&_.grid]:min-w-0">
           <section className="rounded border border-terminal-border bg-terminal-bg/50 p-2 text-[11px]">
             <div className="flex items-center justify-between gap-2">
               <div className="ot-type-label text-terminal-muted">Focus</div>

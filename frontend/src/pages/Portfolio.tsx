@@ -228,7 +228,7 @@ export function PortfolioPage() {
   const [swipeStartX, setSwipeStartX] = useState<number | null>(null);
   const [ticker, setTicker] = useState(MOMENTUM_ROTATION_BASKET[0]);
   const [quantity, setQuantity] = useState(10);
-  const [avgBuyPrice, setAvgBuyPrice] = useState(2500);
+  const [avgBuyPrice, setAvgBuyPrice] = useState<number | "">("");
   const [buyDate, setBuyDate] = useState("2025-01-01");
   const [submitting, setSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -545,7 +545,7 @@ export function PortfolioPage() {
           </div>
           <div className="rounded-md border border-terminal-border bg-terminal-bg/70 p-3">
             <div className="font-sans text-[11px] text-terminal-muted">Holdings</div>
-            <div className="mt-1 text-xl font-semibold text-terminal-text">{holdingsCount.toLocaleString("en-IN")}</div>
+            <div className="mt-1 text-xl font-semibold text-terminal-text">{holdingsCount.toLocaleString("en-US")}</div>
           </div>
         </div>
       </div>
@@ -828,7 +828,8 @@ export function PortfolioPage() {
               type="number"
               value={avgBuyPrice}
               onChange={(e) => {
-                setAvgBuyPrice(Number(e.target.value));
+                const raw = e.target.value;
+                setAvgBuyPrice(raw === "" ? "" : Number(raw));
                 setFieldErrors(prev => ({ ...prev, avgBuyPrice: "" }));
               }}
             />
@@ -854,7 +855,7 @@ export function PortfolioPage() {
                 const errors: Record<string, string> = {};
                 if (!ticker || !ticker.trim()) errors.ticker = "Ticker is required";
                 if (quantity <= 0) errors.quantity = "Qty > 0 required";
-                if (avgBuyPrice <= 0) errors.avgBuyPrice = "Price > 0 required";
+                if (avgBuyPrice === "" || Number(avgBuyPrice) <= 0) errors.avgBuyPrice = "Price > 0 required";
                 if (!buyDate) errors.buyDate = "Date required";
 
                 if (Object.keys(errors).length > 0) {
@@ -866,12 +867,12 @@ export function PortfolioPage() {
                 setSubmitting(true);
                 setError(null);
                 try {
-                  await addHolding({ ticker: ticker.trim().toUpperCase(), quantity, avg_buy_price: avgBuyPrice, buy_date: buyDate });
+                  await addHolding({ ticker: ticker.trim().toUpperCase(), quantity, avg_buy_price: Number(avgBuyPrice), buy_date: buyDate });
                   await load();
                   // Reset form on success
                   setTicker("");
                   setQuantity(1);
-                  setAvgBuyPrice(0);
+                  setAvgBuyPrice("");
                 } catch (e: any) {
                   const status = e.response?.status;
                   if (status === 401 || status === 403) {

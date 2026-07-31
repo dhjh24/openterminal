@@ -511,7 +511,7 @@ export function BacktestingPage() {
 
   const symbol = useMemo(() => asset.trim().toUpperCase(), [asset]);
   const currencyCode = useMemo(() => "USD", [market]);
-  const moneyLocale = useMemo(() => (currencyCode === "USD" ? "en-US" : "en-IN"), [currencyCode]);
+  const moneyLocale = useMemo(() => (currencyCode === "USD" ? "en-US" : "en-US"), [currencyCode]);
   const fmtMoney = useCallback(
     (value: number): string =>
       new Intl.NumberFormat(moneyLocale, {

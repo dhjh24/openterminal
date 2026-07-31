@@ -313,7 +313,7 @@ export function OptionsFlowPage() {
                                   <div className="rounded border border-terminal-border bg-terminal-panel px-3 py-2">
                                     <div className="text-[10px] uppercase tracking-wide text-terminal-muted">Spot / ATM</div>
                                     <div className="mt-1 text-sm text-terminal-text">
-                                      {flow.spot_price?.toLocaleString("en-IN") ?? "-"} / {flow.chain_context?.atm_strike?.toLocaleString("en-IN") ?? "-"}
+                                      {flow.spot_price?.toLocaleString("en-US") ?? "-"} / {flow.chain_context?.atm_strike?.toLocaleString("en-US") ?? "-"}
                                     </div>
                                   </div>
                                   <div className="rounded border border-terminal-border bg-terminal-panel px-3 py-2">
@@ -325,13 +325,13 @@ export function OptionsFlowPage() {
                                   <div className="rounded border border-terminal-border bg-terminal-panel px-3 py-2">
                                     <div className="text-[10px] uppercase tracking-wide text-terminal-muted">Call Leg</div>
                                     <div className="mt-1 text-sm text-terminal-text">
-                                      Vol {flow.chain_context?.strike_row?.ce?.volume?.toLocaleString("en-IN") ?? "-"} | OI {flow.chain_context?.strike_row?.ce?.oi?.toLocaleString("en-IN") ?? "-"}
+                                      Vol {flow.chain_context?.strike_row?.ce?.volume?.toLocaleString("en-US") ?? "-"} | OI {flow.chain_context?.strike_row?.ce?.oi?.toLocaleString("en-US") ?? "-"}
                                     </div>
                                   </div>
                                   <div className="rounded border border-terminal-border bg-terminal-panel px-3 py-2">
                                     <div className="text-[10px] uppercase tracking-wide text-terminal-muted">Put Leg</div>
                                     <div className="mt-1 text-sm text-terminal-text">
-                                      Vol {flow.chain_context?.strike_row?.pe?.volume?.toLocaleString("en-IN") ?? "-"} | OI {flow.chain_context?.strike_row?.pe?.oi?.toLocaleString("en-IN") ?? "-"}
+                                      Vol {flow.chain_context?.strike_row?.pe?.volume?.toLocaleString("en-US") ?? "-"} | OI {flow.chain_context?.strike_row?.pe?.oi?.toLocaleString("en-US") ?? "-"}
                                     </div>
                                   </div>
                                 </div>
@@ -339,7 +339,7 @@ export function OptionsFlowPage() {
                               <div className="rounded border border-terminal-border bg-terminal-panel px-3 py-2">
                                 <div className="mb-2 text-[10px] uppercase tracking-wide text-terminal-muted">Signal Read</div>
                                 <div className="space-y-1 text-sm text-terminal-text">
-                                  <div>Avg Vol: {flow.avg_volume.toLocaleString("en-IN", { maximumFractionDigits: 0 })}</div>
+                                  <div>Avg Vol: {flow.avg_volume.toLocaleString("en-US", { maximumFractionDigits: 0 })}</div>
                                   <div>Vol Ratio: {flow.volume_ratio.toFixed(2)}x</div>
                                   <div>Heat: {flow.heat_score.toFixed(2)}</div>
                                   <div>Premium: {formatPremium(flow.premium_value)}</div>

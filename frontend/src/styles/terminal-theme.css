@@ -2340,3 +2340,46 @@ button.ot-home-widget-strip-chip:hover {
     display: none;
   }
 }
+
+/* Phone typography + form readability (do not shrink desktop) */
+@media (max-width: 767px) {
+  :root {
+    --ot-type-size-2xs: 12px;
+    --ot-type-size-xs: 12px;
+    --ot-type-size-sm: 13px;
+    --ot-type-size-md: 15px;
+    --ot-type-size-lg: 16px;
+    --ot-type-size-xl: 17px;
+    --ot-type-size-2xl: 18px;
+    --ot-type-size-3xl: 22px;
+    --ot-type-heading-xl-size: 22px;
+    --ot-type-heading-lg-size: 20px;
+    --ot-type-panel-title-size: 17px;
+    --ot-type-panel-subtitle-size: 14px;
+    --ot-type-body-size: 15px;
+    --ot-type-table-cell-size: 14px;
+    --ot-color-text-muted: #b0bac8;
+  }
+
+  .ot-input,
+  .ot-password-input,
+  input[type="text"],
+  input[type="search"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+
+  [data-testid="terminal-shell"] {
+    overflow-x: hidden;
+  }
+
+  .ot-type-data,
+  .font-mono,
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+}

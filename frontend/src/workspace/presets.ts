@@ -1,4 +1,4 @@
-import type { WorkspacePreset } from "../components/layout/TerminalShell";
+export type WorkspacePreset = "trader" | "quant" | "pm" | "risk" | "ops";
 
 export const WORKSPACE_PRESET_STORAGE_KEY = "ot:workspace:preset:v1";
 
