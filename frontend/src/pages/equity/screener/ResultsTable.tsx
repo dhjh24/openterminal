@@ -39,7 +39,7 @@ function formatCompact(value: unknown): string {
   if (abs >= 1_00_00_00_000) return `${(n / 1_00_00_00_000).toFixed(1)}L Cr`;
   if (abs >= 1_00_00_000) return `${(n / 1_00_00_000).toFixed(1)}Cr`;
   if (abs >= 1_00_000) return `${(n / 1_00_000).toFixed(1)}L`;
-  return n.toLocaleString("en-IN", { maximumFractionDigits: 0 });
+  return n.toLocaleString("en-US", { maximumFractionDigits: 0 });
 }
 
 function formatRatio(value: unknown): string {
@@ -57,7 +57,7 @@ function formatPct(value: unknown): string {
 function formatPrice(value: unknown): string {
   const n = toNum(value);
   if (!Number.isFinite(n) || n === 0) return "--";
-  return n.toLocaleString("en-IN", { maximumFractionDigits: 2 });
+  return n.toLocaleString("en-US", { maximumFractionDigits: 2 });
 }
 
 function getTicker(row: Record<string, unknown>): string {
@@ -315,7 +315,7 @@ export function ResultsTable({ framed = true }: ResultsTableProps) {
           <div className="grid gap-2 sm:grid-cols-3">
             <div className="rounded-md border border-terminal-border bg-terminal-bg/70 p-3">
               <div className="font-sans text-[11px] text-terminal-muted">Showing</div>
-              <div className="mt-1 font-sans text-lg font-semibold text-terminal-text">{visibleRows.length.toLocaleString("en-IN")} / {rows.length.toLocaleString("en-IN")}</div>
+              <div className="mt-1 font-sans text-lg font-semibold text-terminal-text">{visibleRows.length.toLocaleString("en-US")} / {rows.length.toLocaleString("en-US")}</div>
             </div>
             <div className="rounded-md border border-terminal-border bg-terminal-bg/70 p-3">
               <div className="font-sans text-[11px] text-terminal-muted">Avg ROE</div>

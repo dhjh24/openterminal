@@ -50,10 +50,10 @@ export function EarningsTrendTable({ symbol }: { symbol: string }) {
             {rows.map((row) => (
               <tr key={`${row.symbol}-${row.quarter}-${row.quarter_end_date}`} className="border-b border-terminal-border/50">
                 <td className="px-2 py-1">{row.quarter}</td>
-                <td className="px-2 py-1 text-right">{Number(row.revenue).toLocaleString("en-IN")}</td>
+                <td className="px-2 py-1 text-right">{Number(row.revenue).toLocaleString("en-US")}</td>
                 <td className="px-2 py-1 text-right">{pctCell(row.revenue_qoq_pct)}</td>
                 <td className="px-2 py-1 text-right">{pctCell(row.revenue_yoy_pct)}</td>
-                <td className="px-2 py-1 text-right">{Number(row.net_profit).toLocaleString("en-IN")}</td>
+                <td className="px-2 py-1 text-right">{Number(row.net_profit).toLocaleString("en-US")}</td>
                 <td className="px-2 py-1 text-right">{pctCell(row.net_profit_qoq_pct)}</td>
                 <td className="px-2 py-1 text-right">{pctCell(row.net_profit_yoy_pct)}</td>
                 <td className="px-2 py-1 text-right">{row.eps == null ? "-" : Number(row.eps).toFixed(2)}</td>

@@ -81,7 +81,7 @@ export function ChartEngine({
   showVolume,
   enableRealtime,
   height = 540,
-  market = "NSE",
+  market = "US",
   symbolIsFnO = false,
   onCrosshairOHLC,
   onTick,

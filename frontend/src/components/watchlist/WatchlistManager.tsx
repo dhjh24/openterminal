@@ -19,6 +19,12 @@ import { TerminalButton } from "../terminal/TerminalButton";
 import { TerminalInput } from "../terminal/TerminalInput";
 import { TerminalCombobox } from "../terminal/TerminalCombobox";
 import { SymbolContextMenu } from "../common/SymbolContextMenu";
+import { useNetworkStatus } from "../../hooks/useNetworkStatus";
+import {
+  loadWatchlistSnapshot,
+  saveWatchlistSnapshot,
+  type WatchlistSnapshot,
+} from "../../lib/watchlistSnapshot";
 
 const PULL_THRESHOLD = 30;
 const RELEASE_THRESHOLD = 70;
@@ -29,8 +35,16 @@ export function WatchlistManager() {
   const [searchParams] = useSearchParams();
   const selectedMarket = useSettingsStore(s => s.selectedMarket);
   const { formatDisplayMoney } = useDisplayCurrency();
+  const { online } = useNetworkStatus();
   const { subscribe, unsubscribe, connectionState } = useQuotesStream(selectedMarket);
   const ticksByToken = useQuotesStore(s => s.ticksByToken);
+  const [offlineSnapshot, setOfflineSnapshot] = useState<WatchlistSnapshot | null>(() => loadWatchlistSnapshot());
+
+  useEffect(() => {
+    if (!online) {
+      setOfflineSnapshot(loadWatchlistSnapshot());
+    }
+  }, [online]);
 
   const [activeWlId, setActiveWlId] = useState<string | null>(null);
   const [viewMode, setViewByMode] = useState<"table" | "heatmap">("table");
@@ -50,10 +64,24 @@ export function WatchlistManager() {
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Data fetching
-  const { data: watchlists, isLoading: loadingWl } = useQuery({
+  const { data: watchlistsOnline, isLoading: loadingWl } = useQuery({
     queryKey: ["watchlists"],
-    queryFn: fetchWatchlists
+    queryFn: fetchWatchlists,
+    enabled: online,
   });
+  const watchlists = online
+    ? watchlistsOnline
+    : offlineSnapshot
+      ? [
+          {
+            id: offlineSnapshot.watchlistId || "offline-snapshot",
+            name: offlineSnapshot.watchlistName || "Offline snapshot",
+            symbols: offlineSnapshot.symbols,
+            column_config: {},
+            created_at: offlineSnapshot.savedAt,
+          },
+        ]
+      : [];
 
   const activeWl = useMemo(() => {
     const nameParam = searchParams.get("name");
@@ -69,20 +97,20 @@ export function WatchlistManager() {
     if (activeWl && activeWlId !== activeWl.id) setActiveWlId(activeWl.id);
   }, [activeWl, activeWlId]);
 
-  // WebSocket Sync
+  // WebSocket Sync — never imply live connectivity while offline.
   useEffect(() => {
-    if (!activeWl?.symbols.length) return;
+    if (!online || !activeWl?.symbols.length) return;
     subscribe(activeWl.symbols);
     return () => unsubscribe(activeWl.symbols);
-  }, [activeWl?.symbols, subscribe, unsubscribe]);
+  }, [online, activeWl?.symbols, subscribe, unsubscribe]);
 
   // REST fallback: when no live tick has arrived (markets closed / feed idle),
   // show the last/snapshot price so the watchlist is never blank.
   const restQuotesQuery = useQuery({
     queryKey: ["watchlist-quotes", selectedMarket, activeWl?.symbols.join(",") || ""],
     queryFn: () => fetchQuotesBatch(activeWl?.symbols || [], selectedMarket),
-    enabled: Boolean(activeWl?.symbols.length),
-    refetchInterval: 30_000,
+    enabled: online && Boolean(activeWl?.symbols.length),
+    refetchInterval: online ? 30_000 : false,
     staleTime: 15_000,
   });
   const restBySymbol = useMemo(() => {
@@ -94,6 +122,14 @@ export function WatchlistManager() {
   }, [restQuotesQuery.data]);
   // Merge a live tick with the REST fallback so callers get a single quote view.
   const quoteFor = (symbol: string) => {
+    if (!online) {
+      const snap = offlineSnapshot?.quotes.find((q) => q.symbol.toUpperCase() === symbol.toUpperCase());
+      return {
+        ltp: snap?.ltp ?? undefined,
+        change_pct: snap?.change_pct ?? undefined,
+        volume: null as number | null,
+      };
+    }
     const live = ticksByToken[`${selectedMarket}:${symbol}`];
     const rest = restBySymbol[symbol.toUpperCase()];
     return {
@@ -102,6 +138,24 @@ export function WatchlistManager() {
       volume: live?.volume ?? null,
     };
   };
+
+  // Persist a clearly labeled offline snapshot when live/REST quotes succeed.
+  useEffect(() => {
+    if (!online || !activeWl?.symbols?.length) return;
+    const quotes = activeWl.symbols.map((symbol) => {
+      const q = quoteFor(symbol);
+      return { symbol, ltp: q.ltp ?? null, change_pct: q.change_pct ?? null };
+    });
+    if (!quotes.some((q) => q.ltp != null)) return;
+    saveWatchlistSnapshot({
+      savedAt: new Date().toISOString(),
+      market: selectedMarket,
+      watchlistId: activeWl.id,
+      watchlistName: activeWl.name,
+      symbols: [...activeWl.symbols],
+      quotes,
+    });
+  }, [online, activeWl?.id, activeWl?.name, activeWl?.symbols, restBySymbol, ticksByToken, selectedMarket]);
 
   // Mutations
   const createMut = useMutation({
@@ -202,8 +256,8 @@ export function WatchlistManager() {
       <aside className="w-full border-r border-terminal-border bg-terminal-panel lg:w-64 flex flex-col shrink-0">
         <div className="flex items-center justify-between border-b border-terminal-border p-3">
           <h2 className="text-xs font-bold uppercase tracking-widest text-terminal-muted">Watchlists</h2>
-          <button onClick={() => setIsCreating(true)} className="text-terminal-muted hover:text-terminal-accent">
-            <Plus size={16} />
+          <button onClick={() => setIsCreating(true)} className="inline-flex h-11 w-11 items-center justify-center text-terminal-muted hover:text-terminal-accent" aria-label="Add watchlist">
+            <Plus size={16} aria-hidden="true" />
           </button>
         </div>
 
@@ -260,23 +314,45 @@ export function WatchlistManager() {
               <>
                 <h1 className="text-sm font-bold uppercase text-terminal-accent">{activeWl.name}</h1>
                 <div className="rounded border border-terminal-border bg-terminal-bg px-2 py-0.5 ot-type-status uppercase text-terminal-muted" data-testid="watchlist-route-status">
-                  {selectedMarket} {connectionState}
+                  {selectedMarket}{" "}
+                  {online
+                    ? connectionState === "connected"
+                      ? "live"
+                      : connectionState
+                    : "offline snapshot"}
                 </div>
+                {!online ? (
+                  <div
+                    className="rounded border border-amber-700/50 bg-amber-950/40 px-2 py-0.5 ot-type-status text-amber-100"
+                    data-testid="watchlist-offline-snapshot-badge"
+                  >
+                    Snapshot only — not live
+                    {offlineSnapshot?.savedAt
+                      ? ` · ${new Date(offlineSnapshot.savedAt).toLocaleString()}`
+                      : ""}
+                  </div>
+                ) : null}
                 <div className="rounded border border-terminal-border bg-terminal-bg px-2 py-0.5 ot-type-status uppercase text-terminal-muted">
                   {activeWl.symbols.length} symbols
                 </div>
                 <div className="flex rounded border border-terminal-border p-0.5 bg-terminal-bg">
                   <button
+                    type="button"
                     onClick={() => setViewByMode("table")}
-                    className={`p-1 rounded-sm ${viewMode === 'table' ? 'bg-terminal-accent text-terminal-bg' : 'text-terminal-muted'}`}
+                    className={`inline-flex h-11 w-11 items-center justify-center rounded-sm ${viewMode === 'table' ? 'bg-terminal-accent text-terminal-bg' : 'text-terminal-muted'}`}
+                    aria-label="Table view"
+                    aria-pressed={viewMode === "table"}
                   >
-                    <Table size={14} />
+                    <Table size={14} aria-hidden="true" />
                   </button>
                   <button
+                    type="button"
                     onClick={() => setViewByMode("heatmap")}
-                    className={`p-1 rounded-sm ${viewMode === 'heatmap' ? 'bg-terminal-accent text-terminal-bg' : 'text-terminal-muted'}`}
+                    className={`inline-flex h-11 w-11 items-center justify-center rounded-sm ${viewMode === 'heatmap' ? 'bg-terminal-accent text-terminal-bg' : 'text-terminal-muted'}`}
+                    aria-label="Heatmap view"
+                    aria-pressed={viewMode === "heatmap"}
                   >
-                    <Grid3X3 size={14} />
+                    <Grid3X3 size={14} aria-hidden="true" />
                   </button>
                 </div>
               </>

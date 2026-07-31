@@ -40,7 +40,7 @@ const DELIVERY_CHANNELS = [
   { value: "discord", label: "Discord" },
 ] as const;
 
-const DEFAULT_CONDITION: AlertCondition = { field: "price", operator: "above", value: 2500, params: {} };
+const DEFAULT_CONDITION: AlertCondition = { field: "price", operator: "above", value: 0, params: {} };
 
 function conditionLabel(condition: AlertCondition): string {
   const field = FIELD_OPTIONS.find((option) => option.value === condition.field);

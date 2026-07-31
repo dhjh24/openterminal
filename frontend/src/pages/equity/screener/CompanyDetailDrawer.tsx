@@ -12,7 +12,7 @@ import { useScreenerContext } from "./ScreenerContext";
 function formatNum(value: unknown) {
   const n = Number(value || 0);
   if (!Number.isFinite(n)) return "--";
-  return n.toLocaleString("en-IN", { maximumFractionDigits: 2 });
+  return n.toLocaleString("en-US", { maximumFractionDigits: 2 });
 }
 
 function getTicker(row: Record<string, unknown> | null): string {

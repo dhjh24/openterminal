@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Eye, EyeOff } from "lucide-react";
 
 import { MarketTicker } from "../components/MarketTicker";
 import { StatusBar } from "../components/StatusBar";
@@ -174,8 +175,9 @@ export function LoginPage() {
                 className="ot-password-toggle"
                 onClick={() => setShowPassword((prev) => !prev)}
                 aria-label={showPassword ? "Hide password" : "Show password"}
+                aria-pressed={showPassword}
               >
-                {showPassword ? "?" : "?"}
+                {showPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
               </button>
             </div>
 

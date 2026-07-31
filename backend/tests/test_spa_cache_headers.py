@@ -22,9 +22,14 @@ def test_hashed_assets_are_immutable() -> None:
     }
 
 
+def test_sw_and_manifest_are_no_cache() -> None:
+    assert _cache_headers_for_path("sw.js") == {"Cache-Control": "no-cache"}
+    assert _cache_headers_for_path("manifest.json") == {"Cache-Control": "no-cache"}
+
+
 def test_unhashed_static_has_no_special_policy() -> None:
     assert _cache_headers_for_path("favicon.png") == {}
-    assert _cache_headers_for_path("manifest.json") == {}
+    assert _cache_headers_for_path("icons/icon-192.png") == {}
 
 
 def test_assets_prefix_even_without_hash() -> None:

@@ -143,15 +143,15 @@ export function PortfolioLabPage() {
             <div className="grid grid-cols-3 gap-2 text-xs md:min-w-[420px]">
               <div className="rounded-md border border-terminal-border bg-terminal-bg/70 p-3">
                 <div className="font-sans text-[11px] text-terminal-muted">Definitions</div>
-                <div className="mt-1 text-xl font-semibold text-terminal-text">{portfolios.isLoading ? "--" : portfolioCount.toLocaleString("en-IN")}</div>
+                <div className="mt-1 text-xl font-semibold text-terminal-text">{portfolios.isLoading ? "--" : portfolioCount.toLocaleString("en-US")}</div>
               </div>
               <div className="rounded-md border border-terminal-border bg-terminal-bg/70 p-3">
                 <div className="font-sans text-[11px] text-terminal-muted">Leaderboard</div>
-                <div className="mt-1 text-xl font-semibold text-terminal-text">{leaderboardQuery.isLoading ? "--" : leaderboardCount.toLocaleString("en-IN")}</div>
+                <div className="mt-1 text-xl font-semibold text-terminal-text">{leaderboardQuery.isLoading ? "--" : leaderboardCount.toLocaleString("en-US")}</div>
               </div>
               <div className="rounded-md border border-terminal-border bg-terminal-bg/70 p-3">
                 <div className="font-sans text-[11px] text-terminal-muted">Universe</div>
-                <div className="mt-1 text-xl font-semibold text-terminal-text">{tickerList.length.toLocaleString("en-IN")}</div>
+                <div className="mt-1 text-xl font-semibold text-terminal-text">{tickerList.length.toLocaleString("en-US")}</div>
               </div>
             </div>
           </div>

@@ -9,6 +9,27 @@
   min-height: 0;
 }
 
+@media (max-width: 767px) {
+  .chart-workstation {
+    height: auto;
+    min-height: 0;
+  }
+
+  .chart-workstation-grid-area {
+    min-height: max(320px, calc(100dvh - 12.5rem - env(safe-area-inset-bottom, 0px)));
+    height: max(320px, calc(100dvh - 12.5rem - env(safe-area-inset-bottom, 0px)));
+  }
+
+  .chart-workstation-grid-area .chart-grid {
+    height: 100%;
+    min-height: 320px;
+  }
+
+  .chart-panel-body {
+    touch-action: pan-x pinch-zoom;
+  }
+}
+
 .chart-grid {
   flex: 1;
   display: grid;
@@ -64,6 +85,33 @@
   flex: 1;
   min-height: 0;
   position: relative;
+}
+
+@media (max-width: 767px) {
+  .chart-workstation {
+    min-height: 0;
+    height: auto;
+  }
+
+  .chart-panel {
+    min-height: 360px;
+  }
+
+  .chart-panel-body {
+    min-height: 320px;
+    height: min(52dvh, calc(100dvh - 50px - 120px - 3.75rem - env(safe-area-inset-bottom, 0px)));
+    flex: none;
+  }
+
+  .chart-grid {
+    min-height: 320px;
+    height: auto;
+  }
+
+  .chart-panel-body .tv-lightweight-charts,
+  .chart-panel-body canvas {
+    max-width: 100%;
+  }
 }
 
 .chart-panel-footer {

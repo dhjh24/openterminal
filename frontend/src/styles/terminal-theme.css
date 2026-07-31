@@ -764,6 +764,11 @@
   color: var(--ot-muted);
   font-size: 14px;
   cursor: pointer;
+  min-width: 28px;
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .ot-password-toggle:hover {
@@ -1154,6 +1159,8 @@
   overflow-x: auto;
   padding-bottom: 2px;
   scrollbar-width: thin;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
 }
 
 .ot-home-widget-strip-chip {
@@ -1177,6 +1184,7 @@
 button.ot-home-widget-strip-chip {
   cursor: pointer;
   transition: border-color 0.16s ease, background 0.16s ease, box-shadow 0.16s ease;
+  scroll-snap-align: start;
 }
 
 button.ot-home-widget-strip-chip:hover {
@@ -1264,6 +1272,12 @@ button.ot-home-widget-strip-chip:hover {
 .ot-home-widget-nav-grid {
   display: grid;
   gap: 10px;
+}
+
+@media (max-width: 767px) {
+  .ot-home-widget-nav-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
 }
 
 .ot-home-widget-nav-tile {
@@ -1519,6 +1533,22 @@ button.ot-home-widget-strip-chip:hover {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+@media (max-width: 767px) {
+  .ot-home-widget-clock-strip {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 6px;
+    padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: thin;
+  }
+  .ot-home-widget-clock-chip {
+    scroll-snap-align: start;
+    flex: 0 0 auto;
+  }
 }
 
 .ot-home-widget-clock-chip {
@@ -2338,5 +2368,48 @@ button.ot-home-widget-strip-chip:hover {
 
   .ot-home-brand-text {
     display: none;
+  }
+}
+
+/* Phone typography + form readability (do not shrink desktop) */
+@media (max-width: 767px) {
+  :root {
+    --ot-type-size-2xs: 12px;
+    --ot-type-size-xs: 12px;
+    --ot-type-size-sm: 13px;
+    --ot-type-size-md: 15px;
+    --ot-type-size-lg: 16px;
+    --ot-type-size-xl: 17px;
+    --ot-type-size-2xl: 18px;
+    --ot-type-size-3xl: 22px;
+    --ot-type-heading-xl-size: 22px;
+    --ot-type-heading-lg-size: 20px;
+    --ot-type-panel-title-size: 17px;
+    --ot-type-panel-subtitle-size: 14px;
+    --ot-type-body-size: 15px;
+    --ot-type-table-cell-size: 14px;
+    --ot-color-text-muted: #b0bac8;
+  }
+
+  .ot-input,
+  .ot-password-input,
+  input[type="text"],
+  input[type="search"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+
+  [data-testid="terminal-shell"] {
+    overflow-x: hidden;
+  }
+
+  .ot-type-data,
+  .font-mono,
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
   }
 }

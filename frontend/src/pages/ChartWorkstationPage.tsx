@@ -2216,8 +2216,8 @@ export function ChartWorkstationPage() {
 
   return (
     <CrosshairSyncProvider enabled={linkSettings.crosshair}>
-      <div className="chart-workstation flex h-full flex-col bg-terminal-canvas text-terminal-text" data-testid="chart-workstation">
-        <div className="border-b border-terminal-border bg-terminal-panel px-3 py-3">
+      <div className="chart-workstation flex min-h-0 flex-col bg-terminal-canvas text-terminal-text md:h-full" data-testid="chart-workstation">
+        <div className="shrink-0 border-b border-terminal-border bg-terminal-panel px-2 py-2 md:px-3 md:py-3">
           <ChartShellToolbar
             dense={denseShell}
             visiblePaneCount={visibleSlots.length}
@@ -2309,7 +2309,7 @@ export function ChartWorkstationPage() {
             onSaveCurrentTemplate={handleSaveCurrentTemplate}
             onDrillInto={drillInto}
           />
-          <div className="mt-2 flex items-center justify-end gap-2">
+          <div className="mt-2 hidden items-center justify-end gap-2 md:flex">
             <SavedViewsControl
               pageLabel="Chart Workstation"
               capture={() => ({
@@ -2329,8 +2329,8 @@ export function ChartWorkstationPage() {
           </div>
         </div>
 
-        {/* Grid Area */}
-        <div className="relative flex-1 min-h-0 pb-16 md:pb-0">
+        {/* Grid Area — on phone use min height so chart is visible in first scroll */}
+        <div className="chart-workstation-grid-area relative min-h-[320px] md:min-h-0 md:flex-1 md:pb-0">
           <ChartGridContainer slotCount={visibleSlots.length} template={gridTemplate}>
             {visibleSlots.map((slot) => (
               <ChartPanel

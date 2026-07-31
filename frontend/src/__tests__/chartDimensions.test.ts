@@ -9,6 +9,12 @@ describe("chartDimensions hidden panels", () => {
     expect(isValidChartSize(1, 0)).toBe(false);
   });
 
+  it("rejects negative dimensions", () => {
+    expect(isValidChartSize(-1, 520)).toBe(false);
+    expect(isValidChartSize(100, -1)).toBe(false);
+    expect(isValidChartSize(-10, -10)).toBe(false);
+  });
+
   it("returns null when a hidden panel reports zero width", () => {
     const hidden = document.createElement("div");
     Object.defineProperty(hidden, "clientWidth", { value: 0, configurable: true });

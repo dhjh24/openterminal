@@ -107,6 +107,12 @@ function renderPage(initialEntries = ["/equity/chart-workstation"]) {
   );
 }
 
+async function openToolsDrawer() {
+  const tools = screen.queryByRole("button", { name: "Tools" });
+  if (tools) fireEvent.click(tools);
+  await waitFor(() => expect(screen.getByRole("button", { name: "Hide Tools" })).toBeInTheDocument());
+}
+
 describe("ChartWorkstationPage shell workflow", () => {
   beforeEach(() => {
     listChartTemplatesMock.mockClear();
@@ -137,7 +143,7 @@ describe("ChartWorkstationPage shell workflow", () => {
     fireEvent.click(screen.getByRole("button", { name: "MSFT" }));
     expect(screen.getByTestId("chart-shell-active-pane")).toHaveTextContent("Pane 2: MSFT");
 
-    fireEvent.click(screen.getByRole("button", { name: "15m" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "15m" })[0]);
 
     const state = useChartWorkstationStore.getState();
     expect(state.slots.find((slot) => slot.id === "slot-1")?.timeframe).toBe("1D");
@@ -149,13 +155,14 @@ describe("ChartWorkstationPage shell workflow", () => {
     renderPage();
 
     await waitFor(() => expect(listChartTemplatesMock).toHaveBeenCalled());
+    await openToolsDrawer();
 
     const firstPane = screen.getByTestId("mock-pane-slot-1");
     firstPane.focus();
     fireEvent.keyDown(firstPane, { key: "Tab" });
     await waitFor(() => expect(useChartWorkstationStore.getState().activeSlotId).toBe("slot-2"));
 
-    const replayButton = screen.getByTestId("chart-shell-replay-toggle");
+    const replayButton = screen.getAllByTestId("chart-shell-replay-toggle")[0];
     replayButton.focus();
     fireEvent.keyDown(replayButton, { key: "Tab" });
     expect(useChartWorkstationStore.getState().activeSlotId).toBe("slot-2");
@@ -168,6 +175,7 @@ describe("ChartWorkstationPage shell workflow", () => {
     renderPage();
 
     await waitFor(() => expect(listChartTemplatesMock).toHaveBeenCalled());
+    await openToolsDrawer();
 
     fireEvent.keyDown(window, { key: "i" });
     expect(chartPanelPropsBySlot.get("slot-1")?.panelCommand).toBeUndefined();
@@ -247,17 +255,18 @@ describe("ChartWorkstationPage shell workflow", () => {
     renderPage();
 
     await waitFor(() => expect(listChartTemplatesMock).toHaveBeenCalled());
+    await openToolsDrawer();
 
-    fireEvent.click(screen.getByTestId("chart-shell-replay-step-forward"));
+    fireEvent.click(screen.getAllByTestId("chart-shell-replay-step-forward")[0]);
     await waitFor(() => {
       expect(replayCommandMock).toHaveBeenCalledWith("slot-1", "stepForward", undefined);
       expect(replayCommandMock).toHaveBeenCalledWith("slot-2", "stepForward", undefined);
     });
 
-    fireEvent.change(screen.getByTestId("chart-shell-replay-date"), {
+    fireEvent.change(screen.getAllByTestId("chart-shell-replay-date")[0], {
       target: { value: "2026-03-03" },
     });
-    fireEvent.click(screen.getByTestId("chart-shell-replay-go-date"));
+    fireEvent.click(screen.getAllByTestId("chart-shell-replay-go-date")[0]);
 
     await waitFor(() => {
       expect(replayCommandMock).toHaveBeenCalledWith("slot-1", "goToDate", "2026-03-03");
@@ -269,13 +278,14 @@ describe("ChartWorkstationPage shell workflow", () => {
     renderPage();
 
     await waitFor(() => expect(listChartTemplatesMock).toHaveBeenCalled());
+    await openToolsDrawer();
     expect(chartPanelPropsBySlot.get("slot-1")?.isFullscreen).toBeFalsy();
 
-    fireEvent.click(screen.getByRole("button", { name: "Maximize Active" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Maximize Active" })[0]);
     await waitFor(() => expect(chartPanelPropsBySlot.get("slot-1")?.isFullscreen).toBe(true));
 
     fireEvent.click(screen.getByRole("button", { name: "Save Default" }));
-    fireEvent.click(screen.getByRole("button", { name: "15m" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "15m" })[0]);
     expect(useChartWorkstationStore.getState().slots.find((slot) => slot.id === "slot-1")?.timeframe).toBe("15m");
 
     fireEvent.click(screen.getAllByRole("button", { name: "Load Default" })[0]);
@@ -286,6 +296,7 @@ describe("ChartWorkstationPage shell workflow", () => {
     renderPage();
 
     await waitFor(() => expect(listChartTemplatesMock).toHaveBeenCalled());
+    await openToolsDrawer();
     const originalIds = useChartWorkstationStore.getState().slots.map((slot) => slot.id);
 
     fireEvent.click(screen.getByRole("button", { name: "+ Tab" }));
@@ -295,7 +306,7 @@ describe("ChartWorkstationPage shell workflow", () => {
     });
 
     fireEvent.click(screen.getAllByRole("button", { name: "Save Snapshot" })[0]);
-    fireEvent.click(screen.getByRole("button", { name: "15m" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "15m" })[0]);
     expect(useChartWorkstationStore.getState().slots[0]?.timeframe).toBe("15m");
 
     const idsAfterEdit = useChartWorkstationStore.getState().slots.map((slot) => slot.id);

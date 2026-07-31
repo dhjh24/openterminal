@@ -1,20 +1,23 @@
+import { formatCurrency, formatPercent } from "../lib/format";
+
+/** @deprecated Use formatCurrency(..., "USD") — US-only terminal. */
 export function formatInr(value?: number | null): string {
   if (value === undefined || value === null || Number.isNaN(value)) {
     return "-";
   }
-  const abs = Math.abs(value);
-  if (abs >= 1e7) {
-    return `\u20b9 ${(value / 1e7).toLocaleString("en-IN", { maximumFractionDigits: 2 })} Cr`;
+  return formatCurrency(value, "USD");
+}
+
+export function formatUsd(value?: number | null): string {
+  if (value === undefined || value === null || Number.isNaN(value)) {
+    return "-";
   }
-  if (abs >= 1e5) {
-    return `\u20b9 ${(value / 1e5).toLocaleString("en-IN", { maximumFractionDigits: 2 })} L`;
-  }
-  return `\u20b9 ${value.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
+  return formatCurrency(value, "USD");
 }
 
 export function formatPct(value?: number | null): string {
   if (value === undefined || value === null || Number.isNaN(value)) {
     return "-";
   }
-  return `${value.toFixed(2)}%`;
+  return formatPercent(value, { signed: false });
 }

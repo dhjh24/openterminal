@@ -6,10 +6,8 @@ services:
     image: openterminalui:latest
     ports:
       - "${APP_PORT:-8005}:8000"
-    # Load the full repo-root .env into the container (Compose also uses it for ${VAR} interpolation).
-    # Explicit `environment` entries below still win on conflicts. Never commit `.env`.
-    env_file:
-      - .env
+    # Compose still reads repo-root `.env` for ${VAR} interpolation when present.
+    # Do not use `env_file: .env` here — CI has no `.env` (gitignored) and would fail validation.
     environment:
       OPENTERMINALUI_ENV: "${OPENTERMINALUI_ENV:-development}"
       MARKET_PROFILE: "${MARKET_PROFILE:-US}"

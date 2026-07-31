@@ -409,6 +409,66 @@ async def search_news(
     return payload
 
 
+# Known company names for relevance matching on fallback searches.
+# Add entries as needed — generic fallback avoids false positives.
+TICKER_COMPANY_NAMES: dict[str, list[str]] = {
+    "NVDA": ["nvidia", "nvidia corporation"],
+    "AAPL": ["apple", "apple inc"],
+    "MSFT": ["microsoft", "microsoft corporation"],
+    "GOOGL": ["alphabet", "google"],
+    "GOOG": ["alphabet", "google"],
+    "AMZN": ["amazon", "amazon.com"],
+    "META": ["meta", "facebook"],
+    "TSLA": ["tesla", "tesla inc"],
+    "SPY": ["spdr s&p 500", "spy"],
+    "QQQ": ["invesco qqq", "qqq"],
+}
+
+
+def _is_relevant_for_ticker(
+    title: str,
+    summary: str,
+    symbol: str,
+) -> bool:
+    """Check whether an article's title or summary actually mentions the ticker.
+
+    Returns True if the symbol, company name, or an approved alias appears
+    as a whole word in the title or summary.  Case-insensitive.
+    """
+    text = f"{title or ''} {summary or ''}".lower()
+    sym_lower = symbol.lower()
+
+    # 1. Whole-word ticker symbol match (e.g. "NVDA", not "NVD").
+    if re.search(rf"(?<![a-z]){re.escape(sym_lower)}(?![a-z])", text):
+        return True
+
+    # 2. Company / product name match.
+    names = TICKER_COMPANY_NAMES.get(symbol.upper(), [])
+    for name in names:
+        if name.lower() in text:
+            return True
+
+    return False
+
+
+def _tag_matched_ticker(
+    item: dict[str, Any],
+    symbol: str,
+    matched: bool,
+) -> dict[str, Any]:
+    """Attach match metadata to a news item."""
+    item = {**item}
+    if matched:
+        item["matched_symbols"] = [symbol.upper()]
+        item["match_reason"] = "symbol_or_name_match"
+    else:
+        item["matched_symbols"] = []
+        item["match_reason"] = "market_fallback"
+        # Clear ticker-level sentiment for unmatched fallback articles.
+        if "sentiment" in item:
+            item["sentiment"] = {"score": 0.0, "label": "Neutral", "confidence": 0.0}
+    return item
+
 @router.get("/news/by-ticker/{ticker}")
 async def get_news_by_ticker(
     ticker: str,
@@ -442,6 +502,11 @@ async def get_news_by_ticker(
                 items = await _fetch_news_fallback(term, limit=limit)
                 if items:
                     break
+            # Filter fallback results to only include articles relevant to this ticker.
+            items = [
+                _tag_matched_ticker(item, symbol, _is_relevant_for_ticker(item["title"], item["summary"], symbol))
+                for item in items
+            ]
         payload = {"items": items}
     except OperationalError:
         fallback_items: list[dict[str, Any]] = []
@@ -449,6 +514,11 @@ async def get_news_by_ticker(
             fallback_items = await _fetch_news_fallback(term, limit=limit)
             if fallback_items:
                 break
+        # Filter fallback results for relevance.
+        fallback_items = [
+            _tag_matched_ticker(item, symbol, _is_relevant_for_ticker(item["title"], item["summary"], symbol))
+            for item in fallback_items
+        ]
         payload = {"items": fallback_items}
     finally:
         db.close()

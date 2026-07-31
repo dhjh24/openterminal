@@ -105,7 +105,7 @@ export function TopBar({ hideTickerLoader = false, hideMarketMarquee = false }: 
 
   const formatIndex = (value: number | null) => {
     if (value === null) return "0.00"; // Should not happen with backend fallbacks
-    return value.toLocaleString("en-IN", { maximumFractionDigits: 2 });
+    return value.toLocaleString("en-US", { maximumFractionDigits: 2 });
   };
   const formatFx = (value: number | null) => {
     if (value === null) return "83.15";
@@ -288,7 +288,7 @@ export function TopBar({ hideTickerLoader = false, hideMarketMarquee = false }: 
         >
           <img src={BRAND_ICON_SRC} alt="OpenTerminalUI" className="h-5 w-5 object-contain" />
         </Link>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="hidden shrink-0 items-center gap-2 lg:flex" data-testid="topbar-primary-nav">
           <Link className="rounded border border-terminal-border px-2 py-1 text-[11px] text-terminal-muted hover:text-terminal-text" to="/">
             HOME
           </Link>
