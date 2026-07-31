@@ -164,3 +164,67 @@ nav.fixed.bottom-0 {
     justify-content: flex-start !important;
   }
 }
+
+/* --- Mobile shell: compact header + bottom nav --- */
+@media (max-width: 767px) {
+  .ot-app-shell {
+    height: 100dvh;
+    max-height: 100dvh;
+  }
+
+  .ot-mobile-header {
+    min-height: 50px;
+  }
+
+  .ot-mobile-bottom-nav {
+    min-height: 56px;
+  }
+
+  /* Card flow: prefer single-column stacks; keep intentional swipe strips */
+  .ot-route-layer .ot-card-stack,
+  .ot-route-layer .space-y-3,
+  .ot-route-layer .space-y-4 {
+    max-width: 100%;
+  }
+
+  .ot-route-layer .grid.md\:grid-cols-2,
+  .ot-route-layer .grid.md\:grid-cols-3,
+  .ot-route-layer .grid.md\:grid-cols-4,
+  .ot-route-layer .grid.lg\:grid-cols-2,
+  .ot-route-layer .grid.lg\:grid-cols-3,
+  .ot-route-layer .grid.xl\:grid-cols-2 {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .ot-route-layer > * {
+    max-width: 100%;
+  }
+
+  /* Chart workstation: keep chart visible above the fold */
+  [data-testid="chart-workstation"] .chart-panel-body,
+  [data-testid="chart-workstation"] .ot-chart-host,
+  .chart-panel-body {
+    min-height: 320px;
+    height: min(52dvh, calc(100dvh - 50px - 96px - 3.75rem - env(safe-area-inset-bottom, 0px)));
+  }
+
+  /* Page headings / values */
+  h1,
+  .ot-page-title {
+    font-size: 1.375rem; /* 22px */
+    line-height: 1.25;
+  }
+
+  .ot-type-data,
+  .ot-price,
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  }
+
+  /* Hide floating agent on phones (More menu owns Agent) */
+  .ot-agent-launcher {
+    display: none !important;
+  }
+}
+

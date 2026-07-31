@@ -66,6 +66,20 @@
   position: relative;
 }
 
+@media (max-width: 767px) {
+  .chart-workstation {
+    min-height: 0;
+  }
+
+  .chart-panel-body {
+    min-height: 320px;
+  }
+
+  .chart-grid {
+    min-height: 320px;
+  }
+}
+
 .chart-panel-footer {
   display: flex;
   align-items: center;

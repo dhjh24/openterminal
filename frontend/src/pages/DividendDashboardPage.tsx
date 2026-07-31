@@ -90,7 +90,7 @@ export function DividendDashboardPage() {
         <div className="grid gap-3 lg:grid-cols-3">
           <TerminalPanel title="Annual Projection" className="lg:col-span-1">
             <div className="text-3xl font-bold text-terminal-pos mt-4">
-              ₹{income.annual_income.toLocaleString()}
+              ${income.annual_income.toLocaleString()}
             </div>
             <p className="text-xs text-terminal-muted mt-2">Projected income based on current holdings</p>
           </TerminalPanel>

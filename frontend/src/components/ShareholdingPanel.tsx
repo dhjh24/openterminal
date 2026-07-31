@@ -72,7 +72,7 @@ function formatPct(value: number): string {
 
 function formatInt(value?: number | null): string {
   if (value == null || !Number.isFinite(value)) return "-";
-  return new Intl.NumberFormat("en-IN").format(Math.trunc(value));
+  return new Intl.NumberFormat("en-US").format(Math.trunc(value));
 }
 
 function getQoQ(trend: ShareholdingTrendPoint[] | undefined, key: keyof ShareholdingTrendPoint): number {

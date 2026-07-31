@@ -377,7 +377,7 @@ export function ChartShellToolbar({
     : "Select a pane to drive shell actions";
   const replayScopeLabel = linkSettings.replay && activeLinkGroup !== "off" ? `Replay Link ${activeLinkGroup}` : "Replay Active";
   const rangeScopeLabel = linkSettings.dateRange && activeLinkGroup !== "off" ? `Range Link ${activeLinkGroup}` : "Range Active";
-  const [toolsOpen, setToolsOpen] = useState(true);
+  const [toolsOpen, setToolsOpen] = useState(false);
 
   return (
     <div

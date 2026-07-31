@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 
 import { addTaxLot, realizeTaxLots } from "../../api/client";
 import type { TaxLotSummary } from "../../types";
-import { formatInr } from "../../utils/formatters";
+import { formatUsd } from "../../utils/formatters";
 
 export function TaxLotManager({ data, onRefresh }: { data: TaxLotSummary | null; onRefresh: () => Promise<void> }) {
   const [ticker, setTicker] = useState("AAPL");
@@ -23,7 +23,7 @@ export function TaxLotManager({ data, onRefresh }: { data: TaxLotSummary | null;
     <div className="rounded border border-terminal-border bg-terminal-panel p-3">
       <div className="mb-2 flex items-center justify-between">
         <div className="text-sm font-semibold text-terminal-accent">Tax Lot Manager</div>
-        <div className="text-xs text-terminal-muted">Unrealized: {formatInr(unrealized)}</div>
+        <div className="text-xs text-terminal-muted">Unrealized: {formatUsd(unrealized)}</div>
       </div>
       <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
         <input className="rounded border border-terminal-border bg-terminal-bg px-2 py-2 text-xs" value={ticker} onChange={(e) => setTicker(e.target.value.toUpperCase())} />
@@ -64,7 +64,7 @@ export function TaxLotManager({ data, onRefresh }: { data: TaxLotSummary | null;
               const specific_lot_ids = method === "SPECIFIC" ? lotsByTicker.slice(0, Math.ceil(sellQty)).map((x) => x.id) : undefined;
               const out = await realizeTaxLots({ ticker, quantity: sellQty, sell_price: sellPrice, sell_date: sellDate, method, specific_lot_ids });
               await onRefresh();
-              setMessage(`Realized gain: ${formatInr(out.realized_gain_total)} | STCG ${formatInr(out.short_term_gain)} | LTCG ${formatInr(out.long_term_gain)}`);
+              setMessage(`Realized gain: ${formatUsd(out.realized_gain_total)} | STCG ${formatUsd(out.short_term_gain)} | LTCG ${formatUsd(out.long_term_gain)}`);
             } catch (e) {
               setMessage(e instanceof Error ? e.message : "Failed to realize lots");
             }
@@ -96,9 +96,9 @@ export function TaxLotManager({ data, onRefresh }: { data: TaxLotSummary | null;
                 <td className="px-2 py-1">{r.ticker}</td>
                 <td className="px-2 py-1 text-right">{r.quantity}</td>
                 <td className="px-2 py-1 text-right">{r.remaining_quantity}</td>
-                <td className="px-2 py-1 text-right">{formatInr(r.buy_price)}</td>
+                <td className="px-2 py-1 text-right">{formatUsd(r.buy_price)}</td>
                 <td className="px-2 py-1">{r.buy_date}</td>
-                <td className="px-2 py-1 text-right">{formatInr(r.unrealized_gain ?? 0)}</td>
+                <td className="px-2 py-1 text-right">{formatUsd(r.unrealized_gain ?? 0)}</td>
               </tr>
             ))}
           </tbody>

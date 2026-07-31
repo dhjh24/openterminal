@@ -3,7 +3,7 @@ import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 
 import { deleteMutualFundHolding, fetchMutualFundPortfolio } from "../../api/client";
 import type { PortfolioMutualFund } from "../../types";
-import { formatInr } from "../../utils/formatters";
+import { formatUsd } from "../../utils/formatters";
 import { TerminalPanel } from "../terminal/TerminalPanel";
 
 const COLORS = ["#ff9f1a", "#00c176", "#4f91ff", "#ff4d4f", "#ffb74d", "#8e98a8"];
@@ -66,16 +66,16 @@ export function MutualFundPortfolioSection({ refreshToken = 0 }: Props) {
         <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
           <div className="rounded-md border border-terminal-border bg-terminal-bg/70 p-3">
             <div className="text-[11px] uppercase tracking-wide text-terminal-muted">Total Invested</div>
-            <div className="mt-1 text-lg font-semibold text-terminal-text">{formatInr(summary.total_invested)}</div>
+            <div className="mt-1 text-lg font-semibold text-terminal-text">{formatUsd(summary.total_invested)}</div>
           </div>
           <div className="rounded-md border border-terminal-border bg-terminal-bg/70 p-3">
             <div className="text-[11px] uppercase tracking-wide text-terminal-muted">Current Value</div>
-            <div className="mt-1 text-lg font-semibold text-terminal-text">{formatInr(summary.total_current_value)}</div>
+            <div className="mt-1 text-lg font-semibold text-terminal-text">{formatUsd(summary.total_current_value)}</div>
           </div>
           <div className="rounded-md border border-terminal-border bg-terminal-bg/70 p-3">
             <div className="text-[11px] uppercase tracking-wide text-terminal-muted">Unrealized P&L</div>
             <div className={`mt-1 text-lg font-semibold ${summary.total_pnl >= 0 ? "text-terminal-pos" : "text-terminal-neg"}`}>
-              {formatInr(summary.total_pnl)}
+              {formatUsd(summary.total_pnl)}
             </div>
           </div>
           <div className="rounded-md border border-terminal-border bg-terminal-bg/70 p-3">
@@ -115,9 +115,9 @@ export function MutualFundPortfolioSection({ refreshToken = 0 }: Props) {
                       <td className="px-2 py-1 text-right">{row.units.toFixed(2)}</td>
                       <td className="px-2 py-1 text-right">{row.avg_nav.toFixed(2)}</td>
                       <td className="px-2 py-1 text-right">{row.current_nav.toFixed(2)}</td>
-                      <td className="px-2 py-1 text-right">{formatInr(row.invested_amount)}</td>
-                      <td className="px-2 py-1 text-right">{formatInr(row.current_value)}</td>
-                      <td className={`px-2 py-1 text-right ${row.pnl >= 0 ? "text-terminal-pos" : "text-terminal-neg"}`}>{formatInr(row.pnl)}</td>
+                      <td className="px-2 py-1 text-right">{formatUsd(row.invested_amount)}</td>
+                      <td className="px-2 py-1 text-right">{formatUsd(row.current_value)}</td>
+                      <td className={`px-2 py-1 text-right ${row.pnl >= 0 ? "text-terminal-pos" : "text-terminal-neg"}`}>{formatUsd(row.pnl)}</td>
                       <td className={`px-2 py-1 text-right ${row.pnl_pct >= 0 ? "text-terminal-pos" : "text-terminal-neg"}`}>{row.pnl_pct.toFixed(2)}%</td>
                       <td className="px-2 py-1 text-right">
                         <button

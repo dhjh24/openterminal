@@ -555,7 +555,7 @@ export function HomePage() {
   );
 
   const updatedLabel = snapshot.updatedAt
-    ? new Date(snapshot.updatedAt).toLocaleTimeString("en-IN", { hour12: false })
+    ? new Date(snapshot.updatedAt).toLocaleTimeString("en-US", { hour12: false })
     : "--:--:--";
 
   const profileMissingFields = useMemo(() => {
