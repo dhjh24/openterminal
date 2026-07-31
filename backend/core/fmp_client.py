@@ -16,7 +16,11 @@ class FMPClient:
     BASE_URL = "https://financialmodelingprep.com/stable"
 
     def __init__(self, api_key: Optional[str] = None, timeout: float = 12.0):
-        self.api_key = api_key or os.getenv("FMP_API_KEY", "")
+        self.api_key = (
+            (api_key or "").strip()
+            or (os.getenv("FMP_API_KEY") or "").strip()
+            or (os.getenv("OPENTERMINALUI_FMP_API_KEY") or "").strip()
+        )
         self.timeout = timeout
         self.client: Optional[httpx.AsyncClient] = None
         self.disabled = False

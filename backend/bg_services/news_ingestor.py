@@ -124,13 +124,31 @@ class NewsIngestor:
     def __init__(self) -> None:
         self._scheduler: Any = None
         self._lock = asyncio.Lock()
+        self._last_attempt_at: str | None = None
+        self._last_success_at: str | None = None
         self._last_ingest_at: str | None = None
         self._last_ingest_status: str = "never"
+        self._last_provider: str | None = None
+        self._last_candidates: int = 0
+        self._last_inserted: int = 0
+        self._last_duplicates: int = 0
+        self._last_rejected: int = 0
+        self._last_failure_code: str | None = None
+        self._next_run_at: str | None = None
 
-    def status_snapshot(self) -> dict[str, str | None]:
+    def status_snapshot(self) -> dict[str, Any]:
         return {
             "last_news_ingest_at": self._last_ingest_at,
             "last_news_ingest_status": self._last_ingest_status,
+            "last_attempt_at": self._last_attempt_at,
+            "last_success_at": self._last_success_at,
+            "next_run_at": self._next_run_at,
+            "last_provider": self._last_provider,
+            "candidate_count": self._last_candidates,
+            "inserted_count": self._last_inserted,
+            "duplicate_count": self._last_duplicates,
+            "rejected_count": self._last_rejected,
+            "failure_code": self._last_failure_code,
         }
 
     async def start(self) -> None:
@@ -142,20 +160,30 @@ class NewsIngestor:
         except Exception as exc:
             logger.warning("News ingestor disabled: APScheduler unavailable (%s)", exc)
             self._last_ingest_status = "scheduler_unavailable"
+            self._last_failure_code = "scheduler_unavailable"
             return
+        interval_minutes = 3
+        try:
+            import os
+
+            interval_minutes = max(1, int(os.getenv("NEWS_INGEST_INTERVAL_MINUTES", "3")))
+        except Exception:
+            interval_minutes = 3
         scheduler = AsyncIOScheduler(timezone="UTC")
+        next_run = datetime.now(timezone.utc)
         scheduler.add_job(
             self._run_safe,
-            trigger=IntervalTrigger(minutes=3),
+            trigger=IntervalTrigger(minutes=interval_minutes),
             id="news-ingestor",
             max_instances=1,
             coalesce=True,
             replace_existing=True,
-            next_run_time=datetime.now(timezone.utc),
+            next_run_time=next_run,
         )
         scheduler.start()
         self._scheduler = scheduler
-        logger.info("event=news_ingestor_scheduler_started interval_minutes=3")
+        self._next_run_at = next_run.isoformat()
+        logger.info("event=news_ingestor_scheduler_started interval_minutes=%s", interval_minutes)
 
     async def stop(self) -> None:
         if not self._scheduler:
@@ -165,38 +193,95 @@ class NewsIngestor:
         logger.info("event=news_ingestor_scheduler_stopped")
 
     async def _run_safe(self) -> None:
+        # Process-local lock prevents overlap within one worker.
+        if self._lock.locked():
+            logger.info("event=news_ingest_skip reason=overlap")
+            return
         async with self._lock:
             started_at = _now_iso()
+            self._last_attempt_at = started_at
             self._last_ingest_at = started_at
+            self._last_failure_code = None
             logger.info("event=news_ingest_run_start at=%s", started_at)
             try:
                 inserted = await self.ingest_once()
-                self._last_ingest_status = f"ok:{inserted}"
+                if inserted > 0:
+                    self._last_ingest_status = f"ok:{inserted}"
+                    self._last_success_at = _now_iso()
+                elif self._last_failure_code:
+                    self._last_ingest_status = f"error:{self._last_failure_code}"
+                else:
+                    self._last_ingest_status = "empty:0"
                 logger.info("event=news_ingest_run_complete inserted=%s", inserted)
             except Exception as exc:
                 self._last_ingest_status = "error"
-                logger.warning("News ingest run failed: %s", exc)
+                self._last_failure_code = type(exc).__name__
+                logger.warning("News ingest run failed: %s", type(exc).__name__)
+            finally:
+                try:
+                    job = self._scheduler.get_job("news-ingestor") if self._scheduler else None
+                    if job and job.next_run_time is not None:
+                        self._next_run_at = job.next_run_time.astimezone(timezone.utc).isoformat()
+                except Exception:
+                    pass
 
     async def ingest_once(self) -> int:
         fetcher = await get_unified_fetcher()
         items: list[NormalizedNews] = []
+        providers_ok: list[str] = []
+        providers_failed: list[str] = []
 
-        # Always try to fetch news for tracked tickers from Yahoo (works well for India)
+        # U.S. cascade-style ingest: Yahoo (broad), Finnhub, FMP.
         yahoo_items = await self._fetch_yahoo(fetcher)
-        items.extend(yahoo_items)
+        if yahoo_items:
+            providers_ok.append("yahoo")
+            items.extend(yahoo_items)
+        else:
+            providers_failed.append("yahoo")
 
         if fetcher.finnhub.api_key:
-            items.extend(await self._fetch_finnhub(fetcher))
+            fh_items = await self._fetch_finnhub(fetcher)
+            if fh_items:
+                providers_ok.append("finnhub")
+                items.extend(fh_items)
+            else:
+                providers_failed.append("finnhub")
         if fetcher.fmp.api_key:
-            items.extend(await self._fetch_fmp(fetcher))
+            fmp_items = await self._fetch_fmp(fetcher)
+            if fmp_items:
+                providers_ok.append("fmp")
+                items.extend(fmp_items)
+            else:
+                providers_failed.append("fmp")
+
+        self._last_provider = ",".join(providers_ok) if providers_ok else None
+        self._last_candidates = len(items)
 
         if not items:
-            self._last_ingest_status = "ok:0"
-            logger.info("event=news_ingest_no_items")
+            # Distinguish provider failure from true empty success.
+            if providers_failed and not providers_ok:
+                self._last_failure_code = "providers_failed"
+                self._last_ingest_status = "error:providers_failed"
+            else:
+                self._last_failure_code = None
+                self._last_ingest_status = "empty:0"
+            logger.info("event=news_ingest_no_items providers_failed=%s", providers_failed)
+            self._last_inserted = 0
+            self._last_duplicates = 0
+            self._last_rejected = 0
             return 0
 
-        inserted = await asyncio.to_thread(self._store_news, items)
-        logger.info("event=news_ingest_store inserted=%s candidates=%s", inserted, len(items))
+        inserted, duplicates, rejected = await asyncio.to_thread(self._store_news_detailed, items)
+        self._last_inserted = inserted
+        self._last_duplicates = duplicates
+        self._last_rejected = rejected
+        logger.info(
+            "event=news_ingest_store inserted=%s candidates=%s duplicates=%s rejected=%s",
+            inserted,
+            len(items),
+            duplicates,
+            rejected,
+        )
         return inserted
 
     async def _fetch_yahoo(self, fetcher: Any) -> list[NormalizedNews]:
@@ -204,7 +289,6 @@ class NewsIngestor:
         out: list[NormalizedNews] = []
         for ticker in tickers:
             try:
-                # Replicate Yahoo news search logic for background ingest
                 query = f"{ticker} stock news"
                 rows = await fetcher.yahoo.search_news(query, limit=10)
                 for row in rows:
@@ -213,9 +297,12 @@ class NewsIngestor:
                     if not title or not url:
                         continue
 
-                    # Sentiment and normalization
                     text = f"{title}. {str(row.get('summary') or '').strip()}".strip()
-                    sentiment = score_article_sentiment(text)
+                    sentiment = score_article_sentiment(text) if len(text) >= 3 else {
+                        "score": 0.0,
+                        "label": "Neutral",
+                        "confidence": 0.0,
+                    }
 
                     item = NormalizedNews(
                         source=str(row.get("publisher") or "Yahoo Finance").strip() or "Yahoo Finance",
@@ -231,7 +318,7 @@ class NewsIngestor:
                     )
                     out.append(item)
             except Exception as e:
-                logger.warning("Yahoo ingest failed for %s: %s", ticker, e)
+                logger.warning("Yahoo ingest failed for %s: %s", ticker, type(e).__name__)
                 continue
         return self._dedupe(out)
 
@@ -271,8 +358,12 @@ class NewsIngestor:
         return list(by_url.values())
 
     def _store_news(self, items: list[NormalizedNews]) -> int:
+        inserted, _, _ = self._store_news_detailed(items)
+        return inserted
+
+    def _store_news_detailed(self, items: list[NormalizedNews]) -> tuple[int, int, int]:
         if not items:
-            return 0
+            return 0, 0, 0
         db = SessionLocal()
         try:
             urls = [i.url for i in items if i.url]
@@ -280,9 +371,15 @@ class NewsIngestor:
                 str(row[0]) for row in db.query(NewsArticle.url).filter(NewsArticle.url.in_(urls)).all() if row and row[0]
             }
             inserted = 0
+            duplicates = 0
+            rejected = 0
             now_iso = _now_iso()
             for item in items:
-                if not item.url or item.url in existing:
+                if not item.url or not item.title:
+                    rejected += 1
+                    continue
+                if item.url in existing:
+                    duplicates += 1
                     continue
                 db.add(
                     NewsArticle(
@@ -300,12 +397,13 @@ class NewsIngestor:
                     )
                 )
                 inserted += 1
+                existing.add(item.url)
             if inserted:
                 db.commit()
-            return inserted
+            return inserted, duplicates, rejected
         except Exception:
             db.rollback()
-            return 0
+            return 0, 0, 0
         finally:
             db.close()
 

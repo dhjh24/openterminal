@@ -51,19 +51,37 @@ async def datasource_health() -> dict[str, Any]:
 async def news_provider_health() -> dict[str, Any]:
     """Boolean-only news provider readiness (never returns secret values)."""
     from backend.bg_services.news_ingestor import get_news_ingestor
+    from backend.services.news_cascade import get_news_cascade
     from backend.services.news_provider_status import build_news_provider_status
 
     fetcher = await get_unified_fetcher()
     ingestor = get_news_ingestor()
     scheduler = getattr(ingestor, "_scheduler", None)
     scheduler_running = bool(scheduler is not None and getattr(scheduler, "running", False))
+
+    cascade = get_news_cascade()
+    probes = await cascade.probe_providers(fetcher)
+    probe_payload = [
+        {
+            "name": p.name,
+            "configured": p.configured,
+            "status": p.status,
+            "last_checked": p.last_checked,
+            "last_success": p.last_success,
+            "latency_ms": p.latency_ms,
+            "detail": p.detail,
+        }
+        for p in probes
+    ]
     status = build_news_provider_status(
         finnhub_key=getattr(fetcher.finnhub, "api_key", None),
         fmp_key=getattr(fetcher.fmp, "api_key", None),
         news_scheduler_running=scheduler_running,
+        probes=probe_payload,
+        ingest=ingestor.status_snapshot(),
     )
     return {
         "status": "ok",
         "providers": status,
-        "ingest": ingestor.status_snapshot(),
+        "ingest": status.get("ingest") or ingestor.status_snapshot(),
     }

@@ -24,9 +24,8 @@ from backend.db.models import NewsArticle
 
 router = APIRouter()
 
-US_MARKETS = {"NYSE", "NASDAQ"}
-IN_MARKETS = {"NSE", "BSE"}
-SUPPORTED_MARKETS = US_MARKETS | IN_MARKETS
+US_MARKETS = {"NYSE", "NASDAQ", "US"}
+SUPPORTED_MARKETS = US_MARKETS
 
 _HTML_RE = re.compile(r"<[^>]+>")
 
@@ -46,38 +45,22 @@ def _stable_id(url: str, title: str, published_at: str) -> str:
     return hashlib.sha1(key).hexdigest()[:16]
 
 
-def _normalize_items(rows: list[dict[str, Any]]) -> list[dict[str, str]]:
-    dedup: dict[str, dict[str, str]] = {}
-    for row in rows:
-        url = str(row.get("url") or row.get("link") or "").strip()
-        title = str(row.get("headline") or row.get("title") or "").strip()
-        if not url or not title:
-            continue
-        source = str(row.get("source") or row.get("site") or "Unknown").strip() or "Unknown"
-        summary = str(row.get("summary") or row.get("text") or "").strip()
-        published_at = _to_iso_from_epoch(row.get("datetime")) or str(row.get("publishedAt") or "").strip()
-        if not published_at:
-            published_at = datetime.now(timezone.utc).isoformat()
-        item = {
-            "id": _stable_id(url, title, published_at),
-            "title": title,
-            "source": source,
-            "publishedAt": published_at,
-            "url": url,
-            "summary": summary,
-        }
-        dedup[url] = item
+def _normalize_items(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Normalize provider rows into the canonical article shape (both timestamp keys)."""
+    from backend.services.news_cascade import NewsCascade
 
-    def _sort_key(item: dict[str, str]) -> float:
-        try:
-            return datetime.fromisoformat(item["publishedAt"].replace("Z", "+00:00")).timestamp()
-        except Exception:
-            return 0.0
-
-    return sorted(dedup.values(), key=_sort_key, reverse=True)
+    cascade = NewsCascade()
+    # Heuristic: Finnhub-shaped rows have datetime/headline; FMP has publishedDate/site.
+    if rows and isinstance(rows[0], dict) and ("datetime" in rows[0] or "headline" in rows[0]):
+        return cascade._normalize_finnhub(rows, fallback=False)
+    if rows and isinstance(rows[0], dict) and ("publishedDate" in rows[0] or "site" in rows[0]):
+        return cascade._normalize_fmp(rows, fallback=True)
+    return cascade._normalize_yahoo(rows, fallback=True)
 
 
 def _row_to_item(row: NewsArticle) -> dict[str, Any]:
+    from backend.services.news_quality import build_article, freshness_label
+
     tickers: list[str] = []
     try:
         parsed = json.loads(row.tickers or "[]")
@@ -86,6 +69,24 @@ def _row_to_item(row: NewsArticle) -> dict[str, Any]:
     except Exception:
         tickers = []
     sentiment = _row_sentiment(row)
+    article = build_article(
+        title=row.title or "",
+        url=row.url or "",
+        source=row.source or "Unknown",
+        published_at=row.published_at,
+        summary=row.summary or "",
+        image_url=row.image_url or "",
+        tickers=tickers,
+        provider=str(getattr(row, "provider", None) or row.source or "database"),
+        sentiment=sentiment,
+        fallback_used=False,
+    )
+    if article:
+        article["id"] = row.id or article["id"]
+        article["freshness"] = freshness_label(str(article.get("published_at") or ""))
+        return article
+    # Fallback minimal payload if quality gate rejects (keep feed non-empty for legacy rows).
+    ts = row.published_at or datetime.now(timezone.utc).isoformat()
     return {
         "id": row.id,
         "source": row.source,
@@ -93,9 +94,13 @@ def _row_to_item(row: NewsArticle) -> dict[str, Any]:
         "url": row.url,
         "summary": row.summary,
         "image_url": row.image_url,
-        "published_at": row.published_at,
+        "published_at": ts,
+        "publishedAt": ts,
         "tickers": tickers,
         "sentiment": sentiment,
+        "provider": "database",
+        "fallback_used": False,
+        "freshness": freshness_label(ts),
     }
 
 
@@ -132,33 +137,25 @@ def _ticker_aliases(symbol: str, market: str | None = None) -> list[str]:
     base = symbol.strip().upper()
     if not base:
         return []
-    aliases = {base}
-    mkt = (market or "").strip().upper()
-    if mkt in {"NSE", "IN"}:
-        aliases.add(f"{base}.NS")
-    if mkt in {"BSE"}:
-        aliases.add(f"{base}.BO")
-    if not mkt:
-        aliases.update({f"{base}.NS", f"{base}.BO"})
-    return sorted(aliases)
+    # U.S.-only: bare ticker (no .NS / .BO India aliases).
+    _ = market  # retained for call-site compatibility
+    return [base]
 
 
 def _ticker_fallback_terms(symbol: str, market: str | None = None) -> list[str]:
     base = symbol.strip().upper()
-    mkt = (market or "").strip().upper()
-    terms = [f"{base} stock", base]
-    if mkt in {"NSE", "IN"}:
-        terms = [f"{base} NSE India stock", f"{base} NSE", *terms]
-    elif mkt == "BSE":
-        terms = [f"{base} BSE India stock", f"{base} BSE", *terms]
-    return list(dict.fromkeys([t for t in terms if t.strip()]))
+    _ = market
+    return list(dict.fromkeys([f"{base} stock", f"{base} earnings", base, f"{base} NYSE NASDAQ"]))
 
 
 def _validate_market(market: str) -> str:
     market_code = market.strip().upper()
+    # Map legacy India codes to US so old clients do not hard-fail.
+    if market_code in {"NSE", "BSE", "IN", "INDIA"}:
+        raise HTTPException(status_code=400, detail="India markets are not supported. Use NYSE or NASDAQ.")
     if market_code not in SUPPORTED_MARKETS:
         raise HTTPException(status_code=400, detail=f"Unsupported market: {market_code}")
-    return market_code
+    return "NASDAQ" if market_code == "US" else market_code
 
 
 def _strip_html(text: str) -> str:
@@ -270,71 +267,95 @@ async def _fetch_yahoo_news(query: str, limit: int = 50) -> list[dict[str, Any]]
 
 
 async def _fetch_news_fallback(query: str, limit: int = 50) -> list[dict[str, Any]]:
-    # Priority: Yahoo search API (usually available without keys), then Google RSS.
-    yahoo_rows = await _fetch_yahoo_news(query, limit=limit)
-    if yahoo_rows:
-        return yahoo_rows[:limit]
-    return await _fetch_google_news_rss(query, limit=limit)
+    from backend.services.news_cascade import get_news_cascade
+
+    fetcher = await get_unified_fetcher()
+    cascade = get_news_cascade()
+    result = await cascade.fetch_query_news(fetcher, query, limit=limit)
+    return result.items[:limit]
 
 
 async def _fallback_latest_news(limit: int = 50) -> list[dict[str, Any]]:
-    queries = ["stock market", "business finance", "global markets"]
-    rows: list[dict[str, Any]] = []
-    for q in queries:
-        rows.extend(await _fetch_news_fallback(q, limit=limit))
-    dedup: dict[str, dict[str, Any]] = {}
-    for row in rows:
-        url = str(row.get("url") or "").strip()
-        if url:
-            dedup[url] = row
-    items = list(dedup.values())
-    items.sort(key=lambda x: str(x.get("published_at") or ""), reverse=True)
-    return items[:limit]
+    from backend.services.news_cascade import get_news_cascade
+
+    fetcher = await get_unified_fetcher()
+    cascade = get_news_cascade()
+    result = await cascade.fetch_broad_us_news(fetcher, limit=limit)
+    return result.items[:limit]
+
+
+def _list_payload(items: list[dict[str, Any]], *, meta: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Canonical list contract: both `items` and `results` for callers."""
+    payload: dict[str, Any] = {"items": items, "results": items}
+    if meta:
+        payload["meta"] = meta
+    return payload
 
 
 @router.get("/news/symbol")
 async def get_symbol_news(
-    market: str = Query(..., description="NSE|BSE|NYSE|NASDAQ"),
+    market: str = Query(..., description="NYSE|NASDAQ|US"),
     symbol: str = Query(..., min_length=1, max_length=24),
     limit: int = Query(default=30, ge=1, le=100),
 ) -> dict[str, Any]:
-    market_code = _validate_market(market)
+    from backend.services.news_cascade import get_news_cascade
+
+    _validate_market(market)
     ticker = symbol.strip().upper()
-
-    if market_code in IN_MARKETS:
-        # For Indian markets, use our news fallback mechanism (Yahoo search)
-        items = await _fetch_news_fallback(f"{ticker} NSE", limit=limit)
-        return {"items": items[:limit], "results": items[:limit]}
-
     fetcher = await get_unified_fetcher()
-    rows = await fetcher.get_company_news(ticker, limit=limit)
-    items = _normalize_items(rows if isinstance(rows, list) else [])
+    cascade = get_news_cascade()
+    result = await cascade.fetch_symbol_news(fetcher, ticker, limit=limit)
+    items = result.items[:limit]
     if not items:
-        for term in _ticker_fallback_terms(ticker, market_code):
-            items = await _fetch_news_fallback(term, limit=limit)
-            if items:
-                break
-    return {"items": items[:limit], "results": items[:limit]}
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "news_unavailable",
+                "message": f"No U.S. news available for {ticker}",
+                "providers_tried": result.providers_tried,
+                "errors": result.errors,
+            },
+        )
+    return _list_payload(
+        items,
+        meta={
+            "provider": result.winning_provider,
+            "fallback_used": result.fallback_used,
+            "providers_tried": result.providers_tried,
+        },
+    )
 
 
 @router.get("/news/market")
 async def get_market_news(
-    market: str = Query(..., description="NSE|BSE|NYSE|NASDAQ"),
+    market: str = Query(..., description="NYSE|NASDAQ|US"),
     limit: int = Query(default=30, ge=1, le=100),
 ) -> dict[str, Any]:
-    market_code = _validate_market(market)
+    from backend.services.news_cascade import get_news_cascade
 
-    if market_code in IN_MARKETS:
-        # Use fallback for Indian market news
-        items = await _fetch_news_fallback("NSE Nifty Indian Stock Market", limit=limit)
-        return {"items": items[:limit], "results": items[:limit]}
-
+    _validate_market(market)
     fetcher = await get_unified_fetcher()
-    rows = await fetcher.get_market_news(category="general", limit=limit)
-    items = _normalize_items(rows if isinstance(rows, list) else [])
+    cascade = get_news_cascade()
+    result = await cascade.fetch_market_news(fetcher, limit=limit)
+    items = result.items[:limit]
     if not items:
-        items = await _fetch_news_fallback("US stock market Wall Street Nasdaq S&P 500", limit=limit)
-    return {"items": items[:limit], "results": items[:limit]}
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "news_unavailable",
+                "message": "No U.S. market news available from configured providers",
+                "providers_tried": result.providers_tried,
+                "errors": result.errors,
+            },
+        )
+    return _list_payload(
+        items,
+        meta={
+            "provider": result.winning_provider,
+            "fallback_used": result.fallback_used,
+            "providers_tried": result.providers_tried,
+        },
+    )
 
 
 
@@ -351,9 +372,9 @@ async def get_latest_news(limit: int = Query(default=50, ge=1, le=200)) -> dict[
         items = [_row_to_item(row) for row in rows]
         if not items:
             items = await _fallback_latest_news(limit=limit)
-        payload = {"items": items}
+        payload = _list_payload(items)
     except OperationalError:
-        payload = {"items": await _fallback_latest_news(limit=limit)}
+        payload = _list_payload(await _fallback_latest_news(limit=limit))
     finally:
         db.close()
 
@@ -395,9 +416,25 @@ async def search_news(
         items = [_row_to_item(row) for row in rows]
         if not items:
             items = await _fetch_news_fallback(term, limit=limit)
-        payload = {"items": items}
+        if not items:
+            raise HTTPException(
+                status_code=503,
+                detail={
+                    "code": "news_unavailable",
+                    "message": f"No news results for query",
+                },
+            )
+        payload = _list_payload(items)
+    except HTTPException:
+        raise
     except OperationalError:
-        payload = {"items": await _fetch_news_fallback(term, limit=limit)}
+        items = await _fetch_news_fallback(term, limit=limit)
+        if not items:
+            raise HTTPException(
+                status_code=503,
+                detail={"code": "news_unavailable", "message": "No news results for query"},
+            )
+        payload = _list_payload(items)
     finally:
         db.close()
 
@@ -473,12 +510,16 @@ def _tag_matched_ticker(
 async def get_news_by_ticker(
     ticker: str,
     limit: int = Query(default=50, ge=1, le=200),
-    market: str | None = Query(default=None, description="Optional market context e.g. NSE/BSE/NASDAQ"),
+    market: str | None = Query(default=None, description="Optional market context e.g. NYSE/NASDAQ/US"),
 ) -> dict[str, Any]:
+    from backend.services.news_cascade import get_news_cascade
+
     symbol = ticker.strip().upper()
     if not isinstance(market, str):
         market = None
     market_code = (market or "").strip().upper() or None
+    if market_code in {"NSE", "BSE", "IN", "INDIA"}:
+        raise HTTPException(status_code=400, detail="India markets are not supported. Use NYSE or NASDAQ.")
     cache_key = cache_instance.build_key("news_latest", f"ticker:{symbol}", {"limit": limit, "market": market_code or ""})
     cached = await cache_instance.get(cache_key)
     if cached:
@@ -497,29 +538,31 @@ async def get_news_by_ticker(
         )
         items = [_row_to_item(row) for row in rows]
         if not items:
-            items = []
-            for term in _ticker_fallback_terms(symbol, market_code):
-                items = await _fetch_news_fallback(term, limit=limit)
-                if items:
-                    break
-            # Filter fallback results to only include articles relevant to this ticker.
+            fetcher = await get_unified_fetcher()
+            cascade = get_news_cascade()
+            result = await cascade.fetch_symbol_news(fetcher, symbol, limit=limit)
             items = [
-                _tag_matched_ticker(item, symbol, _is_relevant_for_ticker(item["title"], item["summary"], symbol))
-                for item in items
+                _tag_matched_ticker(
+                    item,
+                    symbol,
+                    _is_relevant_for_ticker(str(item.get("title") or ""), str(item.get("summary") or ""), symbol),
+                )
+                for item in result.items
             ]
-        payload = {"items": items}
+        payload = _list_payload(items)
     except OperationalError:
-        fallback_items: list[dict[str, Any]] = []
-        for term in _ticker_fallback_terms(symbol, market_code):
-            fallback_items = await _fetch_news_fallback(term, limit=limit)
-            if fallback_items:
-                break
-        # Filter fallback results for relevance.
+        fetcher = await get_unified_fetcher()
+        cascade = get_news_cascade()
+        result = await cascade.fetch_symbol_news(fetcher, symbol, limit=limit)
         fallback_items = [
-            _tag_matched_ticker(item, symbol, _is_relevant_for_ticker(item["title"], item["summary"], symbol))
-            for item in fallback_items
+            _tag_matched_ticker(
+                item,
+                symbol,
+                _is_relevant_for_ticker(str(item.get("title") or ""), str(item.get("summary") or ""), symbol),
+            )
+            for item in result.items
         ]
-        payload = {"items": fallback_items}
+        payload = _list_payload(fallback_items)
     finally:
         db.close()
 
@@ -534,9 +577,11 @@ async def get_news_by_ticker(
 @router.get("/news/sentiment/market")
 async def get_market_sentiment(
     days: int = Query(default=7, ge=1, le=30),
-    market: str | None = Query(default=None, description="Optional market context e.g. NSE/BSE/NASDAQ"),
+    market: str | None = Query(default=None, description="Optional market context e.g. NYSE/NASDAQ/US"),
 ) -> dict[str, Any]:
     market_code = (market or "").strip().upper()
+    if market_code in {"NSE", "BSE", "IN", "INDIA"}:
+        raise HTTPException(status_code=400, detail="India markets are not supported. Use NYSE or NASDAQ.")
     cache_key = cache_instance.build_key("news_latest", "sentiment:market", {"days": days, "market": market_code})
     cached = await cache_instance.get(cache_key)
     if cached:
@@ -738,12 +783,14 @@ async def get_news_sentiment_summary(
 async def get_news_sentiment(
     ticker: str,
     days: int = Query(default=7, ge=1, le=30),
-    market: str | None = Query(default=None, description="Optional market context e.g. NSE/BSE/NASDAQ"),
+    market: str | None = Query(default=None, description="Optional market context e.g. NYSE/NASDAQ/US"),
 ) -> dict[str, Any]:
     if not isinstance(market, str):
         market = None
     symbol = ticker.strip().upper()
     market_code = (market or "").strip().upper() or None
+    if market_code in {"NSE", "BSE", "IN", "INDIA"}:
+        raise HTTPException(status_code=400, detail="India markets are not supported. Use NYSE or NASDAQ.")
     cache_key = cache_instance.build_key("news_latest", f"sentiment:{symbol}", {"days": days, "market": market_code or ""})
     cached = await cache_instance.get(cache_key)
     if cached:

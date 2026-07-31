@@ -13,7 +13,11 @@ class FinnhubClient:
     BASE_URL = "https://finnhub.io/api/v1"
 
     def __init__(self, api_key: Optional[str] = None, timeout: float = 12.0):
-        self.api_key = api_key or os.getenv("FINNHUB_API_KEY", "")
+        self.api_key = (
+            (api_key or "").strip()
+            or (os.getenv("FINNHUB_API_KEY") or "").strip()
+            or (os.getenv("OPENTERMINALUI_FINNHUB_API_KEY") or "").strip()
+        )
         self.timeout = timeout
         self.client: Optional[httpx.AsyncClient] = None
         self.disabled = False
