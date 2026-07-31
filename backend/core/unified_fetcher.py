@@ -139,10 +139,20 @@ class UnifiedFetcher:
 
     @classmethod
     def build_default(cls) -> "UnifiedFetcher":
+        # Prefer process env; fall back to AppSettings so yaml / OPENTERMINALUI_* aliases work.
+        try:
+            from backend.config.settings import get_settings
+
+            settings = get_settings()
+            fmp_key = (getattr(settings, "fmp_api_key", None) or "").strip() or None
+            finnhub_key = (getattr(settings, "finnhub_api_key", None) or "").strip() or None
+        except Exception:
+            fmp_key = None
+            finnhub_key = None
         return cls(
             yahoo=YahooClient(),
-            fmp=FMPClient(),
-            finnhub=FinnhubClient(),
+            fmp=FMPClient(api_key=fmp_key),
+            finnhub=FinnhubClient(api_key=finnhub_key),
         )
 
     async def startup(self) -> None:
@@ -473,24 +483,40 @@ class UnifiedFetcher:
 
     async def get_company_news(self, ticker: str, limit: int = 30) -> list[dict[str, Any]]:
         symbol = ticker.strip().upper()
-        if not symbol or not self.finnhub.api_key:
+        if not symbol:
             return []
-        try:
-            rows = await self.finnhub.get_company_news(symbol, limit=limit)
-            return [row for row in rows if isinstance(row, dict)] if isinstance(rows, list) else []
-        except Exception as exc:
-            logger.debug("Finnhub company news failed for %s: %s", symbol, exc)
-            return []
+        if self.finnhub.api_key:
+            try:
+                rows = await self.finnhub.get_company_news(symbol, limit=limit)
+                if isinstance(rows, list) and rows:
+                    return [row for row in rows if isinstance(row, dict)][:limit]
+            except Exception as exc:
+                logger.debug("Finnhub company news failed for %s: %s", symbol, exc)
+        if self.fmp.api_key:
+            try:
+                rows = await self.fmp.get_stock_news(symbol, limit=limit)
+                if isinstance(rows, list) and rows:
+                    return [row for row in rows if isinstance(row, dict)][:limit]
+            except Exception as exc:
+                logger.debug("FMP company news failed for %s: %s", symbol, exc)
+        return []
 
     async def get_market_news(self, category: str = "general", limit: int = 30) -> list[dict[str, Any]]:
-        if not self.finnhub.api_key:
-            return []
-        try:
-            rows = await self.finnhub.get_market_news(category=category, limit=limit)
-            return [row for row in rows if isinstance(row, dict)] if isinstance(rows, list) else []
-        except Exception as exc:
-            logger.debug("Finnhub market news failed for %s: %s", category, exc)
-            return []
+        if self.finnhub.api_key:
+            try:
+                rows = await self.finnhub.get_market_news(category=category, limit=limit)
+                if isinstance(rows, list) and rows:
+                    return [row for row in rows if isinstance(row, dict)][:limit]
+            except Exception as exc:
+                logger.debug("Finnhub market news failed for %s: %s", category, exc)
+        if self.fmp.api_key:
+            try:
+                rows = await self.fmp.get_stock_news_latest(limit=limit)
+                if isinstance(rows, list) and rows:
+                    return [row for row in rows if isinstance(row, dict)][:limit]
+            except Exception as exc:
+                logger.debug("FMP market news failed: %s", exc)
+        return []
 
     async def fetch_depth(self, ticker: str, levels: int = 10) -> MarketDepth:
         symbol = ticker.strip().upper()

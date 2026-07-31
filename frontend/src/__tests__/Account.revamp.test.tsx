@@ -67,9 +67,17 @@ vi.mock("@tanstack/react-query", async () => {
         fmp_configured: true,
         yahoo_fallback: "available",
         google_news_rss_fallback: "available",
+        connected_count: 4,
+        providers: {
+          finnhub: { configured: true, status: "connected" },
+          fmp: { configured: true, status: "connected" },
+          yahoo: { configured: true, status: "connected" },
+          google_rss: { configured: true, status: "connected" },
+        },
         news_scheduler: "running",
       },
       isLoading: false,
+      isError: false,
       error: null,
     }),
   };
@@ -179,7 +187,7 @@ describe("AccountPage revamp", () => {
     expect(screen.getByText("Shortcut Panel")).toBeInTheDocument();
     expect(screen.getByDisplayValue("Momentum Desk")).toBeInTheDocument();
     expect(screen.getByRole("progressbar", { name: "Identity completion" })).toHaveAttribute("aria-valuenow", "100");
-    expect(screen.getAllByText("4/4 online").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("4/4 connected").length).toBeGreaterThan(0);
   });
 
   it("saves typed profile and routing changes back to localStorage and settings store", async () => {

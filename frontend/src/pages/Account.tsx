@@ -136,14 +136,44 @@ function configuredIntegrations(providers: {
   fmp_configured?: boolean;
   yahoo_fallback?: string;
   google_news_rss_fallback?: string;
+  connected_count?: number;
+  providers?: Record<
+    string,
+    {
+      configured?: boolean;
+      status?: string;
+      last_checked?: string | null;
+      last_success?: string | null;
+    }
+  >;
 } | null): number {
   if (!providers) return 0;
+  if (typeof providers.connected_count === "number") return providers.connected_count;
   let count = 0;
+  const nested = providers.providers;
+  if (nested) {
+    for (const entry of Object.values(nested)) {
+      if (["connected", "available", "configured", "degraded"].includes(String(entry?.status || ""))) {
+        count += 1;
+      }
+    }
+    return count;
+  }
   if (providers.finnhub_configured) count += 1;
   if (providers.fmp_configured) count += 1;
-  if (providers.yahoo_fallback === "available") count += 1;
-  if (providers.google_news_rss_fallback === "available") count += 1;
+  if (providers.yahoo_fallback === "available" || providers.yahoo_fallback === "connected") count += 1;
+  if (
+    providers.google_news_rss_fallback === "available" ||
+    providers.google_news_rss_fallback === "connected"
+  ) {
+    count += 1;
+  }
   return count;
+}
+
+function providerStatusLabel(status: string | undefined, configured?: boolean): string {
+  if (!status) return configured ? "configured" : "not configured";
+  return status.replace(/_/g, " ");
 }
 
 function initials(profile: AccountProfile, email: string): string {
@@ -284,11 +314,28 @@ export function AccountPage() {
           yahoo_fallback: string;
           google_news_rss_fallback: string;
           news_scheduler: string;
+          connected_count?: number;
+          provider_count?: number;
+          providers?: Record<
+            string,
+            {
+              configured?: boolean;
+              status?: string;
+              last_checked?: string | null;
+              last_success?: string | null;
+            }
+          >;
+          ingest?: {
+            last_news_ingest_at?: string | null;
+            last_success_at?: string | null;
+            last_news_ingest_status?: string | null;
+          };
         };
       }>("/health/news-providers");
       return data.providers;
     },
     staleTime: 30_000,
+    retry: 1,
   });
 
   useEffect(() => {
@@ -389,10 +436,14 @@ export function AccountPage() {
     },
     {
       id: "integrations",
-      label: "Integrations",
-      value: `${integrationCount}/4 online`,
-      detail: aggregators.webhookUrl.trim() ? "Webhook armed for export flows" : "Webhook pending",
-      tone: integrationCount >= 2 ? "success" : "warn",
+      label: "Provider status",
+      value: providerStatusQuery.isLoading
+        ? "Checking…"
+        : providerStatusQuery.isError
+          ? "Unavailable"
+          : `${integrationCount}/4 connected`,
+      detail: aggregators.webhookUrl.trim() ? "Webhook configured (untested)" : "Webhook optional",
+      tone: providerStatusQuery.isError ? "warn" : integrationCount >= 2 ? "success" : "warn",
     },
     {
       id: "activity",
@@ -893,36 +944,67 @@ export function AccountPage() {
         </TerminalPanel>
 
         <TerminalPanel
-          title="Integrations & Recovery"
-          subtitle="Server news providers (booleans only) and webhook routing"
+          title="Provider Status"
+          subtitle="Live server health for Finnhub, FMP, Yahoo Finance, and Google News RSS"
           actions={
-            <TerminalBadge variant={integrationCount >= 2 ? "success" : "warn"}>{integrationCount}/4 online</TerminalBadge>
+            <TerminalBadge variant={providerStatusQuery.isError ? "warn" : integrationCount >= 2 ? "success" : "warn"}>
+              {providerStatusQuery.isLoading
+                ? "Checking…"
+                : providerStatusQuery.isError
+                  ? "Unavailable"
+                  : `${integrationCount}/4 connected`}
+            </TerminalBadge>
           }
         >
           <div className="grid grid-cols-1 gap-3 text-xs md:grid-cols-2">
-            <div className="rounded-sm border border-terminal-border/70 bg-terminal-bg/45 px-3 py-3">
-              <div className="text-[10px] uppercase tracking-[0.14em] text-terminal-muted">Finnhub</div>
-              <div className="mt-1 text-terminal-text">
-                {providerStatusQuery.data?.finnhub_configured ? "configured" : "not configured"}
-              </div>
-            </div>
-            <div className="rounded-sm border border-terminal-border/70 bg-terminal-bg/45 px-3 py-3">
-              <div className="text-[10px] uppercase tracking-[0.14em] text-terminal-muted">FMP</div>
-              <div className="mt-1 text-terminal-text">
-                {providerStatusQuery.data?.fmp_configured ? "configured" : "not configured"}
-              </div>
-            </div>
-            <div className="rounded-sm border border-terminal-border/70 bg-terminal-bg/45 px-3 py-3">
-              <div className="text-[10px] uppercase tracking-[0.14em] text-terminal-muted">Yahoo fallback</div>
-              <div className="mt-1 text-terminal-text">{providerStatusQuery.data?.yahoo_fallback || "unknown"}</div>
-            </div>
-            <div className="rounded-sm border border-terminal-border/70 bg-terminal-bg/45 px-3 py-3">
-              <div className="text-[10px] uppercase tracking-[0.14em] text-terminal-muted">Google News RSS</div>
-              <div className="mt-1 text-terminal-text">
-                {providerStatusQuery.data?.google_news_rss_fallback || "unknown"}
-              </div>
-            </div>
-            <label className="md:col-span-2">
+            {(
+              [
+                ["finnhub", "Finnhub", providerStatusQuery.data?.finnhub_configured],
+                ["fmp", "FMP", providerStatusQuery.data?.fmp_configured],
+                ["yahoo", "Yahoo Finance", true],
+                ["google_rss", "Google News RSS", true],
+              ] as const
+            ).map(([key, label, configuredFallback]) => {
+              const nested = providerStatusQuery.data?.providers?.[key];
+              const status =
+                nested?.status ||
+                (key === "yahoo"
+                  ? providerStatusQuery.data?.yahoo_fallback
+                  : key === "google_rss"
+                    ? providerStatusQuery.data?.google_news_rss_fallback
+                    : configuredFallback
+                      ? "configured"
+                      : "missing_key");
+              return (
+                <div key={key} className="rounded-sm border border-terminal-border/70 bg-terminal-bg/45 px-3 py-3">
+                  <div className="text-[10px] uppercase tracking-[0.14em] text-terminal-muted">{label}</div>
+                  <div className="mt-1 text-terminal-text">{providerStatusLabel(status, Boolean(configuredFallback))}</div>
+                  {nested?.last_success ? (
+                    <div className="mt-1 text-[10px] text-terminal-muted">
+                      Last success: {new Date(nested.last_success).toLocaleString()}
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-3 rounded-sm border border-terminal-border/70 bg-terminal-bg/45 px-3 py-3 text-[11px] leading-5 text-terminal-muted">
+            Provider API keys stay on the server (`.env` / Docker). This page never stores provider secrets in
+            localStorage. Scheduler: {providerStatusQuery.data?.news_scheduler || "unknown"}
+            {providerStatusQuery.data?.ingest?.last_news_ingest_at
+              ? ` · Last ingest: ${new Date(providerStatusQuery.data.ingest.last_news_ingest_at).toLocaleString()}`
+              : ""}
+            {providerStatusQuery.data?.ingest?.last_news_ingest_status
+              ? ` (${providerStatusQuery.data.ingest.last_news_ingest_status})`
+              : ""}
+            .
+          </div>
+        </TerminalPanel>
+
+        <TerminalPanel title="Webhook" subtitle="Optional export routing — active only after a successful test">
+          <div className="grid grid-cols-1 gap-3 text-xs">
+            <label>
               Webhook URL
               <input
                 className={INPUT_CLASS_NAME}
@@ -931,12 +1013,10 @@ export function AccountPage() {
                 placeholder="https://example.com/hooks/trading"
               />
             </label>
-          </div>
-
-          <div className="mt-3 rounded-sm border border-terminal-border/70 bg-terminal-bg/45 px-3 py-3 text-[11px] leading-5 text-terminal-muted">
-            Provider API keys stay on the server (`.env` / Docker). This page never stores provider secrets in
-            localStorage. Only the webhook URL is saved in the browser vault with profile and desk routing.
-            Scheduler: {providerStatusQuery.data?.news_scheduler || "unknown"}.
+            <div className="text-[11px] leading-5 text-terminal-muted">
+              Webhook is stored in the browser vault with profile settings. It is not marked active until a successful
+              delivery test is added.
+            </div>
           </div>
         </TerminalPanel>
       </div>

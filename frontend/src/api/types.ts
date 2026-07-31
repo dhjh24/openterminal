@@ -473,6 +473,10 @@ export type NewsApiItem = {
   summary?: string;
   sentiment?: number | { label: string; score: number; confidence: number };
   ticker?: string;
+  tickers?: string[];
+  provider?: string;
+  fallback_used?: boolean;
+  freshness?: string;
 };
 
 export type NewsLatestApiItem = {
@@ -480,12 +484,16 @@ export type NewsLatestApiItem = {
   title: string;
   url: string;
   published_at: string;
+  publishedAt?: string;
   source: string;
   summary?: string;
   tickers?: string[];
   sentiment_score?: number;
   sentiment_label?: string;
   sentiment?: { label: string; score: number; confidence: number };
+  provider?: string;
+  fallback_used?: boolean;
+  freshness?: string;
 };
 
 export type NewsSentimentSummary = {
