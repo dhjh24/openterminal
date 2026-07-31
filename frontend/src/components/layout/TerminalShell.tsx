@@ -16,6 +16,8 @@ import { MobileBottomNav } from "./MobileBottomNav";
 import { MobileHeader } from "./MobileHeader";
 import { MobileSearchSheet } from "./MobileSearchSheet";
 import { WorkspacePresetSheet, WorkspacePresetTrigger } from "./WorkspacePresetSheet";
+import { WorkspacePresetSelector } from "./WorkspacePresetSelector";
+import { WorkspaceOnboardingDialog } from "./WorkspaceOnboardingDialog";
 import { IconRail } from "./IconRail";
 import { StatusBar } from "./StatusBar";
 import { TopBar } from "./TopBar";
@@ -33,9 +35,17 @@ import { TerminalSelect } from "../terminal/TerminalSelect";
 import { HotKeyPanelFloat } from "../trading/HotKeyPanelFloat";
 import { useKeyboardShortcuts } from "../../hooks/useKeyboardShortcuts";
 import { ShortcutOverlay } from "../common/ShortcutOverlay";
-import { WORKSPACE_PRESET_STORAGE_KEY } from "../../workspace/presets";
+import {
+  WORKSPACE_PRESET_STORAGE_KEY,
+  announceWorkspacePresetChange,
+  getWorkspacePresetConfig,
+  hasCompletedWorkspaceOnboarding,
+  markWorkspaceOnboardingComplete,
+  writeWorkspacePreset,
+  type WorkspacePreset,
+} from "../../workspace/presets";
 
-export type WorkspacePreset = "trader" | "quant" | "pm" | "risk" | "ops";
+export type { WorkspacePreset };
 
 type TerminalShellContextValue = {
   preset: WorkspacePreset;
@@ -46,15 +56,6 @@ type TerminalShellContextValue = {
 };
 
 const TerminalShellContext = createContext<TerminalShellContextValue | null>(null);
-
-const PRESET_OPTIONS: Array<{ id: WorkspacePreset; label: string }> = [
-  { id: "trader", label: "Trader" },
-  { id: "quant", label: "Quant" },
-  { id: "pm", label: "PM" },
-  { id: "risk", label: "Risk" },
-  { id: "ops", label: "Ops" },
-];
-
 type RightRailSection = {
   id: string;
   title: string;
@@ -125,12 +126,18 @@ function DefaultRightRail({ title, sections }: { title: string; sections: RightR
 
 function WorkspaceControlBar({
   preset,
-  setPreset,
+  onApply,
+  onApplyAndOpen,
   rightRailEnabled,
   rightRailOpen,
   toggleRightRail,
-}: Pick<TerminalShellContextValue, "preset" | "setPreset" | "rightRailOpen" | "toggleRightRail"> & {
+}: {
+  preset: WorkspacePreset;
+  onApply: (preset: WorkspacePreset) => void;
+  onApplyAndOpen: (preset: WorkspacePreset) => void;
   rightRailEnabled: boolean;
+  rightRailOpen: boolean;
+  toggleRightRail: () => void;
 }) {
   const themeVariant = useSettingsStore((s) => s.themeVariant);
   const setThemeVariant = useSettingsStore((s) => s.setThemeVariant);
@@ -143,32 +150,16 @@ function WorkspaceControlBar({
   const decorativeEffects = useSettingsStore((s) => s.decorativeEffects);
   const setDecorativeEffects = useSettingsStore((s) => s.setDecorativeEffects);
 
-  const applyPreset = (nextPreset: WorkspacePreset) => {
-    setPreset(nextPreset);
-    window.dispatchEvent(new CustomEvent("ot:preset-change", { detail: nextPreset }));
-  };
-
   return (
     <div className="flex items-center justify-between gap-2 overflow-x-auto border-b border-terminal-border bg-terminal-panel/90 px-3 py-1.5 backdrop-blur">
       <div className="flex min-w-0 shrink-0 items-center gap-2">
-        <span className="ot-type-label-compact text-terminal-muted">Workspace preset</span>
-        <div className="flex flex-nowrap items-center gap-1" role="group" aria-label="Workspace presets">
-          {PRESET_OPTIONS.map((option) => (
-            <button
-              key={option.id}
-              type="button"
-              onClick={() => applyPreset(option.id)}
-              title={`Switch to ${option.label} workspace preset`}
-              className={`rounded-sm border px-2 py-1 ot-type-label-compact ${
-                preset === option.id
-                  ? "border-terminal-accent bg-terminal-accent/10 text-terminal-accent"
-                  : "border-terminal-border text-terminal-muted hover:text-terminal-text"
-              }`}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
+        <span className="ot-type-label-compact text-terminal-muted">Workspace</span>
+        <WorkspacePresetSelector
+          variant="desktop"
+          preset={preset}
+          onApply={onApply}
+          onApplyAndOpen={onApplyAndOpen}
+        />
       </div>
       <div className="hidden shrink-0 items-center gap-2 md:flex">
         <label className="hidden items-center gap-1 text-[11px] text-terminal-muted lg:inline-flex">
@@ -276,6 +267,8 @@ export function TerminalShell({
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
   const [presetSheetOpen, setPresetSheetOpen] = useState(false);
+  const [onboardingOpen, setOnboardingOpen] = useState(false);
+  const [presetAnnouncement, setPresetAnnouncement] = useState("");
   const fetchUnreadCount = useNotificationStore((s) => s.fetchUnreadCount);
   const { isInitializing, isAuthenticated } = useAuth();
 
@@ -316,9 +309,33 @@ export function TerminalShell({
     return () => window.clearInterval(timer);
   }, [fetchUnreadCount, isInitializing, isAuthenticated]);
 
-  const applyPreset = (nextPreset: WorkspacePreset) => {
+  useEffect(() => {
+    if (!showWorkspaceControls) return;
+    if (hasCompletedWorkspaceOnboarding()) return;
+    setOnboardingOpen(true);
+  }, [showWorkspaceControls]);
+
+  const applyPreset = (nextPreset: WorkspacePreset, options?: { openLanding?: boolean }) => {
     setPreset(nextPreset);
-    window.dispatchEvent(new CustomEvent("ot:preset-change", { detail: nextPreset }));
+    // Persist immediately so Apply-and-open navigation does not remount with a stale preset.
+    writeWorkspacePreset(nextPreset);
+    const config = getWorkspacePresetConfig(nextPreset);
+    const announcement = options?.openLanding
+      ? `Switched to ${config.label} workspace and opened ${config.landing.headline}.`
+      : `Switched to ${config.label} workspace. Primary action is now ${config.landing.primaryLabel}.`;
+    setPresetAnnouncement(announcement);
+    announceWorkspacePresetChange(nextPreset, { opened: Boolean(options?.openLanding) });
+    if (options?.openLanding) {
+      navigate(config.landing.primaryRoute);
+    }
+  };
+
+  const finishOnboarding = (nextPreset?: WorkspacePreset) => {
+    markWorkspaceOnboardingComplete();
+    setOnboardingOpen(false);
+    if (nextPreset) {
+      applyPreset(nextPreset);
+    }
   };
 
   return (
@@ -359,7 +376,8 @@ export function TerminalShell({
             <div className={mobileNavEnabled ? "hidden md:block" : undefined}>
               <WorkspaceControlBar
                 preset={preset}
-                setPreset={setPreset}
+                onApply={(next) => applyPreset(next)}
+                onApplyAndOpen={(next) => applyPreset(next, { openLanding: true })}
                 rightRailEnabled={hasRightRail}
                 rightRailOpen={rightRailOpen}
                 toggleRightRail={() => setRightRailOpen(!rightRailOpen)}
@@ -367,11 +385,11 @@ export function TerminalShell({
             </div>
           ) : null}
 
-          {/* Phone-only preset trigger when workspace controls are otherwise hidden on desktop chrome */}
+          {/* Phone-only workspace switcher when desktop chrome is collapsed */}
           {showWorkspaceControls && mobileNavEnabled ? (
             <div className="flex items-center gap-2 border-b border-terminal-border bg-terminal-panel/80 px-2 py-1.5 md:hidden">
               <WorkspacePresetTrigger preset={preset} onOpen={() => setPresetSheetOpen(true)} />
-              <span className="text-[12px] text-terminal-muted">Workspace preset</span>
+              <span className="text-[12px] text-terminal-muted">Active workspace</span>
             </div>
           ) : null}
 
@@ -408,9 +426,18 @@ export function TerminalShell({
         <WorkspacePresetSheet
           open={presetSheetOpen}
           preset={preset}
-          onSelect={applyPreset}
+          onApply={(next) => applyPreset(next)}
+          onApplyAndOpen={(next) => applyPreset(next, { openLanding: true })}
           onClose={() => setPresetSheetOpen(false)}
         />
+        <WorkspaceOnboardingDialog
+          open={onboardingOpen}
+          onSelect={(next) => finishOnboarding(next)}
+          onSkip={() => finishOnboarding()}
+        />
+        <div className="sr-only" role="status" aria-live="polite" data-testid="workspace-preset-announcement">
+          {presetAnnouncement}
+        </div>
         <div className="hidden md:contents">
           <HotKeyPanelFloat />
         </div>

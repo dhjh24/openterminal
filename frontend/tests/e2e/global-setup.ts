@@ -31,6 +31,7 @@ export default async function globalSetup(config: FullConfig) {
       ([at, rt]) => {
         localStorage.setItem("ot-access-token", at);
         localStorage.setItem("ot-refresh-token", rt);
+        localStorage.setItem("ot:workspace:onboarding:v1", "1");
       },
       [accessToken, refreshToken],
     );

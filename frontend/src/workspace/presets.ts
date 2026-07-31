@@ -1,10 +1,21 @@
 export type WorkspacePreset = "trader" | "quant" | "pm" | "risk" | "ops";
 
 export const WORKSPACE_PRESET_STORAGE_KEY = "ot:workspace:preset:v1";
+export const WORKSPACE_ONBOARDING_STORAGE_KEY = "ot:workspace:onboarding:v1";
+
+/** Layout-scoped shell keys that should stay aligned with the global workspace preset. */
+export const WORKSPACE_SHELL_PRESET_STORAGE_KEYS = [
+  WORKSPACE_PRESET_STORAGE_KEY,
+  "ot:shell:equity:preset",
+  "ot:shell:fno:preset",
+  "ot:shell:backtesting:preset",
+  "ot:shell:account:preset",
+] as const;
 
 export type WorkspacePresetConfig = {
   id: WorkspacePreset;
   label: string;
+  purpose: string;
   landing: {
     headline: string;
     description: string;
@@ -18,10 +29,51 @@ export type WorkspacePresetConfig = {
   launchpadPanels: Array<{ type: string; title: string; x: number; y: number; w: number; h: number; symbol?: string }>;
 };
 
+export type WorkspaceFirstUseChoice = {
+  id: string;
+  label: string;
+  description: string;
+  preset: WorkspacePreset;
+};
+
+export const WORKSPACE_FIRST_USE_CHOICES: WorkspaceFirstUseChoice[] = [
+  {
+    id: "active-trading",
+    label: "Active trading",
+    description: "Intraday charts, watchlists, alerts, and execution paths.",
+    preset: "trader",
+  },
+  {
+    id: "options-trading",
+    label: "Options trading",
+    description: "Chains, Greeks, and derivatives-focused decision loops.",
+    preset: "trader",
+  },
+  {
+    id: "research",
+    label: "Research and backtesting",
+    description: "Screeners, backtests, factors, and model work.",
+    preset: "quant",
+  },
+  {
+    id: "portfolio-risk",
+    label: "Portfolio and risk",
+    description: "Holdings, exposure, allocation, and risk monitors.",
+    preset: "pm",
+  },
+  {
+    id: "platform-ops",
+    label: "Platform operations",
+    description: "Data quality, feeds, OMS, and desk controls.",
+    preset: "ops",
+  },
+];
+
 export const WORKSPACE_PRESET_CONFIGS: Record<WorkspacePreset, WorkspacePresetConfig> = {
   trader: {
     id: "trader",
     label: "Trader",
+    purpose: "Active trading desk for charts, watchlist, alerts, and paper execution.",
     landing: {
       headline: "Trading Desk",
       description: "Fast chart, tape, watchlist, alerts, and execution paths for intraday decisions.",
@@ -50,6 +102,7 @@ export const WORKSPACE_PRESET_CONFIGS: Record<WorkspacePreset, WorkspacePresetCo
   quant: {
     id: "quant",
     label: "Quant",
+    purpose: "Research desk for screeners, backtests, factors, and model exploration.",
     landing: {
       headline: "Quant Research",
       description: "Screener, backtesting, model lab, factor, and workstation surfaces for research loops.",
@@ -78,6 +131,7 @@ export const WORKSPACE_PRESET_CONFIGS: Record<WorkspacePreset, WorkspacePresetCo
   pm: {
     id: "pm",
     label: "PM",
+    purpose: "Portfolio management desk for holdings, allocation, and catalysts.",
     landing: {
       headline: "Portfolio Command",
       description: "Portfolio, exposure, risk, catalysts, and benchmark context for allocation decisions.",
@@ -105,6 +159,7 @@ export const WORKSPACE_PRESET_CONFIGS: Record<WorkspacePreset, WorkspacePresetCo
   risk: {
     id: "risk",
     label: "Risk",
+    purpose: "Risk console for exposure, stress, correlation, and limit monitoring.",
     landing: {
       headline: "Risk Console",
       description: "Exposure, stress, correlation, volatility, and limit-monitoring surfaces first.",
@@ -133,6 +188,7 @@ export const WORKSPACE_PRESET_CONFIGS: Record<WorkspacePreset, WorkspacePresetCo
   ops: {
     id: "ops",
     label: "Ops",
+    purpose: "Operations desk for data quality, feed health, OMS, and plugins.",
     landing: {
       headline: "Operations Desk",
       description: "Data quality, feed health, OMS, plugins, and operational controls first.",
@@ -159,12 +215,72 @@ export const WORKSPACE_PRESET_CONFIGS: Record<WorkspacePreset, WorkspacePresetCo
   },
 };
 
+function isWorkspacePreset(value: unknown): value is WorkspacePreset {
+  return value === "trader" || value === "quant" || value === "pm" || value === "risk" || value === "ops";
+}
+
 export function readWorkspacePreset(): WorkspacePreset {
   if (typeof window === "undefined") return "trader";
   const raw = localStorage.getItem(WORKSPACE_PRESET_STORAGE_KEY);
-  return raw === "quant" || raw === "pm" || raw === "risk" || raw === "ops" || raw === "trader" ? raw : "trader";
+  if (!raw) return "trader";
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (isWorkspacePreset(parsed)) return parsed;
+  } catch {
+    // Legacy unquoted values.
+  }
+  return isWorkspacePreset(raw) ? raw : "trader";
+}
+
+export function writeWorkspacePreset(preset: WorkspacePreset): void {
+  if (typeof window === "undefined") return;
+  try {
+    const serialized = JSON.stringify(preset);
+    for (const key of WORKSPACE_SHELL_PRESET_STORAGE_KEYS) {
+      localStorage.setItem(key, serialized);
+    }
+  } catch {
+    // ignore storage failures
+  }
 }
 
 export function getWorkspacePresetConfig(preset: WorkspacePreset): WorkspacePresetConfig {
   return WORKSPACE_PRESET_CONFIGS[preset] ?? WORKSPACE_PRESET_CONFIGS.trader;
+}
+
+export function hasCompletedWorkspaceOnboarding(): boolean {
+  if (typeof window === "undefined") return true;
+  try {
+    return localStorage.getItem(WORKSPACE_ONBOARDING_STORAGE_KEY) === "1";
+  } catch {
+    return true;
+  }
+}
+
+export function markWorkspaceOnboardingComplete(): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(WORKSPACE_ONBOARDING_STORAGE_KEY, "1");
+  } catch {
+    // ignore storage failures
+  }
+}
+
+export function announceWorkspacePresetChange(preset: WorkspacePreset, options?: { opened?: boolean }): void {
+  if (typeof window === "undefined") return;
+  const config = getWorkspacePresetConfig(preset);
+  const message = options?.opened
+    ? `Switched to ${config.label} workspace and opened ${config.landing.headline}.`
+    : `Switched to ${config.label} workspace. Pinned tools and Mission Control sections updated. Primary action: ${config.landing.primaryLabel}.`;
+  window.dispatchEvent(
+    new CustomEvent("ot:alert-toast", {
+      detail: {
+        title: "Workspace updated",
+        message,
+        variant: "success",
+        ttlMs: 5200,
+      },
+    }),
+  );
+  window.dispatchEvent(new CustomEvent("ot:preset-change", { detail: preset }));
 }
