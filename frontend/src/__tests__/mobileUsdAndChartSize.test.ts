@@ -5,8 +5,7 @@ import { isValidChartSize, readValidContainerSize } from "../shared/chart/safeCh
 describe("formatUsd", () => {
   it("formats USD with en-US separators", () => {
     expect(formatUsd(1234.5)).toBe("$1,234.50");
-    expect(formatUsd(2_500_000)).toContain("$");
-    expect(formatUsd(2_500_000)).toContain("M");
+    expect(formatUsd(2_500_000)).toBe("$2,500,000.00");
     expect(formatUsd(null)).toBe("-");
   });
 
