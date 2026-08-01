@@ -5,10 +5,9 @@ SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 REPO_ROOT="$(dirname "$SCRIPT_DIR")"
 cd "$REPO_ROOT"
 
-REDIS=0
 POSTGRES=0
 DETACH=1
-APP_PORT=8000
+API_PORT_ARG=""
 
 require_arg_value() {
   if [ -z "${2:-}" ]; then
@@ -20,7 +19,7 @@ require_arg_value() {
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --redis)
-      REDIS=1
+      # Redis is always part of the stack; flag kept for backward compatibility.
       shift
       ;;
     --postgres)
@@ -33,23 +32,16 @@ while [ "$#" -gt 0 ]; do
       ;;
     --port)
       require_arg_value "$1" "${2:-}"
-      APP_PORT="$2"
+      API_PORT_ARG="$2"
       shift 2
       ;;
     *)
       echo "Unknown argument: $1"
-      echo "Usage: ./scripts/docker-up.sh [--redis] [--postgres] [--no-detach] [--port <host_port>]"
+      echo "Usage: ./scripts/docker-up.sh [--postgres] [--no-detach] [--port <host_port>]"
       exit 1
       ;;
   esac
 done
-
-case "$APP_PORT" in
-  ''|*[!0-9]*)
-    echo "Invalid port: $APP_PORT"
-    exit 1
-    ;;
-esac
 
 if ! command -v docker >/dev/null 2>&1; then
   echo "Required command not found: docker"
@@ -58,39 +50,61 @@ fi
 
 docker compose version >/dev/null
 docker info >/dev/null
-if docker compose up --help | grep -q -- "--wait"; then
-  SUPPORTS_WAIT=1
-else
-  SUPPORTS_WAIT=0
-fi
 
 if [ ! -f .env ]; then
   cp .env.example .env
   echo "Created .env from .env.example"
 fi
 
-if [ "$REDIS" -eq 1 ] && ! grep -q "^REDIS_URL=" .env; then
-  printf "\nREDIS_URL=redis://redis:6379/0\n" >> .env
+# Optional CLI port override writes into the process environment for Compose.
+if [ -n "$API_PORT_ARG" ]; then
+  case "$API_PORT_ARG" in
+    ''|*[!0-9]*)
+      echo "Invalid port: $API_PORT_ARG"
+      exit 1
+      ;;
+  esac
+  export API_PORT="$API_PORT_ARG"
+  export WEB_PORT="$API_PORT_ARG"
+  export APP_PORT="$API_PORT_ARG"
 fi
 
-set -- compose
-if [ "$REDIS" -eq 1 ]; then
-  set -- "$@" --profile redis
+# Resolve project name from .env without sourcing the whole file.
+PROJECT_NAME="openterminalui"
+if grep -q '^COMPOSE_PROJECT_NAME=' .env 2>/dev/null; then
+  PROJECT_NAME="$(sed -n 's/^COMPOSE_PROJECT_NAME=//p' .env | head -n1)"
+elif grep -q '^PROJECT_NAME=' .env 2>/dev/null; then
+  PROJECT_NAME="$(sed -n 's/^PROJECT_NAME=//p' .env | head -n1)"
 fi
+PROJECT_NAME="${PROJECT_NAME:-openterminalui}"
+
+if [ -x ./scripts/check-ports.sh ]; then
+  if [ "$POSTGRES" -eq 1 ]; then
+    USE_POSTGRES=1 ./scripts/check-ports.sh --postgres
+  else
+    ./scripts/check-ports.sh
+  fi
+fi
+
+set -- compose --project-name "$PROJECT_NAME" --env-file .env
 if [ "$POSTGRES" -eq 1 ]; then
   set -- "$@" --profile postgres
 fi
 set -- "$@" up --build
 if [ "$DETACH" -eq 1 ]; then
   set -- "$@" -d
-  if [ "$SUPPORTS_WAIT" -eq 1 ]; then
-    set -- "$@" --wait
-  fi
 fi
 
 echo "Running: docker $*"
-APP_PORT="$APP_PORT" docker "$@"
+docker "$@"
+
+HOST_PORT="${API_PORT:-}"
+if [ -z "$HOST_PORT" ]; then
+  HOST_PORT="$(sed -n 's/^API_PORT=//p' .env | head -n1)"
+fi
+HOST_PORT="${HOST_PORT:-8105}"
 
 echo
-echo "Open http://127.0.0.1:$APP_PORT"
-echo "API docs: http://127.0.0.1:$APP_PORT/docs"
+echo "Open http://127.0.0.1:$HOST_PORT"
+echo "API docs: http://127.0.0.1:$HOST_PORT/docs"
+echo "Project: $PROJECT_NAME"

@@ -11,7 +11,7 @@
 #   * Auto-generates strong JWT_SECRET_KEY + CACHE_SIGNING_KEY (no secret errors).
 #   * Auto-generates a unique admin password and seeds an admin account
 #     (no "user not found" / login errors).
-#   * Builds and starts the app at http://localhost:8000.
+#   * Builds and starts the app (default http://localhost:8105).
 #   * Prints the admin credentials at the end.
 # ============================================================================
 set -euo pipefail
@@ -20,7 +20,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT_DIR"
 
 ENV_FILE="$ROOT_DIR/.env"
-PORT="${APP_PORT:-8000}"
+PORT=""
 
 cyan() { printf "\033[36m%s\033[0m\n" "$1"; }
 green() { printf "\033[32m%s\033[0m\n" "$1"; }
@@ -143,6 +143,12 @@ fi
 ADMIN_EMAIL="$(env_get BOOTSTRAP_ADMIN_EMAIL)"
 green "    secrets + admin account configured"
 
+# Published app port (Docker host port / local uvicorn). Prefer API_PORT.
+PORT="$(env_get API_PORT)"
+PORT="${PORT:-$(env_get WEB_PORT)}"
+PORT="${PORT:-$(env_get APP_PORT)}"
+PORT="${PORT:-8105}"
+
 # --- 3. Pick a run mode ----------------------------------------------------
 MODE="${OTUI_MODE:-auto}"
 if [ "$MODE" = "auto" ]; then
@@ -161,8 +167,21 @@ fi
 cyan "==> install mode: $MODE"
 
 run_docker() {
-  green "    building & starting containers (docker compose)..."
-  docker compose --env-file "$ENV_FILE" up -d --build
+  local project
+  project="$(env_get COMPOSE_PROJECT_NAME)"
+  project="${project:-$(env_get PROJECT_NAME)}"
+  project="${project:-openterminalui}"
+
+  if [[ -x "$ROOT_DIR/scripts/check-ports.sh" ]]; then
+    green "    checking host ports..."
+    "$ROOT_DIR/scripts/check-ports.sh" || {
+      yellow "    Port conflict detected. Edit API_PORT / REDIS_HOST_PORT / POSTGRES_HOST_PORT in .env"
+      exit 1
+    }
+  fi
+
+  green "    building & starting containers (project: ${project})..."
+  docker compose --project-name "$project" --env-file "$ENV_FILE" up -d --build
   # The container entrypoint runs migrations + admin seeding automatically.
 }
 

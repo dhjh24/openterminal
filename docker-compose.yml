@@ -1,11 +1,20 @@
+# OpenTerminalUI — isolated Compose stack
+# Project identity, ports, and credentials come from `.env` (see `.env.example`).
+# Production tip: publish only the app. Use `docker-compose.override.yml` (dev)
+# or `--profile host-ports` when you need Postgres/Redis on the host.
+
+name: ${COMPOSE_PROJECT_NAME:-openterminalui}
+
 services:
   backend:
     build:
       context: .
       dockerfile: Dockerfile
-    image: openterminalui:latest
+    image: ${COMPOSE_PROJECT_NAME:-openterminalui}:latest
     ports:
-      - "${APP_PORT:-8005}:8000"
+      # Single container serves the SPA + API (no separate web service).
+      # WEB_PORT / APP_PORT in .env should match API_PORT for docs and CORS.
+      - "${API_PORT:-8105}:8000"
     # Compose still reads repo-root `.env` for ${VAR} interpolation when present.
     # Do not use `env_file: .env` here — CI has no `.env` (gitignored) and would fail validation.
     environment:
@@ -24,12 +33,14 @@ services:
       CACHE_SIGNING_KEY: "${CACHE_SIGNING_KEY:-}"
       BOOTSTRAP_ADMIN_EMAIL: "${BOOTSTRAP_ADMIN_EMAIL:-}"
       BOOTSTRAP_ADMIN_PASSWORD: "${BOOTSTRAP_ADMIN_PASSWORD:-}"
+      # Prefer explicit DATABASE_URL. For the postgres profile, set it to the
+      # Docker-network form: postgresql://USER:PASS@postgres:5432/DB
       DATABASE_URL: "${DATABASE_URL:-sqlite+aiosqlite:////data/openterminal.db}"
       # Force the compose Redis service hostname. Host `.env` often sets localhost for non-Docker runs.
       REDIS_URL: "redis://redis:6379/0"
       OPENTERMINALUI_PREFETCH_ENABLED: "${OPENTERMINALUI_PREFETCH_ENABLED:-${OPENSCREENS_PREFETCH_ENABLED:-0}}"
       OPENTERMINALUI_SQLITE_URL: "${OPENTERMINALUI_SQLITE_URL:-${OPENSCREENS_SQLITE_URL:-sqlite:////data/openterminalui.db}}"
-      OPENTERMINALUI_CORS_ORIGINS: "${OPENTERMINALUI_CORS_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173}"
+      OPENTERMINALUI_CORS_ORIGINS: "${OPENTERMINALUI_CORS_ORIGINS:-${CORS_ORIGINS:-http://localhost:8105,http://127.0.0.1:8105,http://localhost:5173,http://127.0.0.1:5173}}"
       LM_STUDIO_BASE_URL: "${LM_STUDIO_BASE_URL:-http://host.docker.internal:1234/v1}"
       LM_STUDIO_MODEL: "${LM_STUDIO_MODEL:-google/gemma-4-26b-a4b}"
       LM_STUDIO_ENABLED: "${LM_STUDIO_ENABLED:-true}"
@@ -48,7 +59,15 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
-      - openterminalui_data:/data
+      - app_data:/data
+    networks:
+      - app_network
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+        required: false
     develop:
       watch:
         - action: rebuild
@@ -62,11 +81,27 @@ services:
         - action: rebuild
           path: ./data
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)\""]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
 
   redis:
     image: redis:7-alpine
-    ports:
-      - "6380:6379"
+    # Internal only by default — host publish lives in docker-compose.override.yml
+    expose:
+      - "6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - app_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
     restart: unless-stopped
 
   postgres:
@@ -74,14 +109,32 @@ services:
     profiles: ["postgres"]
     environment:
       POSTGRES_DB: "${POSTGRES_DB:-openterminalui}"
-      POSTGRES_USER: "${POSTGRES_USER:-openterminalui}"
-      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-openterminalui}"
-    ports:
-      - "5433:5432"
+      POSTGRES_USER: "${POSTGRES_USER:-openterminalui_user}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-change-this-password}"
+    # Internal only by default — host publish lives in docker-compose.override.yml
+    expose:
+      - "5432"
     volumes:
-      - openterminalui_postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-openterminalui_user} -d ${POSTGRES_DB:-openterminalui}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
     restart: unless-stopped
 
+networks:
+  app_network:
+    driver: bridge
+
 volumes:
-  openterminalui_data:
-  openterminalui_postgres_data:
+  # Explicit project-prefixed names. App/Postgres keep the historical Compose
+  # names (`{project}_openterminalui_*`) so existing installs retain data.
+  app_data:
+    name: ${COMPOSE_PROJECT_NAME:-openterminalui}_openterminalui_data
+  postgres_data:
+    name: ${COMPOSE_PROJECT_NAME:-openterminalui}_openterminalui_postgres_data
+  redis_data:
+    name: ${COMPOSE_PROJECT_NAME:-openterminalui}_redis_data
