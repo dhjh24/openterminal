@@ -50,7 +50,7 @@ describe("MobileSearchSheet", () => {
     const sheet = screen.getByTestId("mobile-search-sheet");
     expect(sheet).toBeInTheDocument();
 
-    const input = screen.getByPlaceholderText("Search stocks, pages, commands");
+    const input = screen.getByPlaceholderText("Search symbols, pages, and commands");
     expect(input).toHaveClass("text-base");
     expect(screen.queryByText(/Ctrl\+/i)).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Close" })).toBeInTheDocument();
@@ -63,7 +63,7 @@ describe("MobileSearchSheet", () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByText("Recent")).toBeInTheDocument();
+    expect(screen.getByText("Recent searches")).toBeInTheDocument();
     expect(screen.getByText("AAPL")).toBeInTheDocument();
   });
 
@@ -76,7 +76,7 @@ describe("MobileSearchSheet", () => {
       </MemoryRouter>,
     );
 
-    fireEvent.change(screen.getByPlaceholderText("Search stocks, pages, commands"), { target: { value: "msft" } });
+    fireEvent.change(screen.getByPlaceholderText("Search symbols, pages, and commands"), { target: { value: "msft" } });
     await act(async () => {
       await vi.advanceTimersByTimeAsync(250);
     });
