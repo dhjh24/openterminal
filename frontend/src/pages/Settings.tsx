@@ -9,7 +9,7 @@ import { DataManager } from "../components/settings/DataManager";
 import { APIKeyManager } from "../components/settings/APIKeyManager";
 import { ErrorBoundary } from "../components/common/ErrorBoundary";
 import { useSettingsStore } from "../store/settingsStore";
-import type { ChartTextSize, ContrastMode, DataFont, UiDensity } from "../store/settingsStore";
+import type { ChartTextSize, ContrastMode, DataFont, ShellChromeMode, UiDensity } from "../store/settingsStore";
 import { COUNTRY_MARKETS } from "../types";
 import type { AlertRule, CountryCode, MarketCode } from "../types";
 import type { ScheduledReport } from "../types";
@@ -28,11 +28,13 @@ export function SettingsPage() {
   const setNewsAutoRefresh = useSettingsStore((s) => s.setNewsAutoRefresh);
   const setNewsRefreshSec = useSettingsStore((s) => s.setNewsRefreshSec);
   const uiDensity = useSettingsStore((s) => s.uiDensity);
+  const shellChromeMode = useSettingsStore((s) => s.shellChromeMode);
   const contrastMode = useSettingsStore((s) => s.contrastMode);
   const dataFont = useSettingsStore((s) => s.dataFont);
   const reducedMotion = useSettingsStore((s) => s.reducedMotion);
   const decorativeEffects = useSettingsStore((s) => s.decorativeEffects);
   const chartTextSize = useSettingsStore((s) => s.chartTextSize);
+  const setShellChromeMode = useSettingsStore((s) => s.setShellChromeMode);
   const setUiDensity = useSettingsStore((s) => s.setUiDensity);
   const setContrastMode = useSettingsStore((s) => s.setContrastMode);
   const setDataFont = useSettingsStore((s) => s.setDataFont);
@@ -105,8 +107,25 @@ export function SettingsPage() {
         </div>
       </TerminalPanel>
 
-      <TerminalPanel title="Appearance" subtitle="Readability, density, and visual effects">
+      <TerminalPanel title="Appearance" subtitle="Readability, density, shell chrome, and visual effects">
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          <label className="grid gap-1">
+            <span className="ot-type-label text-terminal-text">Terminal chrome</span>
+            <TerminalInput
+              as="select"
+              value={shellChromeMode}
+              onChange={(e) => setShellChromeMode(e.target.value as ShellChromeMode)}
+              data-testid="shell-chrome-mode"
+              aria-label="Terminal chrome mode"
+            >
+              <option value="standard">Standard — rail, top bar, workspace, status</option>
+              <option value="focus">Focus — maximize chart and table space</option>
+              <option value="full">Full terminal — tape, workspace, context rail</option>
+            </TerminalInput>
+            <span className="text-xs text-terminal-muted">
+              Chart, tape, DOM, option chain, and workstation pages use Focus automatically on laptop widths when Standard is selected. Command palette stays available in every mode.
+            </span>
+          </label>
           <label className="grid gap-1">
             <span className="ot-type-label text-terminal-text">Density</span>
             <TerminalInput as="select" value={uiDensity} onChange={(e) => setUiDensity(e.target.value as UiDensity)}>
