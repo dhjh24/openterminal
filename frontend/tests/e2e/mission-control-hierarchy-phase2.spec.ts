@@ -56,7 +56,7 @@ test.describe("mission control hierarchy phase 2", () => {
     await page.getByTestId("explore-all-tools-cta").click();
     await expect(page.getByTestId("explore-all-tools-dialog")).toBeVisible();
     await expect(page.getByTestId("explore-all-tools-body")).toBeVisible();
-    await page.getByRole("button", { name: /Workstation\. WORKSPACE desk access/i }).click();
+    await page.getByRole("button", { name: /Workstation\. Chart analysis workstation/i }).click();
     await expect(page).toHaveURL(/\/equity\/chart-workstation/);
   });
 

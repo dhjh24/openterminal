@@ -74,7 +74,7 @@ describe("ExploreAllToolsDialog", () => {
                 id: "equity",
                 label: "Equity",
                 shortcut: "M1",
-                description: "MARKETS desk access",
+                description: "Quotes, movers, and market overview",
                 onSelect,
               },
             ],
@@ -83,7 +83,7 @@ describe("ExploreAllToolsDialog", () => {
       />,
     );
     expect(screen.getByTestId("explore-all-tools-body")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /Equity\. MARKETS desk access/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Equity\. Quotes, movers, and market overview/i }));
     expect(onSelect).toHaveBeenCalled();
   });
 });

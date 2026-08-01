@@ -8,7 +8,7 @@ export function Sidebar() {
   const ticker = useStockStore((s) => s.ticker);
   const unreadCount = useAlertsStore((s) => s.unreadCount);
   const nav = [
-    { label: "Market", path: "/equity/stocks", key: "F1" },
+    { label: "Markets", path: "/equity/stocks", key: "F1" },
     { label: "Security Hub", path: "/equity/security", key: "SH", hint: "Research" },
     { label: "Economics", path: "/equity/economics", key: "E", hint: "Macro" },
     { label: "Commodities", path: "/equity/commodities", key: "CMDTY", hint: "Macro" },
@@ -16,7 +16,7 @@ export function Sidebar() {
     { label: "ETF Analytics", path: "/equity/etf-analytics", key: "ETFA", hint: "Funds" },
     { label: "Bonds", path: "/equity/bonds", key: "BOND", hint: "Fixed Income" },
     { label: "Yield Curve", path: "/equity/yield-curve", key: "YC", hint: "Fixed Income" },
-    { label: "Rotation", path: "/equity/sector-rotation", key: "ROT", hint: "Relative" },
+    { label: "Sector rotation", path: "/equity/sector-rotation", key: "ROT", hint: "Relative" },
     { label: "Crypto", path: "/equity/crypto", key: "CR", hint: "Digital" },
     { label: "Compare", path: "/equity/compare", key: "CMP", hint: "Split View" },
     { label: "Screener", path: "/equity/screener", key: "F2" },
@@ -27,16 +27,16 @@ export function Sidebar() {
     { label: "Insider", path: "/equity/insider", key: "IN", hint: "Research" },
     { label: "Heatmap", path: "/equity/heatmap", key: "HM", hint: "Market" },
     { label: "Dividends", path: "/equity/dividends", key: "DIV", hint: "Income" },
-    { label: "RS Analysis", path: "/equity/rs", key: "RS", hint: "Relative" },
+    { label: "Relative strength", path: "/equity/rs", key: "RS", hint: "Relative" },
     { label: "Launchpad", path: "/equity/launchpad", key: "LP", hint: "Workspace" },
     { label: "Workstation", path: "/equity/chart-workstation", key: "6", hint: "6 Charts" },
     { label: "Research", path: "/equity/research", key: "RES", hint: "Papers" },
-    { label: "MTA", path: "/equity/mta", key: "MT", hint: "Multi-TF" },
-    { label: "DOM", path: "/equity/dom", key: "D", hint: "Depth" },
+    { label: "Multi-timeframe", path: "/equity/mta", key: "MT", hint: "Multi-TF" },
+    { label: "Depth of market", path: "/equity/dom", key: "D", hint: "Depth" },
     { label: "Tape", path: "/equity/tape", key: "T", hint: "Time & Sales" },
     { label: "Portfolio", path: "/equity/portfolio", key: "F3" },
     { label: "Portfolio Lab", path: "/equity/portfolio/lab", key: "PLB", hint: "Research" },
-    { label: "Paper", path: "/equity/paper", key: "P" },
+    { label: "Paper trading", path: "/equity/paper", key: "P" },
     { label: "Position Sizer", path: "/equity/position-sizer", key: "PS", hint: "Trading" },
     { label: "Journal", path: "/equity/journal", key: "J", hint: "Trading" },
     { label: "Shadow Account", path: "/equity/shadow-account", key: "SA", hint: "Trading" },
@@ -47,8 +47,8 @@ export function Sidebar() {
     { label: "Correlation", path: "/equity/correlation", key: "CR", hint: "Risk" },
     { label: "Stat Lab", path: "/equity/stat-lab", key: "SL", hint: "Quant" },
     { label: "Pair Trading", path: "/equity/pair-trading", key: "PT", hint: "Quant" },
-    { label: "OMS", path: "/equity/oms", key: "O" },
-    { label: "Ops", path: "/equity/ops", key: "K" },
+    { label: "Order management", path: "/equity/oms", key: "O" },
+    { label: "Operations", path: "/equity/ops", key: "K" },
     { label: "Plugins", path: "/equity/plugins", key: "PL" },
     { label: "Settings", path: "/equity/settings", key: "F6" },
     { label: "About", path: "/equity/stocks/about", key: "F7" },
@@ -76,7 +76,7 @@ export function Sidebar() {
           Switch To Options & Futures {"->"}
         </NavLink>
       </div>
-      <nav className="flex-1 space-y-1 overflow-auto p-2 text-xs">
+      <nav className="flex-1 space-y-1 overflow-auto p-2 text-xs" aria-label="Sidebar tools">
         {nav.map((item) => (
           <NavLink
             key={item.path}
@@ -88,12 +88,13 @@ export function Sidebar() {
                   : "text-terminal-muted hover:bg-terminal-bg hover:text-terminal-text"
               }`
             }
+            aria-label={item.label}
           >
             <div className="flex flex-col">
               <span>{item.label}</span>
               {(item as any).hint && <span className="text-[8px] text-terminal-accent/70 -mt-0.5 uppercase">{(item as any).hint}</span>}
             </div>
-            <span className="text-[10px]">
+            <span className="text-[10px]" aria-hidden="true">
               {item.path === "/equity/alerts" && unreadCount > 0 ? `${unreadCount}` : item.key}
             </span>
           </NavLink>

@@ -219,7 +219,7 @@ describe("HomePage mission-control revamp", () => {
 
     fireEvent.click(screen.getByTestId("explore-all-tools-cta"));
     expect(screen.getByTestId("explore-all-tools-body")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /Workstation\. WORKSPACE desk access/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Workstation\. Chart analysis workstation/i }));
     expect(navigateSpy).toHaveBeenCalledWith("/equity/chart-workstation");
   }, 10000);
 

@@ -22,9 +22,9 @@ describe("IconRail keyboard behavior", () => {
       </MemoryRouter>,
     );
 
-    const rail = screen.getByLabelText("Primary icon rail");
-    const home = screen.getByLabelText("Home");
-    const market = screen.getByLabelText("Market");
+    const rail = screen.getByLabelText("Primary navigation");
+    const home = screen.getByLabelText(/Home\. Mission Control dashboard/i);
+    const market = screen.getByLabelText(/Markets\. Equity quotes and market browse/i);
 
     home.focus();
     fireEvent.keyDown(rail, { key: "ArrowDown" });

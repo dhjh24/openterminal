@@ -503,7 +503,7 @@ export function HomePage() {
           id: `${slugifyNav(section.title)}-${slugifyNav(card.label)}`,
           label: card.label,
           shortcut: card.badge,
-          description: `${section.title} desk access`,
+          description: card.description,
           onSelect: () => openTool(card.to, card.label),
         })),
       })).filter((section) => section.items.length > 0);
