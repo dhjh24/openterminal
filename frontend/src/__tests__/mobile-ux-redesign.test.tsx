@@ -83,7 +83,7 @@ describe("mobile search sheet close contract", () => {
       </MemoryRouter>,
     );
     fireEvent.click(screen.getByRole("button", { name: "More" }));
-    expect(screen.getByRole("menuitem", { name: "Agent" })).toBeInTheDocument();
-    expect(screen.getByRole("menuitem", { name: "Workstation" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "Open Agent" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "Screener" })).toBeInTheDocument();
   });
 });

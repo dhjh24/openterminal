@@ -1,36 +1,34 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, X } from "lucide-react";
 
 import { searchSymbols, type SearchSymbolItem } from "../../api/client";
 import { useRecentSecurities } from "../../hooks/useRecentSecurities";
+import { readRecentSearches, recordRecentSearch, type RecentSearch } from "../../home/recentSearches";
 import { useSettingsStore } from "../../store/settingsStore";
 import { useStockStore } from "../../store/stockStore";
 import { parseCommand, executeParsedCommand } from "./commanding";
+import { MobileBottomSheet } from "./MobileBottomSheet";
 
 type Props = {
   open: boolean;
   onClose: () => void;
 };
 
-type Suggestion =
-  | { kind: "symbol"; item: SearchSymbolItem }
-  | { kind: "recent"; symbol: string; name?: string }
-  | { kind: "page"; label: string; path: string }
-  | { kind: "command"; label: string; command: string };
-
 const PAGE_SHORTCUTS: Array<{ label: string; path: string; keywords: string }> = [
   { label: "Home", path: "/home", keywords: "home mission" },
+  { label: "Markets", path: "/equity/stocks", keywords: "markets stocks quote" },
   { label: "Watchlist", path: "/equity/watchlist", keywords: "watch list" },
-  { label: "Stocks", path: "/equity/stocks", keywords: "stocks quote search" },
-  { label: "Chart Workstation", path: "/equity/chart-workstation", keywords: "chart workstation" },
-  { label: "Options", path: "/fno", keywords: "options chain" },
+  { label: "Chart Workstation", path: "/equity/chart-workstation", keywords: "chart workstation trade" },
+  { label: "Options & Futures", path: "/fno", keywords: "options chain futures" },
   { label: "Options Heatmap", path: "/fno/heatmap", keywords: "heatmap oi" },
   { label: "Portfolio", path: "/equity/portfolio", keywords: "portfolio holdings" },
   { label: "News", path: "/equity/news", keywords: "news" },
   { label: "Alerts", path: "/equity/alerts", keywords: "alerts" },
-  { label: "Screener", path: "/equity/screener", keywords: "screener filter" },
-  { label: "Settings", path: "/equity/settings", keywords: "settings" },
+  { label: "Screener", path: "/equity/screener", keywords: "screener filter research" },
+  { label: "Backtesting", path: "/backtesting", keywords: "backtest research" },
+  { label: "Settings", path: "/equity/settings", keywords: "settings appearance" },
+  { label: "Account", path: "/account", keywords: "account profile" },
 ];
 
 export function MobileSearchSheet({ open, onClose }: Props) {
@@ -39,6 +37,7 @@ export function MobileSearchSheet({ open, onClose }: Props) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchSymbolItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [recentSearches, setRecentSearches] = useState<RecentSearch[]>(() => readRecentSearches());
   const selectedMarket = useSettingsStore((s) => s.selectedMarket);
   const setTicker = useStockStore((s) => s.setTicker);
   const load = useStockStore((s) => s.load);
@@ -49,6 +48,7 @@ export function MobileSearchSheet({ open, onClose }: Props) {
     if (!open) return;
     setQuery("");
     setResults([]);
+    setRecentSearches(readRecentSearches());
     const t = window.setTimeout(() => inputRef.current?.focus(), 50);
     return () => window.clearTimeout(t);
   }, [open]);
@@ -79,37 +79,41 @@ export function MobileSearchSheet({ open, onClose }: Props) {
     return () => window.clearTimeout(timer);
   }, [open, query, selectedMarket]);
 
-  const suggestions = useMemo<Suggestion[]>(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) {
-      return recentSecurities.slice(0, 8).map((r) => ({
-        kind: "recent" as const,
-        symbol: r.symbol,
-        name: r.name,
-      }));
-    }
-    const pages = PAGE_SHORTCUTS.filter(
-      (p) => p.label.toLowerCase().includes(q) || p.keywords.includes(q),
-    ).map((p) => ({ kind: "page" as const, label: p.label, path: p.path }));
-    const symbols = results.map((item) => ({ kind: "symbol" as const, item }));
-    const commands: Suggestion[] =
-      q.length >= 2
-        ? [{ kind: "command", label: `Run “${query.trim()}”`, command: query.trim() }]
-        : [];
-    return [...symbols, ...pages, ...commands].slice(0, 16);
-  }, [query, recentSecurities, results]);
+  const rememberQuery = useCallback((value: string) => {
+    setRecentSearches(recordRecentSearch(value));
+  }, []);
 
   const selectSymbol = useCallback(
     async (symbol: string, name?: string) => {
       const next = symbol.trim().toUpperCase();
       if (!next) return;
+      rememberQuery(next);
       setTicker(next);
       addRecent(next, name || next, "equity", "US");
       void load();
       onClose();
       navigate(`/equity/stocks/${encodeURIComponent(next)}`);
     },
-    [addRecent, load, navigate, onClose, setTicker],
+    [addRecent, load, navigate, onClose, rememberQuery, setTicker],
+  );
+
+  const selectPage = useCallback(
+    (path: string, label: string) => {
+      rememberQuery(label);
+      onClose();
+      navigate(path);
+    },
+    [navigate, onClose, rememberQuery],
+  );
+
+  const runCommand = useCallback(
+    async (command: string) => {
+      rememberQuery(command);
+      const parsed = parseCommand(command);
+      await executeParsedCommand(parsed, navigate);
+      onClose();
+    },
+    [navigate, onClose, rememberQuery],
   );
 
   const onSubmit = useCallback(async () => {
@@ -119,25 +123,35 @@ export function MobileSearchSheet({ open, onClose }: Props) {
       await selectSymbol(results[0].ticker, results[0].name);
       return;
     }
-    const parsed = parseCommand(q);
-    await executeParsedCommand(parsed, navigate);
-    onClose();
-  }, [navigate, onClose, query, results, selectSymbol]);
+    await runCommand(q);
+  }, [query, results, runCommand, selectSymbol]);
 
-  if (!open) return null;
+  const pages = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
+    return PAGE_SHORTCUTS.filter(
+      (p) => p.label.toLowerCase().includes(q) || p.keywords.includes(q),
+    );
+  }, [query]);
+
+  const commands = useMemo(() => {
+    const q = query.trim();
+    if (q.length < 2) return [];
+    return [{ label: `Run “${q}”`, command: q }];
+  }, [query]);
+
+  const emptyQuery = !query.trim();
 
   return (
-    <div className="fixed inset-0 z-50 md:hidden" role="dialog" aria-modal="true" aria-label="Search">
-      <button
-        type="button"
-        className="absolute inset-0 bg-black/55"
-        aria-label="Close search"
-        onClick={onClose}
-      />
-      <div
-        className="ot-mobile-search-sheet absolute bottom-[calc(3.75rem+env(safe-area-inset-bottom,0px))] left-0 right-0 mx-auto flex max-h-[65dvh] w-full max-w-lg flex-col rounded-t-xl border border-terminal-border bg-terminal-panel shadow-2xl"
-        data-testid="mobile-search-sheet"
-      >
+    <MobileBottomSheet
+      open={open}
+      onClose={onClose}
+      title="Search"
+      maxHeightClassName="max-h-[70dvh]"
+      aboveBottomNav
+      testId="mobile-search-sheet"
+    >
+      <div className="flex min-h-0 flex-1 flex-col">
         <div className="flex items-center gap-2 border-b border-terminal-border px-3 py-2">
           <Search size={18} className="shrink-0 text-terminal-muted" aria-hidden="true" />
           <input
@@ -148,7 +162,7 @@ export function MobileSearchSheet({ open, onClose }: Props) {
             autoCorrect="off"
             spellCheck={false}
             className="min-h-11 min-w-0 flex-1 bg-transparent text-base text-terminal-text outline-none placeholder:text-terminal-muted"
-            placeholder="Search stocks, pages, commands"
+            placeholder="Search symbols, pages, and commands"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => {
@@ -156,9 +170,9 @@ export function MobileSearchSheet({ open, onClose }: Props) {
                 e.preventDefault();
                 void onSubmit();
               }
-              if (e.key === "Escape") onClose();
             }}
-            aria-label="Search"
+            aria-label="Search symbols, pages, and commands"
+            data-testid="mobile-search-input"
           />
           {query ? (
             <button
@@ -170,86 +184,116 @@ export function MobileSearchSheet({ open, onClose }: Props) {
               <X size={18} aria-hidden="true" />
             </button>
           ) : null}
-          <button
-            type="button"
-            className="min-h-11 rounded-sm border border-terminal-border px-3 text-sm text-terminal-muted"
-            onClick={onClose}
-          >
-            Close
-          </button>
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 py-2">
-          {!query ? (
-            <div className="px-2 pb-2 text-[12px] uppercase tracking-wide text-terminal-muted">Recent</div>
-          ) : null}
-          {loading ? (
-            <div className="px-3 py-4 text-sm text-terminal-muted">Searching…</div>
-          ) : null}
-          {!loading && suggestions.length === 0 ? (
-            <div className="px-3 py-4 text-sm text-terminal-muted">No matches</div>
-          ) : null}
-          <ul className="space-y-1">
-            {suggestions.map((s, idx) => {
-              if (s.kind === "symbol") {
-                return (
-                  <li key={`sym-${s.item.ticker}-${idx}`}>
+          {loading ? <div className="px-3 py-4 text-sm text-terminal-muted">Searching…</div> : null}
+
+          {emptyQuery ? (
+            <>
+              <ResultGroup title="Recent searches" testId="search-group-recent">
+                {recentSearches.length === 0 && recentSecurities.length === 0 ? (
+                  <p className="px-3 py-2 text-sm text-terminal-muted">No recent searches yet.</p>
+                ) : null}
+                {recentSearches.map((item) => (
+                  <li key={`rs-${item.query}-${item.at}`}>
                     <button
                       type="button"
-                      className="flex min-h-12 w-full items-center justify-between rounded-md border border-terminal-border px-3 py-2 text-left hover:border-terminal-accent"
-                      onClick={() => void selectSymbol(s.item.ticker, s.item.name)}
+                      className="flex min-h-11 w-full items-center rounded-md border border-terminal-border px-3 text-left text-base text-terminal-text hover:border-terminal-accent"
+                      onClick={() => setQuery(item.query)}
                     >
-                      <span className="text-base font-semibold text-terminal-text">{s.item.ticker}</span>
-                      <span className="truncate pl-3 text-sm text-terminal-muted">{s.item.name}</span>
+                      {item.query}
                     </button>
                   </li>
-                );
-              }
-              if (s.kind === "recent") {
-                return (
-                  <li key={`rec-${s.symbol}`}>
+                ))}
+                {recentSecurities.slice(0, 6).map((item) => (
+                  <li key={`sec-${item.symbol}`}>
                     <button
                       type="button"
-                      className="flex min-h-12 w-full items-center justify-between rounded-md border border-terminal-border px-3 py-2 text-left hover:border-terminal-accent"
-                      onClick={() => void selectSymbol(s.symbol, s.name)}
+                      className="flex min-h-11 w-full items-center justify-between rounded-md border border-terminal-border px-3 text-left hover:border-terminal-accent"
+                      onClick={() => void selectSymbol(item.symbol, item.name)}
                     >
-                      <span className="text-base font-semibold text-terminal-text">{s.symbol}</span>
-                      <span className="truncate pl-3 text-sm text-terminal-muted">{s.name || "Recent"}</span>
+                      <span className="text-base font-semibold text-terminal-text">{item.symbol}</span>
+                      <span className="truncate pl-3 text-sm text-terminal-muted">{item.name || "Recent"}</span>
                     </button>
                   </li>
-                );
-              }
-              if (s.kind === "page") {
-                return (
-                  <li key={`page-${s.path}`}>
+                ))}
+              </ResultGroup>
+            </>
+          ) : (
+            <>
+              <ResultGroup title="Symbols" testId="search-group-symbols">
+                {results.length === 0 && !loading ? (
+                  <p className="px-3 py-2 text-sm text-terminal-muted">No symbols match.</p>
+                ) : null}
+                {results.map((item) => (
+                  <li key={`sym-${item.ticker}`}>
                     <button
                       type="button"
-                      className="flex min-h-12 w-full items-center rounded-md border border-terminal-border px-3 py-2 text-left text-base text-terminal-text hover:border-terminal-accent"
-                      onClick={() => {
-                        onClose();
-                        navigate(s.path);
-                      }}
+                      className="flex min-h-11 w-full items-center justify-between rounded-md border border-terminal-border px-3 text-left hover:border-terminal-accent"
+                      onClick={() => void selectSymbol(item.ticker, item.name)}
                     >
-                      {s.label}
+                      <span className="text-base font-semibold text-terminal-text">{item.ticker}</span>
+                      <span className="truncate pl-3 text-sm text-terminal-muted">{item.name}</span>
                     </button>
                   </li>
-                );
-              }
-              return (
-                <li key={`cmd-${idx}`}>
-                  <button
-                    type="button"
-                    className="flex min-h-12 w-full items-center rounded-md border border-terminal-border px-3 py-2 text-left text-base text-terminal-text hover:border-terminal-accent"
-                    onClick={() => void onSubmit()}
-                  >
-                    {s.label}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
+                ))}
+              </ResultGroup>
+
+              <ResultGroup title="Pages and tools" testId="search-group-pages">
+                {pages.length === 0 ? (
+                  <p className="px-3 py-2 text-sm text-terminal-muted">No pages match.</p>
+                ) : null}
+                {pages.map((page) => (
+                  <li key={page.path}>
+                    <button
+                      type="button"
+                      className="flex min-h-11 w-full items-center rounded-md border border-terminal-border px-3 text-left text-base text-terminal-text hover:border-terminal-accent"
+                      onClick={() => selectPage(page.path, page.label)}
+                    >
+                      {page.label}
+                    </button>
+                  </li>
+                ))}
+              </ResultGroup>
+
+              <ResultGroup title="Commands" testId="search-group-commands">
+                {commands.length === 0 ? (
+                  <p className="px-3 py-2 text-sm text-terminal-muted">Type at least two characters to run a command.</p>
+                ) : null}
+                {commands.map((command) => (
+                  <li key={command.command}>
+                    <button
+                      type="button"
+                      className="flex min-h-11 w-full items-center rounded-md border border-terminal-border px-3 text-left text-base text-terminal-text hover:border-terminal-accent"
+                      onClick={() => void runCommand(command.command)}
+                    >
+                      {command.label}
+                    </button>
+                  </li>
+                ))}
+              </ResultGroup>
+            </>
+          )}
         </div>
       </div>
-    </div>
+    </MobileBottomSheet>
+  );
+}
+
+function ResultGroup({
+  title,
+  testId,
+  children,
+}: {
+  title: string;
+  testId: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="mb-3" aria-label={title} data-testid={testId}>
+      <h3 className="px-2 pb-1 text-[11px] uppercase tracking-[0.14em] text-terminal-muted">{title}</h3>
+      <ul className="space-y-1">{children}</ul>
+    </section>
   );
 }

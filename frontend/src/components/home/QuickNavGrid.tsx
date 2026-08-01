@@ -129,7 +129,13 @@ export function QuickNavGrid({
                     }}
                   >
                     <span className="ot-home-widget-nav-label">{item.label}</span>
-                    <span className="ot-home-widget-shortcut">{item.shortcut}</span>
+                    <abbr
+                      className="ot-home-widget-shortcut no-underline"
+                      title={`${item.shortcut} shortcut for ${item.label}`}
+                      aria-label={`${item.shortcut} shortcut for ${item.label}`}
+                    >
+                      {item.shortcut}
+                    </abbr>
                     {item.description ? <span className="ot-home-widget-nav-description">{item.description}</span> : null}
                   </button>
                 );

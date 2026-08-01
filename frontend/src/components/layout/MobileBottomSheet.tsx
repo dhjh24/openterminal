@@ -71,7 +71,7 @@ export function MobileBottomSheet({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[60] md:hidden" data-testid={testId}>
+    <div className="fixed inset-0 z-[60] md:hidden">
       <button
         type="button"
         className="absolute inset-0 bg-black/55"
@@ -83,6 +83,7 @@ export function MobileBottomSheet({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
+        data-testid={testId}
         className={`absolute left-2 right-2 flex flex-col overflow-hidden rounded-t-lg border border-terminal-border bg-terminal-panel shadow-xl ${maxHeightClassName}`}
         style={{ bottom: aboveBottomNav ? NAV_OFFSET : "env(safe-area-inset-bottom, 0px)" }}
       >

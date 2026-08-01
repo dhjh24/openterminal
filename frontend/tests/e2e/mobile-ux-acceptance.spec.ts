@@ -70,7 +70,7 @@ test.describe("mobile UX acceptance", () => {
     }
 
     await expect(page.getByText(/Ctrl\+G/i)).toHaveCount(0);
-    await page.getByTestId("mobile-search-sheet").getByRole("button", { name: "Close" }).click();
+    await page.keyboard.press("Escape");
     await expect(sheet).toHaveCount(0);
   });
 
