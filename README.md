@@ -583,7 +583,7 @@ and adapts, then:
 - auto-generates a **unique admin password** and seeds an admin account, so there
   are **no login errors** on first launch,
 - uses **Docker if available, otherwise a local Python + Node setup** (auto-detected),
-- launches the app at `http://localhost:8000` and **prints your login credentials**.
+- launches the app at `http://localhost:8105` (configurable) and **prints your login credentials**.
 
 **Prerequisites:** either Docker (Desktop/Engine with the daemon running) *or*, for
 the local path, Python 3.11+ and Node 20+. Nothing else to configure. API keys are
@@ -593,7 +593,7 @@ optional — add them to unlock live ticks, full fundamentals, and macro series 
 **First login:** when the installer finishes it prints something like:
 
 ```
- OpenTerminalUI is ready  ->  http://localhost:8000
+ OpenTerminalUI is ready  ->  http://localhost:8105
    email:    admin@openterminal.local
    password: <generated unique password>
 ```
@@ -607,13 +607,15 @@ Force a mode if you prefer: `OTUI_MODE=docker ./install.sh` or `OTUI_MODE=local 
 **Stopping / restarting (Docker):**
 
 ```bash
-docker compose down        # stop (keeps your data + seeded admin)
-docker compose down -v      # stop and wipe the database (fresh start next time)
-./install.sh                # start again
+./scripts/stop.sh           # stop (keeps volumes + seeded admin)
+./scripts/start.sh          # start again
+# WARNING: the next command deletes this project's data volumes:
+docker compose --project-name openterminalui down --volumes
 ```
 
-The Docker stack runs the U.S.-profile backend, frontend, and Redis (SQLite by default).
-Use `docker compose --profile postgres up --build` for PostgreSQL in production-like setups.
+The Docker stack runs the U.S.-profile backend (serves the SPA + API), Redis, and
+optional PostgreSQL. See [Docker isolation](#docker-isolation) for ports and
+multi-project hosting.
 
 ### Adding API keys (one place, guided)
 
@@ -636,14 +638,97 @@ AI keys (OpenRouter, OpenAI, Gemini, LM Studio) power the research agent and sen
 
 ```bash
 cp .env.example .env      # MARKET_PROFILE=US is already the default
+# Optional: edit API_PORT / REDIS_HOST_PORT if another stack already uses them
 # Optional: add FINNHUB_API_KEY, FMP_API_KEY, FRED_API_KEY, ALPACA_* keys
-docker compose up --build            # Backend + Frontend + Redis (SQLite)
-docker compose --profile postgres up --build   # with PostgreSQL
+./scripts/check-ports.sh
+docker compose --project-name openterminalui up -d --build
+# With PostgreSQL:
+docker compose --project-name openterminalui --profile postgres up -d --build
+# Or: ./scripts/start.sh [--postgres]
 ```
 
-The app is available at `http://localhost:8000`. Set `VITE_MARKET_PROFILE=US` before
+The app is available at `http://localhost:8105` by default. Set `VITE_MARKET_PROFILE=US` before
 building the frontend if you change market profile settings.
 </details>
+
+## Docker isolation
+
+This repository is a **fully independent Docker Compose stack**. It does not share
+networks, volumes, container names, databases, or Compose project names with other
+GitHub projects on the same Proxmox/Docker host.
+
+**Project name:** `openterminalui` (`COMPOSE_PROJECT_NAME`)
+
+### Port table
+
+| Service              | Environment variable   | Host port | Container port |
+| -------------------- | ---------------------- | --------: | -------------: |
+| App (Web + API)      | `API_PORT` / `WEB_PORT`|    `8105` |         `8000` |
+| PostgreSQL (dev map) | `POSTGRES_HOST_PORT`   |    `5436` |         `5432` |
+| Redis (dev map)      | `REDIS_HOST_PORT`      |    `6382` |         `6379` |
+
+> There is no separate frontend container — the `backend` service serves the built
+> SPA and the API on container port `8000`. Set `WEB_PORT` equal to `API_PORT`.
+
+Internal connections always use Docker service names (`postgres:5432`, `redis:6379`),
+never `localhost` host ports. The private network is `app_network` (Compose name
+`openterminalui_app_network`). Named volumes:
+
+| Volume key       | Docker volume name                         |
+| ---------------- | ------------------------------------------ |
+| `app_data`       | `openterminalui_openterminalui_data`       |
+| `postgres_data`  | `openterminalui_openterminalui_postgres_data` |
+| `redis_data`     | `openterminalui_redis_data`                |
+
+### Configure environment
+
+```bash
+cp .env.example .env
+# Edit host ports if another project already binds them:
+#   API_PORT / WEB_PORT / APP_PORT
+#   POSTGRES_HOST_PORT
+#   REDIS_HOST_PORT
+./scripts/check-ports.sh
+```
+
+### Start / stop / logs / health
+
+```bash
+./scripts/start.sh              # build + start (SQLite + Redis)
+./scripts/start.sh --postgres   # also start project-local PostgreSQL
+./scripts/status.sh             # container status + /health probe
+./scripts/logs.sh -f backend    # follow logs
+./scripts/stop.sh               # stop containers; volumes kept
+```
+
+Equivalent Compose commands:
+
+```bash
+docker compose --project-name openterminalui up -d --build
+docker compose --project-name openterminalui ps
+docker compose --project-name openterminalui logs -f
+docker compose --project-name openterminalui down
+```
+
+### Production vs development port publishing
+
+- **Base `docker-compose.yml`:** publishes only the app (`API_PORT`). Postgres and
+  Redis use `expose` (reachable inside `app_network` only).
+- **`docker-compose.override.yml` (dev):** maps `POSTGRES_HOST_PORT` and
+  `REDIS_HOST_PORT` for local admin tools. Auto-merged by `docker compose`.
+- **Production-like:**  
+  `docker compose -f docker-compose.yml --project-name openterminalui up -d --build`
+
+### Reset only this project
+
+```bash
+./scripts/stop.sh
+# WARNING: deletes this project's named volumes (DB / Redis / app data):
+docker compose --project-name openterminalui down --volumes
+```
+
+Stopping or rebuilding this stack does **not** stop, rebuild, or remove containers
+from other Compose projects.
 
 <details>
 <summary>Local development (hot reload)</summary>
@@ -668,6 +753,12 @@ The platform runs without API keys using Yahoo fallback providers. Add keys to u
 
 | Variable | Purpose |
 |----------|---------|
+| `COMPOSE_PROJECT_NAME` | Docker Compose project identity (default `openterminalui`) |
+| `API_PORT` / `WEB_PORT` / `APP_PORT` | Host port for the app container (default `8105`) |
+| `REDIS_HOST_PORT` | Optional host publish for Redis via override (default `6382`) |
+| `POSTGRES_HOST_PORT` | Optional host publish for Postgres via override (default `5436`) |
+| `APP_URL` / `API_PUBLIC_URL` / `CORS_ORIGINS` | Browser-facing URLs (must match host ports) |
+| `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD` | Project-local Postgres credentials |
 | `MARKET_PROFILE` | Market profile (default `US` — U.S.-only deployment) |
 | `VITE_MARKET_PROFILE` | Frontend build-time market profile (default `US`) |
 | `US_RISK_FREE_RATE` | Risk-free rate (%) for options Greeks calculations (default `4.5`) |

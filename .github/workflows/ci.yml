@@ -164,14 +164,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Validate compose file
+      - name: Validate compose isolation
         run: |
           set -euo pipefail
-          docker compose -f docker-compose.yml config >/tmp/compose.default.yml
-          # Long-form port output: published/target (not "8005:8000")
-          grep -q 'published: "8005"' /tmp/compose.default.yml
-          grep -q 'published: "6380"' /tmp/compose.default.yml
-          # Postgres is profile-gated; validate host mapping under that profile
-          docker compose --profile postgres -f docker-compose.yml config >/tmp/compose.postgres.yml
-          grep -q 'published: "5433"' /tmp/compose.postgres.yml
-          echo "Compose port mappings OK: app 8005, Redis 6380, Postgres 5433"
+          ./scripts/validate-compose.sh

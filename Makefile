@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: setup setup-backend setup-frontend test test-backend test-frontend test-e2e build build-frontend gate lint-backend docker-validate security-scan ci-local
+.PHONY: setup setup-backend setup-frontend test test-backend test-frontend test-e2e build build-frontend gate lint-backend docker-validate security-scan ci-local docker-up docker-down docker-status docker-logs check-ports
 
 # One-command install + launch (auto-detects Docker vs local).
 install up:
@@ -42,12 +42,22 @@ build-frontend:
 	cd frontend && npm run build
 
 docker-validate:
-	docker compose -f docker-compose.yml config >/tmp/compose.default.yml
-	grep -q 'published: "8005"' /tmp/compose.default.yml
-	grep -q 'published: "6380"' /tmp/compose.default.yml
-	docker compose --profile postgres -f docker-compose.yml config >/tmp/compose.postgres.yml
-	grep -q 'published: "5433"' /tmp/compose.postgres.yml
-	@echo "Compose port mappings OK: app 8005, Redis 6380, Postgres 5433"
+	./scripts/validate-compose.sh
+
+check-ports:
+	./scripts/check-ports.sh
+
+docker-up:
+	./scripts/start.sh
+
+docker-down:
+	./scripts/stop.sh
+
+docker-status:
+	./scripts/status.sh
+
+docker-logs:
+	./scripts/logs.sh -f
 
 security-scan:
 	python -m pip install -q pip-audit && pip-audit -r backend/requirements.txt || true

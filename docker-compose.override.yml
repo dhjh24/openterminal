@@ -1,0 +1,14 @@
+# Development overrides — auto-merged by `docker compose` when present.
+# Publishes Postgres/Redis host ports for local admin tools (psql, redis-cli).
+# Production / CI: use only the base file:
+#   docker compose -f docker-compose.yml config
+#   docker compose -f docker-compose.yml --project-name openterminalui up -d
+
+services:
+  redis:
+    ports:
+      - "${REDIS_HOST_PORT:-6382}:6379"
+
+  postgres:
+    ports:
+      - "${POSTGRES_HOST_PORT:-5436}:5432"
