@@ -2,8 +2,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import {
+  fetchAlerts,
   fetchBacktestV1Presets,
   fetchLatestNews,
+  fetchPaperPortfolios,
+  fetchPaperPositions,
   fetchPortfolio,
   fetchPortfolioBenchmarkOverlay,
   fetchQuotesBatch,
@@ -15,18 +18,23 @@ import { ExposureHeatmap } from "../components/dashboard/ExposureHeatmap";
 import { GuidedEmptyState } from "../components/dashboard/GuidedEmptyState";
 import { IntelligenceTimeline } from "../components/dashboard/IntelligenceTimeline";
 import { ResultsSummaryCards } from "../components/dashboard/ResultsSummaryCards";
+import { ActionQueueSection } from "../components/home/ActionQueueSection";
+import { ExploreAllToolsDialog } from "../components/home/ExploreAllToolsDialog";
 import { LiveClockStrip } from "../components/home/LiveClockStrip";
 import { MarketHeatStrip, type MarketHeatStripItem } from "../components/home/MarketHeatStrip";
 import { MetricCard } from "../components/home/MetricCard";
 import { PortfolioMiniChart } from "../components/home/PortfolioMiniChart";
 import { ProfileCompletionRing } from "../components/home/ProfileCompletionRing";
-import { QuickNavGrid, type QuickNavSection } from "../components/home/QuickNavGrid";
+import { type QuickNavSection } from "../components/home/QuickNavGrid";
 import { SystemHealthBar, type SystemHealthItem } from "../components/home/SystemHealthBar";
 import { AiInsightCard } from "../components/terminal/AiInsightCard";
 import { TerminalShell } from "../components/layout/TerminalShell";
 import { useAuth } from "../contexts/AuthContext";
 import { fetchChainSummary } from "../fno/api/fnoApi";
 import { fetchCollectionBriefing } from "../api/client";
+import { buildActionQueue } from "../home/actionQueue";
+import { NAV_CARD_SECTIONS, slugifyNav } from "../home/navCards";
+import { readRecentTools, recordRecentTool, type RecentTool } from "../home/recentTools";
 import { useSettingsStore } from "../store/settingsStore";
 import type { PortfolioItem } from "../types";
 import { getWorkspacePresetConfig, readWorkspacePreset } from "../workspace/presets";
@@ -54,102 +62,8 @@ type DashboardSnapshot = {
   updatedAt: number | null;
 };
 
-type NavCard = {
-  label: string;
-  to: string;
-  badge: string;
-};
-
 const TRANSITION_FLAG_KEY = "ot-terminal-transition";
 const NEWS_LIMIT = 15;
-
-const NAV_CARD_SECTIONS: Array<{ title: string; cards: NavCard[] }> = [
-  {
-    title: "MARKETS",
-    cards: [
-      { label: "Equity", to: "/equity/stocks", badge: "M1" },
-      { label: "Options & Futures", to: "/fno", badge: "FO" },
-      { label: "Crypto", to: "/equity/crypto", badge: "CR" },
-      { label: "Economics", to: "/equity/economics", badge: "EC" },
-      { label: "Yield Curve", to: "/equity/yield-curve", badge: "YC" },
-      { label: "Rotation", to: "/equity/sector-rotation", badge: "ROT" },
-      { label: "Heatmap", to: "/equity/heatmap", badge: "HM" },
-    ],
-  },
-  {
-    title: "DERIVATIVES",
-    cards: [
-      { label: "Option Chain", to: "/fno", badge: "OC" },
-      { label: "Greeks", to: "/fno/greeks", badge: "GR" },
-      { label: "Futures", to: "/fno/futures", badge: "FUT" },
-      { label: "OI Analysis", to: "/fno/oi", badge: "OI" },
-      { label: "Strategy", to: "/fno/strategy", badge: "STR" },
-      { label: "PCR", to: "/fno/pcr", badge: "PCR" },
-      { label: "Options Flow", to: "/fno/flow", badge: "FLW" },
-      { label: "Options & Futures Heatmap", to: "/fno/heatmap", badge: "FHM" },
-      { label: "Expiry", to: "/fno/expiry", badge: "EXP" },
-    ],
-  },
-  {
-    title: "RESEARCH",
-    cards: [
-      { label: "Security Hub", to: "/equity/security", badge: "SH" },
-      { label: "Screener", to: "/equity/screener", badge: "F2" },
-      { label: "Saved Views", to: "/equity/saved-views", badge: "SV" },
-      { label: "Factors", to: "/equity/factors", badge: "FAC" },
-      { label: "Alpha Zoo", to: "/equity/alpha-zoo", badge: "AZ" },
-      { label: "Strategy Export", to: "/equity/strategy-export", badge: "SE" },
-      { label: "Intelligence", to: "/equity/intelligence-timeline", badge: "INT" },
-      { label: "Hotlists", to: "/equity/hotlists", badge: "HOT" },
-      { label: "Insider", to: "/equity/insider", badge: "INS" },
-      { label: "Compare", to: "/equity/compare", badge: "CMP" },
-    ],
-  },
-  {
-    title: "LABS",
-    cards: [
-      { label: "Backtesting", to: "/backtesting", badge: "F9" },
-      { label: "Model Lab", to: "/backtesting/model-lab", badge: "ML" },
-      { label: "Portfolio Lab", to: "/equity/portfolio/lab", badge: "PL" },
-      { label: "Model Compare", to: "/backtesting/model-lab/compare", badge: "MC" },
-      { label: "Blends", to: "/equity/portfolio/lab/blends", badge: "BL" },
-      { label: "Stat Lab", to: "/equity/stat-lab", badge: "SL" },
-    ],
-  },
-  {
-    title: "PORTFOLIO",
-    cards: [
-      { label: "Holdings", to: "/equity/portfolio", badge: "F3" },
-      { label: "Risk Desk", to: "/equity/risk", badge: "RSK" },
-      { label: "Correlation", to: "/equity/correlation", badge: "COR" },
-      { label: "Paper", to: "/equity/paper", badge: "PP" },
-      { label: "Dividends", to: "/equity/dividends", badge: "DIV" },
-      { label: "Mutual Funds", to: "/equity/mutual-funds", badge: "MF" },
-      { label: "ETF Analytics", to: "/equity/etf-analytics", badge: "ETF" },
-    ],
-  },
-  {
-    title: "INTEL",
-    cards: [
-      { label: "News", to: "/equity/news", badge: "NW" },
-      { label: "Alerts", to: "/equity/alerts", badge: "AL" },
-      { label: "Watchlist", to: "/equity/watchlist", badge: "F4" },
-      { label: "Relative Str", to: "/equity/rs", badge: "RS" },
-      { label: "Data Quality", to: "/equity/data-quality", badge: "DQ" },
-    ],
-  },
-  {
-    title: "WORKSPACE",
-    cards: [
-      { label: "Launchpad", to: "/equity/launchpad", badge: "LP" },
-      { label: "Workstation", to: "/equity/chart-workstation", badge: "WS" },
-      { label: "Cockpit", to: "/equity/cockpit", badge: "CP" },
-      { label: "Plugins", to: "/equity/plugins", badge: "PLG" },
-      { label: "Settings", to: "/equity/settings", badge: "F6" },
-      { label: "Account", to: "/account", badge: "ACC" },
-    ],
-  },
-];
 
 const INITIAL_MARKET_ROWS: MarketRow[] = [
   { symbol: "^GSPC", label: "S&P 500", ltp: 0, chg: 0, chgPct: 0, flash: null },
@@ -209,10 +123,6 @@ function formatCompactDateLabel(date: string): string {
   return new Date(parsed).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-function slugify(value: string): string {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-}
-
 function getMetricTone(value: number | null): "accent" | "up" | "down" | "neutral" {
   if (value == null || !Number.isFinite(value) || value === 0) return "neutral";
   return value > 0 ? "up" : "down";
@@ -262,6 +172,10 @@ export function HomePage() {
   const [selectedHeatId, setSelectedHeatId] = useState<string | null>(INITIAL_MARKET_ROWS[0]?.symbol ?? null);
   const [initializing, setInitializing] = useState(() => sessionStorage.getItem(TRANSITION_FLAG_KEY) === "1");
   const [showDeskSettings, setShowDeskSettings] = useState(false);
+  const [exploreOpen, setExploreOpen] = useState(false);
+  const [recentTools, setRecentTools] = useState<RecentTool[]>(() => readRecentTools());
+  const [alertCount, setAlertCount] = useState(0);
+  const [paperPositionCount, setPaperPositionCount] = useState(0);
 
   const loadSnapshot = useCallback(async () => {
     const [portfolioRes, watchlistRes, backtestRes, chainRes, benchmarkRes] = await Promise.allSettled([
@@ -461,6 +375,32 @@ export function HomePage() {
   }, [newsAutoRefresh, newsRefreshSec]);
 
   useEffect(() => {
+    let active = true;
+    const loadActionSignals = async () => {
+      const [alertsRes, paperRes] = await Promise.allSettled([fetchAlerts(), fetchPaperPortfolios()]);
+      if (!active) return;
+      if (alertsRes.status === "fulfilled") {
+        setAlertCount(alertsRes.value.filter((row) => String(row.status || "").toLowerCase() !== "disabled").length);
+      }
+      if (paperRes.status === "fulfilled" && paperRes.value.length > 0) {
+        const portfolioId = String(paperRes.value[0]?.id || "");
+        if (portfolioId) {
+          try {
+            const positions = await fetchPaperPositions(portfolioId);
+            if (active) setPaperPositionCount(positions.length);
+          } catch {
+            if (active) setPaperPositionCount(0);
+          }
+        }
+      }
+    };
+    void loadActionSignals();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
     if (!initializing) return;
     const timer = window.setTimeout(() => {
       sessionStorage.removeItem(TRANSITION_FLAG_KEY);
@@ -539,11 +479,20 @@ export function HomePage() {
   const presetConfig = getWorkspacePresetConfig(activePreset);
   const showHomeSection = useCallback((section: string) => presetConfig.homeSections.includes(section), [presetConfig.homeSections]);
 
+  const openTool = useCallback(
+    (to: string, label?: string) => {
+      setRecentTools(recordRecentTool(to, label));
+      setExploreOpen(false);
+      navigate(to);
+    },
+    [navigate],
+  );
+
   const launchSections = useMemo<QuickNavSection[]>(
     () => {
       const preferred = new Set(presetConfig.quickLinks.map((link) => link.to));
       return NAV_CARD_SECTIONS.map((section) => ({
-        id: slugify(section.title),
+        id: slugifyNav(section.title),
         title: section.title,
         // Show ALL nav cards — the workspace preset only reorders (preferred first),
         // it must never hide features from the launcher.
@@ -551,15 +500,42 @@ export function HomePage() {
           .slice()
           .sort((a, b) => Number(preferred.has(b.to)) - Number(preferred.has(a.to)))
           .map((card) => ({
-          id: `${slugify(section.title)}-${slugify(card.label)}`,
+          id: `${slugifyNav(section.title)}-${slugifyNav(card.label)}`,
           label: card.label,
           shortcut: card.badge,
           description: `${section.title} desk access`,
-          onSelect: () => navigate(card.to),
+          onSelect: () => openTool(card.to, card.label),
         })),
       })).filter((section) => section.items.length > 0);
     },
-    [navigate, presetConfig.quickLinks],
+    [openTool, presetConfig.quickLinks],
+  );
+
+  const marketQuotesReady = marketRows.some((row) => row.ltp > 0);
+  const snapshotAgeMs = snapshot.updatedAt == null ? null : Date.now() - snapshot.updatedAt;
+  const providerIssues = snapshot.fnoSignal === "NA" && !marketQuotesReady;
+  const actionQueueItems = useMemo(
+    () =>
+      buildActionQueue({
+        alertCount,
+        marketQuotesReady,
+        snapshotAgeMs,
+        newsCount: newsLog.length,
+        backtestPresetCount: snapshot.backtestPresetCount,
+        paperPositionCount,
+        holdingsCount: snapshot.holdingsCount,
+        providerIssues,
+      }),
+    [
+      alertCount,
+      marketQuotesReady,
+      newsLog.length,
+      paperPositionCount,
+      providerIssues,
+      snapshot.backtestPresetCount,
+      snapshot.holdingsCount,
+      snapshotAgeMs,
+    ],
   );
 
   const updatedLabel = snapshot.updatedAt
@@ -674,7 +650,7 @@ export function HomePage() {
                           key={link.to}
                           type="button"
                           className="rounded-sm border border-terminal-border px-2 py-1 text-[11px] uppercase tracking-[0.1em] text-terminal-text hover:border-terminal-accent hover:text-terminal-accent"
-                          onClick={() => navigate(link.to)}
+                          onClick={() => openTool(link.to, link.label)}
                         >
                           {link.label}
                         </button>
@@ -685,18 +661,11 @@ export function HomePage() {
 
                 <div className="flex flex-col gap-3 xl:items-end">
                   <LiveClockStrip />
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      className="rounded-sm border border-terminal-border px-3 py-1.5 text-[11px] uppercase tracking-[0.12em] text-terminal-muted hover:border-terminal-accent hover:text-terminal-accent"
-                      onClick={() => navigate("/equity/portfolio")}
-                    >
-                      Portfolio HQ
-                    </button>
+                  <div className="flex flex-wrap gap-2" data-testid="home-primary-actions">
                     <button
                       type="button"
                       className="rounded-sm border border-terminal-accent px-3 py-1.5 text-[11px] uppercase tracking-[0.12em] text-terminal-accent hover:bg-terminal-accent/10"
-                      onClick={() => navigate(presetConfig.landing.primaryRoute)}
+                      onClick={() => openTool(presetConfig.landing.primaryRoute, presetConfig.landing.primaryLabel)}
                       data-testid="home-primary-action"
                     >
                       {presetConfig.landing.primaryLabel}
@@ -704,16 +673,10 @@ export function HomePage() {
                     <button
                       type="button"
                       className="rounded-sm border border-terminal-border px-3 py-1.5 text-[11px] uppercase tracking-[0.12em] text-terminal-muted hover:border-terminal-accent hover:text-terminal-accent"
-                      onClick={() => navigate("/equity/launchpad")}
+                      onClick={() => setExploreOpen(true)}
+                      data-testid="explore-all-tools-open"
                     >
-                      Launchpad
-                    </button>
-                    <button
-                      type="button"
-                      className="rounded-sm border border-terminal-border px-3 py-1.5 text-[11px] uppercase tracking-[0.12em] text-terminal-muted hover:border-terminal-accent hover:text-terminal-accent"
-                      onClick={() => navigate("/equity/news")}
-                    >
-                      Intel Wire
+                      Explore all tools
                     </button>
                   </div>
                 </div>
@@ -762,7 +725,7 @@ export function HomePage() {
                 <button
                   type="button"
                   className="shrink-0 rounded-sm border border-terminal-accent px-2 py-1 text-[10px] uppercase tracking-wider text-terminal-accent hover:bg-terminal-accent/10"
-                  onClick={() => navigate(presetConfig.landing.primaryRoute)}
+                  onClick={() => openTool(presetConfig.landing.primaryRoute, presetConfig.landing.primaryLabel)}
                   data-testid="home-primary-action-mobile"
                 >
                   {presetConfig.landing.primaryLabel}
@@ -772,16 +735,24 @@ export function HomePage() {
               <div className="mt-2" data-testid="home-pinned-tools-mobile">
                 <p className="mb-1 text-[10px] uppercase tracking-wider text-terminal-muted">Pinned tools</p>
                 <div className="flex gap-1.5 overflow-x-auto pb-1">
-                  {presetConfig.quickLinks.map((link) => (
+                  {presetConfig.quickLinks.slice(0, 4).map((link) => (
                     <button
                       key={link.to}
                       type="button"
                       className="shrink-0 rounded-sm border border-terminal-border px-2 py-1 text-[10px] uppercase tracking-wider text-terminal-text"
-                      onClick={() => navigate(link.to)}
+                      onClick={() => openTool(link.to, link.label)}
                     >
                       {link.label}
                     </button>
                   ))}
+                  <button
+                    type="button"
+                    className="shrink-0 rounded-sm border border-terminal-accent/60 px-2 py-1 text-[10px] uppercase tracking-wider text-terminal-accent"
+                    onClick={() => setExploreOpen(true)}
+                    data-testid="explore-all-tools-open-mobile"
+                  >
+                    Explore
+                  </button>
                 </div>
               </div>
 
@@ -891,6 +862,237 @@ export function HomePage() {
                   formatValue={(value) => (typeof value === "number" ? formatPrice(value) : "--")}
                   onSelect={(item) => setSelectedHeatId(item.id)}
                 />
+              </div>
+            </section>
+
+            <section
+              className="rounded-sm border border-terminal-border bg-terminal-panel/80 p-3"
+              aria-label="Market now"
+              data-testid="market-now"
+            >
+              <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <h2 className="ot-type-panel-title ot-home-title-mobile uppercase tracking-[0.14em] text-terminal-accent">
+                    Market now
+                  </h2>
+                  <p className="mt-1 text-sm text-terminal-muted">
+                    Indexes, session status, and the top headlines for this desk.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2 text-[11px] uppercase tracking-[0.12em]">
+                  <span className="rounded-sm border border-terminal-border px-2 py-1 text-terminal-muted">
+                    {selectedMarket} · {realtimeMode === "ws" ? "LIVE" : "POLL"}
+                  </span>
+                  <span
+                    className={`rounded-sm border px-2 py-1 ${
+                      marketQuotesReady ? "border-terminal-accent/50 text-terminal-accent" : "border-amber-500/50 text-amber-200"
+                    }`}
+                  >
+                    {marketQuotesReady ? "Quotes ready" : "Quotes pending"}
+                  </span>
+                  <span className="rounded-sm border border-terminal-border px-2 py-1 text-terminal-muted">
+                    Synced {updatedLabel}
+                  </span>
+                </div>
+              </div>
+              {newsLog.length > 0 ? (
+                <ul className="space-y-2" role="list" aria-label="Key headlines">
+                  {newsLog.slice(0, 3).map((entry) => (
+                    <li key={String(entry.id)} className="rounded-sm border border-terminal-border bg-terminal-bg/40 px-2.5 py-2">
+                      <p className="text-[11px] uppercase tracking-[0.12em] text-terminal-muted">{entry.source}</p>
+                      <p className="mt-0.5 text-sm text-terminal-text">{entry.title}</p>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <GuidedEmptyState
+                  title="No session headlines yet"
+                  message="Open the news desk or wait for the next poll so Market now has context."
+                  icon="NEWS"
+                  actions={[{ label: "Open News", onClick: () => openTool("/equity/news", "News") }]}
+                />
+              )}
+            </section>
+
+            <section
+              className="rounded-sm border border-terminal-border bg-terminal-panel/80 p-3"
+              aria-label="Your desk"
+              data-testid="your-desk"
+            >
+              <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <h2 className="ot-type-panel-title ot-home-title-mobile uppercase tracking-[0.14em] text-terminal-accent">
+                    Your desk
+                  </h2>
+                  <p className="mt-1 text-sm text-terminal-muted">
+                    Active workspace, pinned tools, and recently opened screens.
+                  </p>
+                </div>
+                <span className="rounded-sm border border-terminal-accent/60 px-2 py-1 text-[11px] uppercase tracking-[0.12em] text-terminal-accent">
+                  {presetConfig.label} workspace
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-1.5" data-testid="your-desk-pinned">
+                {presetConfig.quickLinks.map((link) => (
+                  <button
+                    key={`desk-${link.to}`}
+                    type="button"
+                    className="min-h-11 rounded-sm border border-terminal-border px-3 text-[11px] uppercase tracking-[0.1em] text-terminal-text hover:border-terminal-accent hover:text-terminal-accent"
+                    onClick={() => openTool(link.to, link.label)}
+                  >
+                    {link.label}
+                  </button>
+                ))}
+              </div>
+              <div className="mt-3 border-t border-terminal-border pt-3">
+                <p className="mb-1.5 text-[11px] uppercase tracking-[0.12em] text-terminal-muted">Recent screens</p>
+                {recentTools.length > 0 ? (
+                  <div className="flex flex-wrap gap-1.5" data-testid="your-desk-recent">
+                    {recentTools.map((tool) => (
+                      <button
+                        key={`${tool.to}-${tool.at}`}
+                        type="button"
+                        className="min-h-11 rounded-sm border border-terminal-border/80 bg-terminal-bg/40 px-3 text-[11px] uppercase tracking-[0.1em] text-terminal-muted hover:border-terminal-accent hover:text-terminal-accent"
+                        onClick={() => openTool(tool.to, tool.label)}
+                      >
+                        {tool.label}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <GuidedEmptyState
+                    title="No recent screens yet"
+                    message="Open a pinned tool or explore the full launcher. Recent screens will appear here."
+                    icon="RECENT"
+                    actions={[{ label: "Explore all tools", onClick: () => setExploreOpen(true) }]}
+                  />
+                )}
+              </div>
+            </section>
+
+            <ActionQueueSection
+              items={actionQueueItems}
+              onSelect={(item) => openTool(item.to, item.actionLabel)}
+              onExplore={() => setExploreOpen(true)}
+            />
+
+            <section
+              className="rounded-sm border border-terminal-border bg-terminal-panel/80 p-3"
+              aria-label="Portfolio snapshot"
+              data-testid="portfolio-snapshot"
+            >
+              <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <h2 className="ot-type-panel-title ot-home-title-mobile uppercase tracking-[0.14em] text-terminal-accent">
+                    Portfolio snapshot
+                  </h2>
+                  <p className="mt-1 text-sm text-terminal-muted">
+                    Value, daily P/L, exposure, and risk posture for the active book.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="min-h-11 rounded-sm border border-terminal-border px-3 text-[11px] uppercase tracking-[0.12em] text-terminal-muted hover:border-terminal-accent hover:text-terminal-accent"
+                  onClick={() => openTool("/equity/portfolio", "Holdings")}
+                >
+                  Open Portfolio
+                </button>
+              </div>
+              {snapshot.holdingsCount > 0 || snapshot.equityValue != null ? (
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                  <MetricCard
+                    label="Net Liquidation"
+                    value={formatUsd(snapshot.equityValue)}
+                    tone={getMetricTone(snapshot.equityPnl)}
+                    delta={
+                      snapshot.equityPnl == null
+                        ? undefined
+                        : {
+                            label: `${formatSignedUsd(snapshot.equityPnl)} (${formatPercent(equityPnlPct)})`,
+                            tone: getMetricTone(snapshot.equityPnl),
+                          }
+                    }
+                  />
+                  <MetricCard
+                    label="Holdings"
+                    value={String(snapshot.holdingsCount)}
+                    tone={snapshot.holdingsCount > 0 ? "accent" : "neutral"}
+                    details={[
+                      { label: "Watchlist", value: String(snapshot.watchlistCount) },
+                      { label: "Derivatives linked", value: String(snapshot.watchlistDerivativesCount) },
+                    ]}
+                  />
+                  <MetricCard
+                    label="Exposure signal"
+                    value={snapshot.fnoSignal}
+                    tone={getSignalTone(snapshot.fnoSignal)}
+                    details={[
+                      {
+                        label: "PCR",
+                        value: snapshot.fnoPcr != null ? snapshot.fnoPcr.toFixed(2) : "--",
+                      },
+                    ]}
+                  />
+                  <MetricCard
+                    label="Risk warning"
+                    value={
+                      snapshot.equityPnl != null && snapshot.equityPnl < 0
+                        ? "Drawdown active"
+                        : snapshot.holdingsCount === 0
+                          ? "No book loaded"
+                          : "Within band"
+                    }
+                    tone={
+                      snapshot.equityPnl != null && snapshot.equityPnl < 0
+                        ? "down"
+                        : snapshot.holdingsCount === 0
+                          ? "neutral"
+                          : "up"
+                    }
+                    details={[{ label: "Risk desk", value: "Open for limits", tone: "accent" }]}
+                    footer={
+                      <button
+                        type="button"
+                        className="rounded-sm border border-terminal-border px-2 py-1.5 text-[11px] uppercase tracking-[0.12em] text-terminal-muted hover:border-terminal-accent hover:text-terminal-accent"
+                        onClick={() => openTool("/equity/risk", "Risk Desk")}
+                      >
+                        Open Risk
+                      </button>
+                    }
+                  />
+                </div>
+              ) : (
+                <GuidedEmptyState
+                  title="Portfolio is empty"
+                  message="Import or add holdings so Mission Control can show value, P/L, and exposure."
+                  icon="PORTFOLIO"
+                  actions={[{ label: "Open Portfolio", onClick: () => openTool("/equity/portfolio", "Holdings") }]}
+                />
+              )}
+            </section>
+
+            <section
+              className="rounded-sm border border-terminal-border bg-terminal-panel/80 p-3"
+              aria-label="Explore all tools"
+              data-testid="explore-all-tools"
+            >
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h2 className="ot-type-panel-title ot-home-title-mobile uppercase tracking-[0.14em] text-terminal-accent">
+                    Explore all tools
+                  </h2>
+                  <p className="mt-1 text-sm text-terminal-muted">
+                    Open the full categorized launcher. Every advanced route stays two taps away from Home.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="min-h-11 rounded-sm border border-terminal-accent px-4 text-[11px] uppercase tracking-[0.12em] text-terminal-accent hover:bg-terminal-accent/10"
+                  onClick={() => setExploreOpen(true)}
+                  data-testid="explore-all-tools-cta"
+                >
+                  Browse full launcher
+                </button>
               </div>
             </section>
 
@@ -1170,44 +1372,15 @@ export function HomePage() {
                 symbols={portfolioItems.map((item) => item.ticker)}
                 limit={10}
                 title="Home Intelligence Timeline"
-                onAddAlert={() => navigate("/equity/alerts")}
-                onOpenScreener={() => navigate("/equity/screener")}
+                onAddAlert={() => openTool("/equity/alerts", "Alerts")}
+                onOpenScreener={() => openTool("/equity/screener", "Screener")}
               /> : null}
-            </section>
-            ) : null}
-
-            {showHomeSection("launch") ? (
-            <section className="rounded-sm border border-terminal-border bg-terminal-panel/80 p-3" aria-label="Launch Matrix">
-              <div className="mb-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <h2 className="ot-type-panel-title ot-home-title-mobile uppercase tracking-[0.14em] text-terminal-accent">Launch Matrix</h2>
-                  <p className="mt-1 text-sm text-terminal-muted">
-                    Dense function-key style routing into equity, derivatives, research, and settings workspaces.
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    className="rounded-sm border border-terminal-border px-2 py-1.5 text-[11px] uppercase ot-home-badge-mobile tracking-[0.12em] text-terminal-muted hover:border-terminal-accent hover:text-terminal-accent"
-                    onClick={() => navigate("/equity/chart-workstation")}
-                  >
-                    Open Workstation
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded-sm border border-terminal-border px-2 py-1.5 text-[11px] uppercase ot-home-badge-mobile tracking-[0.12em] text-terminal-muted hover:border-terminal-accent hover:text-terminal-accent"
-                    onClick={() => navigate("/equity/screener")}
-                  >
-                    Open Screener
-                  </button>
-                </div>
-              </div>
-              <QuickNavGrid ariaLabel="Launch matrix" sections={launchSections} columnCount={4} />
             </section>
             ) : null}
           </main>
         ) : null}
       </div>
+      <ExploreAllToolsDialog open={exploreOpen} onClose={() => setExploreOpen(false)} sections={launchSections} />
     </TerminalShell>
   );
 }
