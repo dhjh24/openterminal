@@ -208,6 +208,11 @@ describe("HomePage mission-control revamp", () => {
     expect(screen.getByTestId("portfolio-snapshot")).toBeInTheDocument();
     expect(screen.getByTestId("explore-all-tools")).toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "Launch Matrix" })).not.toBeInTheDocument();
+    expect(screen.queryByTestId("home-desk-details")).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Portfolio HQ" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("home-desk-details-button"));
+    expect(screen.getByTestId("home-desk-details")).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Portfolio HQ" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "System Health" })).toBeInTheDocument();
 

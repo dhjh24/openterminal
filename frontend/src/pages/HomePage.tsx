@@ -33,6 +33,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { fetchChainSummary } from "../fno/api/fnoApi";
 import { fetchCollectionBriefing } from "../api/client";
 import { buildActionQueue } from "../home/actionQueue";
+import { readHomeDeskDetailsExpanded, writeHomeDeskDetailsExpanded } from "../home/deskDetails";
 import { NAV_CARD_SECTIONS, slugifyNav } from "../home/navCards";
 import { readRecentTools, recordRecentTool, type RecentTool } from "../home/recentTools";
 import { useSettingsStore } from "../store/settingsStore";
@@ -173,6 +174,7 @@ export function HomePage() {
   const [initializing, setInitializing] = useState(() => sessionStorage.getItem(TRANSITION_FLAG_KEY) === "1");
   const [showDeskSettings, setShowDeskSettings] = useState(false);
   const [exploreOpen, setExploreOpen] = useState(false);
+  const [showDeskDetails, setShowDeskDetails] = useState(readHomeDeskDetailsExpanded);
   const [recentTools, setRecentTools] = useState<RecentTool[]>(() => readRecentTools());
   const [alertCount, setAlertCount] = useState(0);
   const [paperPositionCount, setPaperPositionCount] = useState(0);
@@ -803,7 +805,7 @@ export function HomePage() {
                         className="flex min-h-[44px] items-center justify-center rounded-sm border border-terminal-border px-3 text-[11px] uppercase tracking-wider text-terminal-muted hover:border-terminal-accent hover:text-terminal-accent"
                         onClick={() => navigate("/equity/portfolio")}
                       >
-                        Portfolio HQ
+                        Portfolio
                       </button>
                       <button
                         type="button"
@@ -817,7 +819,7 @@ export function HomePage() {
                         className="flex min-h-[44px] items-center justify-center rounded-sm border border-terminal-border px-3 text-[11px] uppercase tracking-wider text-terminal-muted hover:border-terminal-accent hover:text-terminal-accent"
                         onClick={() => navigate("/equity/news")}
                       >
-                        Intel Wire
+                        News
                       </button>
                     </div>
                   </div>
@@ -1096,6 +1098,41 @@ export function HomePage() {
               </div>
             </section>
 
+            <section
+              className="rounded-sm border border-terminal-border bg-terminal-panel/80 p-3"
+              aria-label="More on Home"
+              data-testid="home-desk-details-toggle"
+            >
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h2 className="ot-type-panel-title ot-home-title-mobile uppercase tracking-[0.14em] text-terminal-accent">
+                    More on Home
+                  </h2>
+                  <p className="mt-1 text-sm text-terminal-muted">
+                    Optional desk details: AI outlook, Portfolio HQ, system health, and intelligence panels.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="min-h-11 rounded-sm border border-terminal-border px-4 text-[11px] uppercase tracking-[0.12em] text-terminal-muted hover:border-terminal-accent hover:text-terminal-accent"
+                  aria-expanded={showDeskDetails}
+                  aria-controls="home-desk-details"
+                  data-testid="home-desk-details-button"
+                  onClick={() => {
+                    setShowDeskDetails((prev) => {
+                      const next = !prev;
+                      writeHomeDeskDetailsExpanded(next);
+                      return next;
+                    });
+                  }}
+                >
+                  {showDeskDetails ? "Hide desk details" : "Show desk details"}
+                </button>
+              </div>
+            </section>
+
+            {showDeskDetails ? (
+            <div id="home-desk-details" data-testid="home-desk-details" className="space-y-3">
             <div className="grid grid-cols-1">
               <AiInsightCard
                 title="AI Market Outlook"
@@ -1376,6 +1413,8 @@ export function HomePage() {
                 onOpenScreener={() => openTool("/equity/screener", "Screener")}
               /> : null}
             </section>
+            ) : null}
+            </div>
             ) : null}
           </main>
         ) : null}
