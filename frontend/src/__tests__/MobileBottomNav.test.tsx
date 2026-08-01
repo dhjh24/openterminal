@@ -77,10 +77,11 @@ describe("MobileBottomNav", () => {
     expect(screen.getByRole("heading", { name: "Research" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Alerts" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Tools" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Settings" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Account" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Settings & Admin" })).toBeInTheDocument();
     expect(screen.getByRole("menuitem", { name: "Open Agent" })).toBeInTheDocument();
     expect(screen.getByRole("menuitem", { name: "Screener" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "Data quality" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "Order management" })).toBeInTheDocument();
 
     fireEvent.keyDown(document, { key: "Escape" });
     expect(screen.queryByTestId("mobile-more-sheet")).not.toBeInTheDocument();

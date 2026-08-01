@@ -8,11 +8,13 @@ import { TerminalTable } from "../components/terminal/TerminalTable";
 import { DataManager } from "../components/settings/DataManager";
 import { APIKeyManager } from "../components/settings/APIKeyManager";
 import { ErrorBoundary } from "../components/common/ErrorBoundary";
+import { SETTINGS_ADMIN_LINKS } from "../home/mobileNav";
 import { useSettingsStore } from "../store/settingsStore";
 import type { ChartTextSize, ContrastMode, DataFont, ShellChromeMode, UiDensity } from "../store/settingsStore";
 import { COUNTRY_MARKETS } from "../types";
 import type { AlertRule, CountryCode, MarketCode } from "../types";
 import type { ScheduledReport } from "../types";
+import { Link, useLocation } from "react-router-dom";
 
 export function SettingsPage() {
   const selectedCountry = useSettingsStore((s) => s.selectedCountry);
@@ -56,6 +58,7 @@ export function SettingsPage() {
   const [dataType, setDataType] = useState("positions");
 
   const marketOptions = useMemo(() => COUNTRY_MARKETS[selectedCountry], [selectedCountry]);
+  const location = useLocation();
 
   const load = async () => {
     try {
@@ -72,8 +75,34 @@ export function SettingsPage() {
     void load();
   }, []);
 
+  useEffect(() => {
+    const hash = location.hash.replace(/^#/, "");
+    if (!hash) return;
+    const target = document.getElementById(hash);
+    target?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [location.hash]);
+
   return (
     <div className="space-y-3 p-3">
+      <div data-testid="settings-admin-panel">
+        <TerminalPanel title="Settings & Admin" subtitle="Desk preferences and operational destinations">
+          <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3" aria-label="Settings and admin destinations">
+            {SETTINGS_ADMIN_LINKS.map((item) => (
+              <li key={item.path + item.label}>
+                <Link
+                  to={item.path}
+                  className="flex min-h-11 flex-col justify-center rounded-md border border-terminal-border bg-terminal-bg/40 px-3 py-2 hover:border-terminal-accent hover:text-terminal-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-terminal-accent"
+                  data-testid={`settings-admin-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
+                >
+                  <span className="text-sm font-medium text-terminal-text">{item.label}</span>
+                  <span className="text-xs text-terminal-muted">{item.description}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </TerminalPanel>
+      </div>
+
       <TerminalPanel title="UI Settings" subtitle="Market and refresh defaults">
         <div className="grid grid-cols-1 gap-2 lg:grid-cols-6">
           <TerminalInput as="select" value={selectedCountry} onChange={(e) => setSelectedCountry(e.target.value as CountryCode)}>
@@ -107,7 +136,8 @@ export function SettingsPage() {
         </div>
       </TerminalPanel>
 
-      <TerminalPanel title="Appearance" subtitle="Readability, density, shell chrome, and visual effects">
+      <div id="appearance">
+        <TerminalPanel title="Appearance" subtitle="Readability, density, shell chrome, and visual effects">
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
           <label className="grid gap-1">
             <span className="ot-type-label text-terminal-text">Terminal chrome</span>
@@ -173,6 +203,7 @@ export function SettingsPage() {
           </label>
         </div>
       </TerminalPanel>
+      </div>
 
       <TerminalPanel title="Create Alert">
         <div className="grid grid-cols-1 gap-2 lg:grid-cols-6">
