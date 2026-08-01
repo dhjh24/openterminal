@@ -65,7 +65,7 @@ describe("IconRail keyboard and hubs", () => {
     expect(document.activeElement).toBe(markets);
 
     fireEvent.keyDown(rail, { key: "Enter" });
-    expect(navigateSpy).toHaveBeenCalledWith("/equity/stocks");
+    expect(navigateSpy).toHaveBeenCalledWith("/equity/markets");
   });
 
   it("opens More panel with Settings & Admin links", () => {

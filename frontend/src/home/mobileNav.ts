@@ -17,18 +17,18 @@ export type MobileHub = {
 
 export const MOBILE_HUBS: MobileHub[] = [
   { id: "home", label: "Home", path: "/home" },
-  { id: "markets", label: "Markets", path: "/equity/stocks" },
-  { id: "trade", label: "Trade", path: "/equity/chart-workstation" },
-  { id: "portfolio", label: "Portfolio", path: "/equity/portfolio" },
+  { id: "markets", label: "Markets", path: "/equity/markets" },
+  { id: "trade", label: "Trade", path: "/equity/trade" },
+  { id: "portfolio", label: "Portfolio", path: "/equity/portfolio-desk" },
 ];
 
 /** Desktop primary rail — five product hubs from the Mission Control epic. */
 export const DESKTOP_HUBS: ProductHub[] = [
   { id: "home", label: "Home", description: "Mission Control dashboard", path: "/home" },
-  { id: "markets", label: "Markets", description: "Stocks, derivatives, crypto, and macro", path: "/equity/stocks" },
-  { id: "trade", label: "Trade", description: "Charts, watchlist, paper trading, and orders", path: "/equity/chart-workstation" },
-  { id: "research", label: "Research", description: "Screener, backtests, factors, and models", path: "/equity/screener" },
-  { id: "portfolio", label: "Portfolio", description: "Holdings, risk, and performance", path: "/equity/portfolio" },
+  { id: "markets", label: "Markets", description: "Stocks, derivatives, crypto, and macro", path: "/equity/markets" },
+  { id: "trade", label: "Trade", description: "Charts, watchlist, paper trading, and orders", path: "/equity/trade" },
+  { id: "research", label: "Research", description: "Screener, backtests, factors, and models", path: "/equity/research-desk" },
+  { id: "portfolio", label: "Portfolio", description: "Holdings, risk, and performance", path: "/equity/portfolio-desk" },
 ];
 
 export type MoreSectionItem =
@@ -81,6 +81,7 @@ export const MORE_SECTIONS: MoreSection[] = [
     id: "research",
     title: "Research",
     items: [
+      { kind: "link", label: "Research desk", path: "/equity/research-desk" },
       { kind: "link", label: "Screener", path: "/equity/screener" },
       { kind: "link", label: "Backtesting", path: "/backtesting" },
       { kind: "link", label: "Factors", path: "/equity/factors" },
@@ -138,6 +139,7 @@ export function isDesktopHubActive(hubId: DesktopHubId, pathname: string): boole
       return path === "/home" || path === "/";
     case "markets":
       return (
+        startsWithPath(path, "/equity/markets") ||
         startsWithPath(path, "/equity/stocks") ||
         startsWithPath(path, "/equity/crypto") ||
         startsWithPath(path, "/equity/economics") ||
@@ -153,6 +155,7 @@ export function isDesktopHubActive(hubId: DesktopHubId, pathname: string): boole
       );
     case "trade":
       return (
+        startsWithPath(path, "/equity/trade") ||
         startsWithPath(path, "/equity/chart-workstation") ||
         startsWithPath(path, "/equity/watchlist") ||
         startsWithPath(path, "/equity/paper") ||
@@ -165,13 +168,15 @@ export function isDesktopHubActive(hubId: DesktopHubId, pathname: string): boole
       );
     case "research":
       return (
+        startsWithPath(path, "/equity/research-desk") ||
         startsWithPath(path, "/equity/screener") ||
         startsWithPath(path, "/equity/alpha-zoo") ||
         startsWithPath(path, "/equity/research-autopilot") ||
         startsWithPath(path, "/equity/strategy-export") ||
         startsWithPath(path, "/equity/factors") ||
         startsWithPath(path, "/equity/security") ||
-        startsWithPath(path, "/equity/research") ||
+        path === "/equity/research" ||
+        startsWithPath(path, "/equity/research/") ||
         startsWithPath(path, "/equity/intelligence-timeline") ||
         startsWithPath(path, "/equity/stat-lab") ||
         startsWithPath(path, "/equity/pair-trading") ||
@@ -179,6 +184,7 @@ export function isDesktopHubActive(hubId: DesktopHubId, pathname: string): boole
       );
     case "portfolio":
       return (
+        startsWithPath(path, "/equity/portfolio-desk") ||
         startsWithPath(path, "/equity/portfolio") ||
         startsWithPath(path, "/equity/risk") ||
         startsWithPath(path, "/equity/correlation") ||

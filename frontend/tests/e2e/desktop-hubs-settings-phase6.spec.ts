@@ -62,7 +62,7 @@ test.describe("desktop hubs + settings admin phase 6", () => {
     await expect(page.getByTestId("icon-rail-settings")).toHaveCount(0);
 
     await page.getByTestId("icon-rail-research").click();
-    await expect(page).toHaveURL(/\/equity\/screener/);
+    await expect(page).toHaveURL(/\/equity\/research-desk/);
     await expect(page.getByTestId("icon-rail-research")).toHaveAttribute("data-active", "true");
 
     await page.getByTestId("icon-rail-more").click();
