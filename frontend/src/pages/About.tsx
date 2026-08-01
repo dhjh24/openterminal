@@ -100,12 +100,12 @@ const MODULE_GROUPS = [
     ],
   },
   {
-    title: "Platform & Ops",
+    title: "Platform & operations",
     items: [
       "Plugin system",
       "Alert engine",
-      "OMS / compliance",
-      "Ops dashboard",
+      "Order management / compliance",
+      "Operations dashboard",
       "Provider registry",
       "Auth + account flows",
       "Export pathways",
@@ -121,14 +121,14 @@ const QUICK_LINKS = [
   { label: "Workstation", to: "/equity/chart-workstation", badge: "6" },
   { label: "Crypto", to: "/equity/crypto", badge: "CR" },
   { label: "Economics", to: "/equity/economics", badge: "E" },
-  { label: "F&O Home", to: "/fno", badge: "F8" },
+  { label: "Options & Futures", to: "/fno", badge: "F8" },
   { label: "Backtesting", to: "/backtesting", badge: "F9" },
   { label: "Model Lab", to: "/backtesting/model-lab", badge: "ML" },
   { label: "Portfolio Lab", to: "/equity/portfolio/lab", badge: "PL" },
   { label: "Risk Dashboard", to: "/equity/risk", badge: "RSK" },
   { label: "Paper Trading", to: "/equity/paper", badge: "P" },
   { label: "Breakout Scanner", to: "/equity/screener", badge: "SCAN" },
-  { label: "Ops", to: "/equity/ops", badge: "OPS" },
+  { label: "Operations", to: "/equity/ops", badge: "OPS" },
 ] as const;
 
 const COMMAND_SURFACES = [

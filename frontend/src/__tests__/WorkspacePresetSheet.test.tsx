@@ -96,6 +96,8 @@ describe("WorkspacePresetSelector", () => {
     fireEvent.click(screen.getByTestId("workspace-preset-selector"));
     expect(screen.getByTestId("workspace-preset-panel")).toBeInTheDocument();
     expect(screen.getByTestId("workspace-card-quant")).toBeInTheDocument();
+    expect(screen.getByTestId("workspace-card-pm")).toHaveTextContent(/Portfolio workspace/i);
+    expect(screen.getByTestId("workspace-card-ops")).toHaveTextContent(/Operations workspace/i);
     expect(screen.getByTestId("workspace-apply-open-quant")).toHaveTextContent("Apply and open Quant Research");
   });
 });

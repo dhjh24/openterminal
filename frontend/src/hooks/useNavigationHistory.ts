@@ -34,13 +34,18 @@ const SEGMENT_LABELS: Record<string, string> = {
   crypto: "Crypto Workspace",
   "yield-curve": "Yield Curve",
   settings: "Settings",
-  ops: "Ops",
+  ops: "Operations",
   risk: "Risk",
   hotlists: "Hotlists",
   etf: "ETF Analytics",
   bonds: "Bonds",
   tca: "TCA",
   community: "Community",
+  mta: "Multi-timeframe",
+  dom: "Depth of market",
+  oms: "Order management",
+  rs: "Relative strength",
+  pcr: "Put/call ratio",
 };
 
 function titleCase(value: string): string {

@@ -114,10 +114,10 @@ export const WORKSPACE_PRESET_CONFIGS: Record<WorkspacePreset, WorkspacePresetCo
     quickLinks: [
       { to: "/equity/screener", label: "Screener" },
       { to: "/backtesting", label: "Backtest" },
-      { to: "/backtesting/model-lab", label: "Model Lab" },
+      { to: "/backtesting/model-lab", label: "Model lab" },
       { to: "/equity/factors", label: "Factors" },
       { to: "/equity/chart-workstation", label: "Charts" },
-      { to: "/equity/rs", label: "RS" },
+      { to: "/equity/rs", label: "Relative strength" },
     ],
     launchpadLayoutId: "preset-quant",
     launchpadPanels: [
@@ -130,7 +130,7 @@ export const WORKSPACE_PRESET_CONFIGS: Record<WorkspacePreset, WorkspacePresetCo
   },
   pm: {
     id: "pm",
-    label: "PM",
+    label: "Portfolio",
     purpose: "Portfolio management desk for holdings, allocation, and catalysts.",
     landing: {
       headline: "Portfolio Command",
@@ -142,9 +142,9 @@ export const WORKSPACE_PRESET_CONFIGS: Record<WorkspacePreset, WorkspacePresetCo
     cockpitPanels: ["priority", "portfolio", "risk", "events", "heatmap", "timeline", "news"],
     quickLinks: [
       { to: "/equity/portfolio", label: "Portfolio" },
-      { to: "/equity/portfolio/lab", label: "Lab" },
+      { to: "/equity/portfolio/lab", label: "Portfolio lab" },
       { to: "/equity/risk", label: "Risk" },
-      { to: "/equity/correlation", label: "Corr" },
+      { to: "/equity/correlation", label: "Correlation" },
       { to: "/equity/news", label: "News" },
       { to: "/equity/security", label: "Security" },
     ],
@@ -170,8 +170,8 @@ export const WORKSPACE_PRESET_CONFIGS: Record<WorkspacePreset, WorkspacePresetCo
     cockpitPanels: ["priority", "risk", "portfolio", "heatmap", "events", "timeline"],
     quickLinks: [
       { to: "/equity/risk", label: "Risk" },
-      { to: "/equity/correlation", label: "Corr" },
-      { to: "/equity/ops", label: "Ops" },
+      { to: "/equity/correlation", label: "Correlation" },
+      { to: "/equity/ops", label: "Operations" },
       { to: "/equity/alerts", label: "Alerts" },
       { to: "/equity/portfolio", label: "Portfolio" },
       { to: "/equity/heatmap", label: "Heatmap" },
@@ -187,20 +187,20 @@ export const WORKSPACE_PRESET_CONFIGS: Record<WorkspacePreset, WorkspacePresetCo
   },
   ops: {
     id: "ops",
-    label: "Ops",
+    label: "Operations",
     purpose: "Operations desk for data quality, feed health, OMS, and plugins.",
     landing: {
       headline: "Operations Desk",
       description: "Data quality, feed health, OMS, plugins, and operational controls first.",
       primaryRoute: "/equity/ops",
-      primaryLabel: "Open Ops",
+      primaryLabel: "Open Operations",
     },
     homeSections: ["health", "launch", "news", "portfolio"],
     cockpitPanels: ["priority", "news", "events", "portfolio", "risk"],
     quickLinks: [
-      { to: "/equity/ops", label: "Ops" },
-      { to: "/equity/data-quality", label: "Data" },
-      { to: "/equity/oms", label: "OMS" },
+      { to: "/equity/ops", label: "Operations" },
+      { to: "/equity/data-quality", label: "Data quality" },
+      { to: "/equity/oms", label: "Order management" },
       { to: "/equity/plugins", label: "Plugins" },
       { to: "/equity/settings", label: "Settings" },
       { to: "/equity/alerts", label: "Alerts" },
