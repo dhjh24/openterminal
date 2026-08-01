@@ -5,8 +5,11 @@ import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  fetchAlerts,
   fetchBacktestV1Presets,
   fetchLatestNews,
+  fetchPaperPortfolios,
+  fetchPaperPositions,
   fetchPortfolio,
   fetchPortfolioBenchmarkOverlay,
   fetchQuotesBatch,
@@ -75,6 +78,10 @@ vi.mock("../api/client", () => ({
   fetchPortfolioBenchmarkOverlay: vi.fn(),
   fetchLatestNews: vi.fn(),
   fetchQuotesBatch: vi.fn(),
+  fetchAlerts: vi.fn(),
+  fetchPaperPortfolios: vi.fn(),
+  fetchPaperPositions: vi.fn(),
+  fetchCollectionBriefing: vi.fn(),
 }));
 
 vi.mock("../fno/api/fnoApi", () => ({
@@ -165,6 +172,10 @@ describe("HomePage mission-control revamp", () => {
         { symbol: "^IXIC", last: 18340.22, change: 88.4, changePct: 0.48, ts: "2026-03-11T12:00:00.000Z" },
       ],
     });
+
+    vi.mocked(fetchAlerts).mockResolvedValue([]);
+    vi.mocked(fetchPaperPortfolios).mockResolvedValue([]);
+    vi.mocked(fetchPaperPositions).mockResolvedValue([]);
   });
 
   afterEach(() => {
@@ -191,16 +202,23 @@ describe("HomePage mission-control revamp", () => {
 
     expect(screen.getByTestId("terminal-shell")).toHaveAttribute("data-status-bar", "MISSION CONTROL");
     expect(screen.getAllByRole("list", { name: "Market heat strip" }).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByTestId("market-now")).toBeInTheDocument();
+    expect(screen.getByTestId("your-desk")).toBeInTheDocument();
+    expect(screen.getByTestId("action-queue")).toBeInTheDocument();
+    expect(screen.getByTestId("portfolio-snapshot")).toBeInTheDocument();
+    expect(screen.getByTestId("explore-all-tools")).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Launch Matrix" })).not.toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Portfolio HQ" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "System Health" })).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: "Launch Matrix" })).toBeInTheDocument();
 
     const equityValueLabel = `USD ${2480000..toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
     expect(screen.getAllByText(equityValueLabel).length).toBeGreaterThan(0);
-    expect(screen.getByText("+USD 170,000 (+7.36%)")).toBeInTheDocument();
-    expect(screen.getByText("RBI signals steady liquidity support for domestic markets")).toBeInTheDocument();
+    expect(screen.getAllByText("+USD 170,000 (+7.36%)").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("RBI signals steady liquidity support for domestic markets").length).toBeGreaterThan(0);
     expect(screen.getByText("Bullish 87%")).toBeInTheDocument();
 
+    fireEvent.click(screen.getByTestId("explore-all-tools-cta"));
+    expect(screen.getByTestId("explore-all-tools-body")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /Workstation\. WORKSPACE desk access/i }));
     expect(navigateSpy).toHaveBeenCalledWith("/equity/chart-workstation");
   }, 10000);
