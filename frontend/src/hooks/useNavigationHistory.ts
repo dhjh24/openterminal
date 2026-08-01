@@ -46,6 +46,10 @@ const SEGMENT_LABELS: Record<string, string> = {
   oms: "Order management",
   rs: "Relative strength",
   pcr: "Put/call ratio",
+  markets: "Markets",
+  trade: "Trade",
+  "research-desk": "Research",
+  "portfolio-desk": "Portfolio",
 };
 
 function titleCase(value: string): string {

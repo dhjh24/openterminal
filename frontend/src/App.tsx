@@ -19,6 +19,10 @@ const FnoLayout = lazyWithRetry(() => import("./fno/FnoLayout").then((m) => ({ d
 const AccountLayout = lazyWithRetry(() => import("./pages/AccountLayout").then((m) => ({ default: m.AccountLayout })));
 
 const HomePage = lazyWithRetry(() => import("./pages/HomePage").then((m) => ({ default: m.HomePage })));
+const MarketsHubPage = lazyWithRetry(() => import("./pages/hubs/HubLandingPage").then((m) => ({ default: m.MarketsHubPage })));
+const TradeHubPage = lazyWithRetry(() => import("./pages/hubs/HubLandingPage").then((m) => ({ default: m.TradeHubPage })));
+const ResearchHubPage = lazyWithRetry(() => import("./pages/hubs/HubLandingPage").then((m) => ({ default: m.ResearchHubPage })));
+const PortfolioHubPage = lazyWithRetry(() => import("./pages/hubs/HubLandingPage").then((m) => ({ default: m.PortfolioHubPage })));
 
 const StockDetailPage = lazyWithRetry(() => import("./pages/StockDetail").then((m) => ({ default: m.StockDetailPage })));
 const SecurityHubPage = lazyWithRetry(() => import("./pages/SecurityHub").then((m) => ({ default: m.SecurityHubPage })));
@@ -127,7 +131,11 @@ function App() {
           <Route path="/forgot-access" element={<ForgotAccessPage />} />
 
           <Route path="/equity" element={<ProtectedRoute><EquityLayout /></ProtectedRoute>}>
-            <Route index element={<Navigate to="/equity/stocks" replace />} />
+            <Route index element={<Navigate to="/equity/markets" replace />} />
+            <Route path="markets" element={<MarketsHubPage />} />
+            <Route path="trade" element={<TradeHubPage />} />
+            <Route path="research-desk" element={<ResearchHubPage />} />
+            <Route path="portfolio-desk" element={<PortfolioHubPage />} />
             <Route path="stocks" element={<StockDetailPage />} />
             <Route path="security" element={<SecurityHubPage />} />
             <Route path="security/:ticker" element={<SecurityHubPage />} />
