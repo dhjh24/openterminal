@@ -1,4 +1,4 @@
-import { Search, MoreHorizontal } from "lucide-react";
+import { Search } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { NotificationBell } from "../notifications/NotificationBell";
@@ -10,10 +10,9 @@ const BRAND_ICON_SRC = "/favicon.png";
 
 type Props = {
   onSearchOpen: () => void;
-  onMoreOpen: () => void;
 };
 
-export function MobileHeader({ onSearchOpen, onMoreOpen }: Props) {
+export function MobileHeader({ onSearchOpen }: Props) {
   const ticker = useStockStore((s) => s.ticker);
   const stock = useStockStore((s) => s.stock);
   const ticksByToken = useQuotesStore((s) => s.ticksByToken);
@@ -72,7 +71,7 @@ export function MobileHeader({ onSearchOpen, onMoreOpen }: Props) {
       <button
         type="button"
         className="inline-flex h-11 w-11 items-center justify-center rounded-sm text-terminal-muted hover:text-terminal-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-terminal-accent"
-        aria-label="Search stocks and commands"
+        aria-label="Search symbols, pages, and commands"
         onClick={onSearchOpen}
         data-testid="mobile-header-search"
       >
@@ -82,17 +81,6 @@ export function MobileHeader({ onSearchOpen, onMoreOpen }: Props) {
       <div className="inline-flex h-11 w-11 items-center justify-center [&_button]:min-h-11 [&_button]:min-w-11">
         <NotificationBell />
       </div>
-
-      <button
-        type="button"
-        className="inline-flex h-11 w-11 items-center justify-center rounded-sm text-terminal-muted hover:text-terminal-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-terminal-accent"
-        aria-label="More menu"
-        aria-haspopup="dialog"
-        onClick={onMoreOpen}
-        data-testid="mobile-header-more"
-      >
-        <MoreHorizontal size={20} aria-hidden="true" />
-      </button>
     </header>
   );
 }

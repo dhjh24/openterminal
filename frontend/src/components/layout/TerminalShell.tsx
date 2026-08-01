@@ -353,10 +353,6 @@ export function TerminalShell({
                 setMobileMoreOpen(false);
                 setMobileSearchOpen(true);
               }}
-              onMoreOpen={() => {
-                setMobileSearchOpen(false);
-                setMobileMoreOpen(true);
-              }}
             />
           ) : null}
 
