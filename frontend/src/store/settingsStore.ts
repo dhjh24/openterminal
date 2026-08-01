@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
+import type { ShellChromeMode } from "../home/shellChrome";
 import type { CountryCode, MarketCode } from "../types/markets";
 
 export type DisplayCurrency = "USD";
@@ -10,6 +11,7 @@ export type UiDensity = "comfortable" | "compact";
 export type ContrastMode = "standard" | "high";
 export type DataFont = "mono" | "sans";
 export type ChartTextSize = "sm" | "md" | "lg";
+export type { ShellChromeMode };
 export type RecentSecurityAssetClass = "equity" | "fno" | "crypto" | "commodity" | "forex" | "etf" | "mf";
 export type RecentSecurityMarket = "US";
 
@@ -119,6 +121,7 @@ type SettingsState = {
   reducedMotion: boolean;
   decorativeEffects: boolean;
   chartTextSize: ChartTextSize;
+  shellChromeMode: ShellChromeMode;
   recentSecurities: RecentSecurity[];
   setSelectedCountry: (country: CountryCode) => void;
   setSelectedMarket: (market: MarketCode) => void;
@@ -135,6 +138,7 @@ type SettingsState = {
   setReducedMotion: (enabled: boolean) => void;
   setDecorativeEffects: (enabled: boolean) => void;
   setChartTextSize: (size: ChartTextSize) => void;
+  setShellChromeMode: (mode: ShellChromeMode) => void;
   addRecentSecurity: (security: RecentSecurity) => void;
   clearRecentSecurities: () => void;
 };
@@ -176,6 +180,11 @@ function migrateChartTextSize(value: unknown): ChartTextSize {
   return "md";
 }
 
+function migrateShellChromeMode(value: unknown): ShellChromeMode {
+  if (value === "focus" || value === "full" || value === "standard") return value;
+  return "standard";
+}
+
 export const useSettingsStore = create<SettingsState>()(
   persist(
     (set) => ({
@@ -194,6 +203,7 @@ export const useSettingsStore = create<SettingsState>()(
       reducedMotion: false,
       decorativeEffects: false,
       chartTextSize: "md",
+      shellChromeMode: "standard",
       recentSecurities: [],
       setSelectedCountry: () => {
         set({
@@ -219,6 +229,7 @@ export const useSettingsStore = create<SettingsState>()(
       setReducedMotion: (enabled) => set({ reducedMotion: enabled }),
       setDecorativeEffects: (enabled) => set({ decorativeEffects: enabled }),
       setChartTextSize: (size) => set({ chartTextSize: size }),
+      setShellChromeMode: (mode) => set({ shellChromeMode: mode }),
       addRecentSecurity: (security) =>
         set((state) => {
           const next = sanitizeRecentSecurity(security);
@@ -295,6 +306,7 @@ export const useSettingsStore = create<SettingsState>()(
               ? persisted.decorativeEffects
               : current.decorativeEffects,
           chartTextSize: migrateChartTextSize(persisted.chartTextSize),
+          shellChromeMode: migrateShellChromeMode(persisted.shellChromeMode),
           recentSecurities: sanitizeRecentSecurities((persisted as Partial<SettingsState>).recentSecurities),
         };
       },

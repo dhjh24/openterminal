@@ -6,7 +6,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import { ErrorBoundary } from "../common/ErrorBoundary";
 import { InstallPromptBanner } from "./InstallPromptBanner";
@@ -35,6 +35,10 @@ import { TerminalSelect } from "../terminal/TerminalSelect";
 import { HotKeyPanelFloat } from "../trading/HotKeyPanelFloat";
 import { useKeyboardShortcuts } from "../../hooks/useKeyboardShortcuts";
 import { ShortcutOverlay } from "../common/ShortcutOverlay";
+import {
+  resolveShellChromeMode,
+  shellChromeVisibility,
+} from "../../home/shellChrome";
 import {
   WORKSPACE_PRESET_STORAGE_KEY,
   announceWorkspacePresetChange,
@@ -256,6 +260,7 @@ export function TerminalShell({
   rightRailStorageKey,
 }: Props) {
   const navigate = useNavigate();
+  const location = useLocation();
   const [preset, setPreset] = usePersistedState<WorkspacePreset>(
     workspacePresetStorageKey ?? WORKSPACE_PRESET_STORAGE_KEY,
     defaultPreset,
@@ -269,16 +274,34 @@ export function TerminalShell({
   const [presetSheetOpen, setPresetSheetOpen] = useState(false);
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [presetAnnouncement, setPresetAnnouncement] = useState("");
+  const [viewportWidth, setViewportWidth] = useState(() =>
+    typeof window === "undefined" ? 1440 : window.innerWidth,
+  );
   const fetchUnreadCount = useNotificationStore((s) => s.fetchUnreadCount);
   const { isInitializing, isAuthenticated } = useAuth();
+  const shellChromeMode = useSettingsStore((s) => s.shellChromeMode);
 
   useKeyboardShortcuts();
+
+  useEffect(() => {
+    const onResize = () => setViewportWidth(window.innerWidth);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  const effectiveChromeMode = useMemo(
+    () => resolveShellChromeMode(shellChromeMode, location.pathname, viewportWidth),
+    [location.pathname, shellChromeMode, viewportWidth],
+  );
+  const chrome = useMemo(() => shellChromeVisibility(effectiveChromeMode), [effectiveChromeMode]);
 
   const hasRightRail = Boolean(rightRailContent) || Boolean(rightRailSections?.length);
   const mobileNavEnabled = showMobileBottomNav;
   const mobileContentPad = mobileNavEnabled
     ? "pb-[calc(3.75rem+env(safe-area-inset-bottom,0px))] md:pb-0"
     : "";
+  const showDesktopWorkspaceControls = showWorkspaceControls && chrome.workspaceControls;
+  const showDesktopContextRail = hasRightRail && rightRailOpen && chrome.contextRail;
 
   const shellCtx = useMemo<TerminalShellContextValue>(
     () => ({
@@ -340,8 +363,12 @@ export function TerminalShell({
 
   return (
     <TerminalShellContext.Provider value={shellCtx}>
-      <div className="ot-app-shell flex h-[100dvh] max-h-[100dvh] overflow-hidden bg-terminal-bg text-terminal-text">
-        <IconRail />
+      <div
+        className="ot-app-shell flex h-[100dvh] max-h-[100dvh] overflow-hidden bg-terminal-bg text-terminal-text"
+        data-testid="terminal-shell-chrome"
+        data-shell-chrome={effectiveChromeMode}
+      >
+        {chrome.iconRail ? <IconRail /> : null}
 
         <div className="relative z-10 flex min-w-0 flex-1 flex-col">
           <OfflineBanner />
@@ -362,17 +389,19 @@ export function TerminalShell({
 
           {/* Desktop command bar / tape / top bar — hidden on phone when mobile nav is active */}
           <div className={mobileNavEnabled ? "hidden md:contents" : "contents"}>
-            <CommandBar
-              onExecute={async (command) => {
-                const parsed = parseCommand(command);
-                return executeParsedCommand(parsed, navigate);
-              }}
-            />
-            <TickerTape />
-            <TopBar hideTickerLoader={hideTickerLoader} />
+            {chrome.commandBar ? (
+              <CommandBar
+                onExecute={async (command) => {
+                  const parsed = parseCommand(command);
+                  return executeParsedCommand(parsed, navigate);
+                }}
+              />
+            ) : null}
+            {chrome.tickerTape ? <TickerTape /> : null}
+            {chrome.topBar ? <TopBar hideTickerLoader={hideTickerLoader} /> : null}
           </div>
 
-          {showWorkspaceControls ? (
+          {showDesktopWorkspaceControls ? (
             <div className={mobileNavEnabled ? "hidden md:block" : undefined}>
               <WorkspaceControlBar
                 preset={preset}
@@ -401,15 +430,17 @@ export function TerminalShell({
                 {children}
               </div>
             </ErrorBoundary>
-            {hasRightRail && rightRailOpen
+            {showDesktopContextRail
               ? rightRailContent ?? (
                   <DefaultRightRail title={rightRailTitle} sections={rightRailSections ?? []} />
                 )
               : null}
           </div>
-          <div className={mobileNavEnabled ? "hidden md:block" : undefined}>
-            <StatusBar tickerOverride={statusBarTickerOverride} />
-          </div>
+          {chrome.statusBar ? (
+            <div className={mobileNavEnabled ? "hidden md:block" : undefined}>
+              <StatusBar tickerOverride={statusBarTickerOverride} />
+            </div>
+          ) : null}
         </div>
 
         <UpdateAvailableBanner />
