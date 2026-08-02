@@ -36,6 +36,9 @@ import { buildActionQueue } from "../home/actionQueue";
 import { readHomeDeskDetailsExpanded, writeHomeDeskDetailsExpanded } from "../home/deskDetails";
 import { NAV_CARD_SECTIONS, slugifyNav } from "../home/navCards";
 import { readRecentTools, recordRecentTool, type RecentTool } from "../home/recentTools";
+import { useNetworkStatus } from "../hooks/useNetworkStatus";
+import { useQuotesStore } from "../realtime/useQuotesStream";
+import { feedStateDetail, feedStateLabel, resolveFeedState } from "../shared/feedState";
 import { useSettingsStore } from "../store/settingsStore";
 import type { PortfolioItem } from "../types";
 import { getWorkspacePresetConfig, readWorkspacePreset } from "../workspace/presets";
@@ -159,6 +162,8 @@ export function HomePage() {
   const realtimeMode = useSettingsStore((s) => s.realtimeMode);
   const newsAutoRefresh = useSettingsStore((s) => s.newsAutoRefresh);
   const newsRefreshSec = useSettingsStore((s) => s.newsRefreshSec);
+  const quotesConnectionState = useQuotesStore((s) => s.connectionState);
+  const { online } = useNetworkStatus();
 
   const [marketRows, setMarketRows] = useState<MarketRow[]>(INITIAL_MARKET_ROWS);
   const [newsLog, setNewsLog] = useState<NewsLatestApiItem[]>([]);
@@ -515,6 +520,19 @@ export function HomePage() {
 
   const marketQuotesReady = marketRows.some((row) => row.ltp > 0);
   const snapshotAgeMs = snapshot.updatedAt == null ? null : Date.now() - snapshot.updatedAt;
+  const homeFeedState = resolveFeedState({
+    online,
+    connectionState: quotesConnectionState,
+    fallbackEnabled: realtimeMode !== "ws",
+    hasQuotes: marketQuotesReady,
+    lastUpdateAgeMs: snapshotAgeMs,
+  });
+  const homeFeedDetail = feedStateDetail(homeFeedState, {
+    online,
+    connectionState: quotesConnectionState,
+    hasQuotes: marketQuotesReady,
+    fallbackEnabled: realtimeMode !== "ws",
+  });
   const providerIssues = snapshot.fnoSignal === "NA" && !marketQuotesReady;
   const actionQueueItems = useMemo(
     () =>
@@ -565,9 +583,14 @@ export function HomePage() {
       },
       {
         id: "relay",
-        label: "RELAY",
-        value: `${selectedMarket} ${realtimeMode.toUpperCase()}`,
-        tone: realtimeMode === "ws" ? "ok" : "info",
+        label: "FEED",
+        value: `${selectedMarket} ${feedStateLabel(homeFeedState).toUpperCase()}`,
+        tone:
+          homeFeedState === "Live"
+            ? "ok"
+            : homeFeedState === "Offline"
+              ? "warning"
+              : "info",
       },
       {
         id: "snapshot",
@@ -588,7 +611,7 @@ export function HomePage() {
         tone: getSystemTone(snapshot.fnoSignal),
       },
     ],
-    [newsAutoRefresh, newsRefreshSec, realtimeMode, selectedMarket, snapshot.fnoPcr, snapshot.fnoSignal, snapshot.updatedAt, updatedLabel, user],
+    [homeFeedState, newsAutoRefresh, newsRefreshSec, selectedMarket, snapshot.fnoPcr, snapshot.fnoSignal, snapshot.updatedAt, updatedLabel, user],
   );
 
   const leadHeadline = newsLog[0] ?? null;
@@ -722,7 +745,7 @@ export function HomePage() {
               {/* Status row: market / connection / primary action */}
               <div className="mt-2 flex items-center justify-between gap-2">
                 <span className="text-[11px] text-terminal-muted truncate">
-                  {selectedMarket} · {realtimeMode === "ws" ? "LIVE" : "POLL"} · {updatedLabel}
+                  {selectedMarket} · {feedStateLabel(homeFeedState).toUpperCase()} · {updatedLabel}
                 </span>
                 <button
                   type="button"
@@ -883,14 +906,21 @@ export function HomePage() {
                 </div>
                 <div className="flex flex-wrap gap-2 text-[11px] uppercase tracking-[0.12em]">
                   <span className="rounded-sm border border-terminal-border px-2 py-1 text-terminal-muted">
-                    {selectedMarket} · {realtimeMode === "ws" ? "LIVE" : "POLL"}
+                    {selectedMarket} · {feedStateLabel(homeFeedState).toUpperCase()}
                   </span>
                   <span
                     className={`rounded-sm border px-2 py-1 ${
-                      marketQuotesReady ? "border-terminal-accent/50 text-terminal-accent" : "border-amber-500/50 text-amber-200"
+                      homeFeedState === "Live"
+                        ? "border-terminal-accent/50 text-terminal-accent"
+                        : homeFeedState === "Offline"
+                          ? "border-rose-500/50 text-rose-200"
+                          : "border-amber-500/50 text-amber-200"
                     }`}
+                    data-testid="home-feed-state"
+                    title={homeFeedDetail ?? undefined}
                   >
-                    {marketQuotesReady ? "Quotes ready" : "Quotes pending"}
+                    {feedStateLabel(homeFeedState)}
+                    {homeFeedDetail ? ` · ${homeFeedDetail}` : ""}
                   </span>
                   <span className="rounded-sm border border-terminal-border px-2 py-1 text-terminal-muted">
                     Synced {updatedLabel}

@@ -2,8 +2,16 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Bell, CircleDot } from "lucide-react";
 
 import { useMarketStatus } from "../../hooks/useStocks";
+import { useNetworkStatus } from "../../hooks/useNetworkStatus";
 import { useAlertsStore } from "../../store/alertsStore";
 import { useQuotesStore } from "../../realtime/useQuotesStream";
+import {
+  feedStateDetail,
+  feedStateLabel,
+  feedStateTone,
+  resolveFeedState,
+  type FeedState,
+} from "../../shared/feedState";
 
 function formatZone(now: Date, timeZone: string) {
   return now.toLocaleTimeString([], {
@@ -32,10 +40,16 @@ function Dot({ tone }: { tone: "green" | "yellow" | "red" | "gray" }) {
   return <CircleDot className={`h-3.5 w-3.5 ${cls}`} fill="currentColor" />;
 }
 
+function feedTone(state: FeedState): "green" | "yellow" | "red" | "gray" {
+  return feedStateTone(state);
+}
+
 export function MarketStatusBar(_props: { tickerOverride?: string | null } = {}) {
   const { data: marketStatus } = useMarketStatus();
   const unreadAlerts = useAlertsStore((s) => s.unreadCount);
   const connectionState = useQuotesStore((s) => s.connectionState);
+  const ticksByToken = useQuotesStore((s) => s.ticksByToken);
+  const { online } = useNetworkStatus();
   const [now, setNow] = useState(() => new Date());
   const [lagMs, setLagMs] = useState(0);
   const lagRef = useRef(performance.now());
@@ -74,13 +88,33 @@ export function MarketStatusBar(_props: { tickerOverride?: string | null } = {})
 
   const nseOpen = marketLabel(marketPayload.marketState?.[0]?.marketStatus ?? marketPayload.nseStatus);
   const nyseOpen = marketLabel(marketPayload.nyseStatus);
-  const connectionTone =
-    connectionState === "connected" ? "green" : connectionState === "connecting" ? "yellow" : "red";
-  const connText =
-    connectionState === "connected" ? "CONNECTED" : connectionState === "connecting" ? "DEGRADED" : "DISCONNECTED";
+  const quoteCount = Object.keys(ticksByToken).length;
+  const newestAgeMs = useMemo(() => {
+    let newest = 0;
+    for (const tick of Object.values(ticksByToken)) {
+      const ts = Date.parse(String(tick.ts || ""));
+      if (Number.isFinite(ts) && ts > newest) newest = ts;
+    }
+    return newest > 0 ? Date.now() - newest : null;
+  }, [ticksByToken, now]);
+
+  const feedState = resolveFeedState({
+    online,
+    connectionState,
+    marketOpen: nyseOpen === "OPEN" || nseOpen === "OPEN",
+    fallbackEnabled: Boolean(marketPayload.fallbackEnabled),
+    hasQuotes: quoteCount > 0,
+    lastUpdateAgeMs: newestAgeMs,
+  });
+  const feedDetail = feedStateDetail(feedState, {
+    online,
+    connectionState,
+    hasQuotes: quoteCount > 0,
+    fallbackEnabled: Boolean(marketPayload.fallbackEnabled),
+  });
 
   return (
-    <div className="border-t border-terminal-border bg-[#0D1117] px-3 py-0.5 text-[11px]">
+    <div className="border-t border-terminal-border bg-[#0D1117] px-3 py-0.5 text-[11px]" data-testid="market-status-bar">
       <div className="grid h-5 grid-cols-[auto_1fr_auto] items-center gap-3 text-terminal-muted ot-status-bar-grid">
         <div className="inline-flex items-center gap-3 ot-type-data whitespace-nowrap">
           <span><span className="text-terminal-text">ET</span> {formatZone(now, "America/New_York")}</span>
@@ -100,9 +134,10 @@ export function MarketStatusBar(_props: { tickerOverride?: string | null } = {})
         </div>
 
         <div className="inline-flex items-center gap-3 ot-type-data whitespace-nowrap">
-          <span className="inline-flex items-center gap-1">
-            <Dot tone={connectionTone} />
-            <span>{connText}</span>
+          <span className="inline-flex items-center gap-1" data-testid="feed-state-badge" title={feedDetail ?? undefined}>
+            <Dot tone={feedTone(feedState)} />
+            <span>{feedStateLabel(feedState).toUpperCase()}</span>
+            {feedDetail ? <span className="hidden text-terminal-muted xl:inline">· {feedDetail}</span> : null}
           </span>
           <span className="inline-flex items-center gap-1">
             <Bell className="h-3.5 w-3.5" />

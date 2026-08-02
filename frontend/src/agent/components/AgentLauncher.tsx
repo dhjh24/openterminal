@@ -6,7 +6,13 @@ export function AgentLauncher() {
   const toggleOpen = useAgentStore((s) => s.toggleOpen);
   if (open) return null;
   return (
-    <button type="button" className="ot-agent-launcher" onClick={toggleOpen} aria-label="Open agent console (Ctrl+J)">
+    <button
+      type="button"
+      className="ot-agent-launcher"
+      data-testid="agent-launcher"
+      onClick={toggleOpen}
+      aria-label="Open agent console (Ctrl+J)"
+    >
       Agent
     </button>
   );

@@ -4,6 +4,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { AgentConsole } from "./agent/components/AgentConsole";
 import { AgentLauncher } from "./agent/components/AgentLauncher";
 import { ErrorBoundary } from "./components/common/ErrorBoundary";
+import { OverlayRegionHost, OverlayPortal } from "./components/layout/OverlayRegion";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { RootRedirect } from "./components/RootRedirect";
 import { DecorativeEffects } from "./components/layout/DecorativeEffects";
@@ -119,7 +120,10 @@ function App() {
       <ThemeRuntime />
       <DecorativeEffects />
       <AgentConsole />
-      <AgentLauncher />
+      <OverlayRegionHost />
+      <OverlayPortal>
+        <AgentLauncher />
+      </OverlayPortal>
       <div className="ot-route-layer">
         <ErrorBoundary>
           <Suspense fallback={RouteLoadingFallback}>

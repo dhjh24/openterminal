@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-import { TerminalToast, TerminalToastViewport } from "../terminal/TerminalToast";
+import { TerminalToast } from "../terminal/TerminalToast";
 
 type AlertToastEventDetail = {
   title?: string;
@@ -106,7 +106,7 @@ export function AlertToasts() {
   if (!toasts.length) return null;
 
   return (
-    <TerminalToastViewport className="top-auto bottom-8">
+    <div className="ot-overlay-toasts flex w-full flex-col gap-2 md:w-[min(420px,100%)]" data-testid="alert-toasts">
       {toasts.map((toast) => (
         <TerminalToast
           key={toast.id}
@@ -124,6 +124,6 @@ export function AlertToasts() {
           }
         />
       ))}
-    </TerminalToastViewport>
+    </div>
   );
 }

@@ -128,3 +128,44 @@ label {
     --ot-density-row-default: 28px;
   }
 }
+
+/* Shared overlay stack: Agent, notices, workspace toasts (issue #25) */
+.ot-overlay-stack {
+  position: fixed;
+  z-index: 1100;
+  right: max(0.75rem, env(safe-area-inset-right, 0px));
+  bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: flex-end;
+  gap: 0.5rem;
+  max-width: min(420px, calc(100vw - 1.5rem));
+  pointer-events: none;
+}
+.ot-overlay-stack > * {
+  pointer-events: auto;
+}
+.ot-overlay-notices {
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: flex-end;
+  gap: 0.5rem;
+  width: 100%;
+}
+.ot-overlay-card,
+.ot-overlay-toasts {
+  max-width: 100%;
+}
+@media (max-width: 767px) {
+  .ot-overlay-stack {
+    left: 0.5rem;
+    right: 0.5rem;
+    bottom: calc(3.75rem + env(safe-area-inset-bottom, 0px) + 0.5rem);
+    max-width: none;
+    align-items: stretch;
+  }
+  .ot-overlay-notices {
+    align-items: stretch;
+  }
+}
+

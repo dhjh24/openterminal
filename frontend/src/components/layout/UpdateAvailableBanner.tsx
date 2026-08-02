@@ -8,7 +8,8 @@ export function UpdateAvailableBanner() {
     <div
       role="status"
       aria-live="polite"
-      className="fixed bottom-20 left-2 right-2 z-[70] rounded border border-terminal-accent bg-terminal-panel p-3 text-xs shadow-none md:bottom-4 md:left-auto md:right-4 md:w-96"
+      data-testid="update-available-banner"
+      className="ot-overlay-card w-full rounded border border-terminal-accent bg-terminal-panel p-3 text-xs shadow-none md:w-96"
     >
       <div className="mb-2 text-terminal-text">
         <span className="font-semibold text-terminal-accent">Update available</span>

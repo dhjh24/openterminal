@@ -18,7 +18,8 @@ import {
   type ChartWorkstationActionId,
   type CommandExecutionResult,
 } from "../components/layout/commanding";
-import { TerminalToast, TerminalToastViewport } from "../components/terminal/TerminalToast";
+import { TerminalToast } from "../components/terminal/TerminalToast";
+import { OverlayPortal } from "../components/layout/OverlayRegion";
 import { SparklineCell } from "../components/home/SparklineCell";
 import {
   DEFAULT_OPENSCRIPT_TEMPLATE,
@@ -1575,6 +1576,7 @@ export function ChartWorkstationPage() {
     (slotId: string) =>
       (ticker: string, market: SlotMarket, companyName?: string | null) => {
         updateSlotTicker(slotId, ticker, market, companyName);
+        setTicker(ticker);
         if (!linkSettings.symbol) return;
         const sourceGroup = slotLinkGroups[slotId] ?? "off";
         if (sourceGroup === "off") return;
@@ -1588,7 +1590,7 @@ export function ChartWorkstationPage() {
           })),
         }));
       },
-    [linkSettings.symbol, slotLinkGroups, updateSlotTicker],
+    [linkSettings.symbol, setTicker, slotLinkGroups, updateSlotTicker],
   );
 
   const handleTimeframeChange = useCallback(
@@ -2497,22 +2499,26 @@ export function ChartWorkstationPage() {
           </div>
         ) : null}
 
-        <TerminalToastViewport className="top-14">
-          {layoutNotice ? (
-            <TerminalToast
-              title={layoutNotice.title}
-              message={layoutNotice.message}
-              variant={layoutNotice.variant}
-            />
+        <OverlayPortal>
+          {(layoutNotice || templateNotice) ? (
+            <div className="ot-overlay-toasts flex w-full flex-col gap-2 md:w-[min(420px,100%)]" data-testid="workstation-toasts">
+              {layoutNotice ? (
+                <TerminalToast
+                  title={layoutNotice.title}
+                  message={layoutNotice.message}
+                  variant={layoutNotice.variant}
+                />
+              ) : null}
+              {templateNotice ? (
+                <TerminalToast
+                  title={templateNotice.title}
+                  message={templateNotice.message}
+                  variant={templateNotice.variant}
+                />
+              ) : null}
+            </div>
           ) : null}
-          {templateNotice ? (
-            <TerminalToast
-              title={templateNotice.title}
-              message={templateNotice.message}
-              variant={templateNotice.variant}
-            />
-          ) : null}
-        </TerminalToastViewport>
+        </OverlayPortal>
       </div>
     </CrosshairSyncProvider>
   );

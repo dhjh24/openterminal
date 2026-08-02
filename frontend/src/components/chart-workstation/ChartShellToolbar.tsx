@@ -5,6 +5,7 @@ import { TerminalBadge } from "../terminal/TerminalBadge";
 import { TerminalButton } from "../terminal/TerminalButton";
 import { TerminalDropdown } from "../terminal/TerminalDropdown";
 import { TerminalInput } from "../terminal/TerminalInput";
+import { feedStateLabel, resolveFeedState } from "../../shared/feedState";
 import type { ChartSlot, ChartSlotTimeframe, ChartSlotType, GridTemplate, SlotMarket } from "../../store/chartWorkstationStore";
 
 const TIMEFRAMES: ChartSlotTimeframe[] = ["1m", "5m", "15m", "1h", "1D", "1W", "1M"];
@@ -139,10 +140,24 @@ type Props = {
   onDrillInto: (route: DrillRoute) => void;
 };
 
-function connectionBadgeVariant(state: QuotesConnectionState): "success" | "info" | "danger" {
-  if (state === "connected") return "success";
-  if (state === "connecting") return "info";
-  return "danger";
+function feedBadgeFromConnection(
+  state: QuotesConnectionState,
+  batchSource: BatchSource,
+): { label: string; variant: "success" | "info" | "danger" | "warn" } {
+  const feed = resolveFeedState({
+    connectionState: state,
+    fallbackEnabled: batchSource === "fallback",
+    hasQuotes: state === "connected" || batchSource !== "idle",
+  });
+  const variant =
+    feed === "Live"
+      ? ("success" as const)
+      : feed === "Offline"
+        ? ("danger" as const)
+        : feed === "Closed"
+          ? ("info" as const)
+          : ("warn" as const);
+  return { label: feedStateLabel(feed).toUpperCase(), variant };
 }
 
 function sourceBadgeVariant(source: BatchSource): "success" | "warn" {
@@ -378,6 +393,7 @@ export function ChartShellToolbar({
   const replayScopeLabel = linkSettings.replay && activeLinkGroup !== "off" ? `Replay Link ${activeLinkGroup}` : "Replay Active";
   const rangeScopeLabel = linkSettings.dateRange && activeLinkGroup !== "off" ? `Range Link ${activeLinkGroup}` : "Range Active";
   const [toolsOpen, setToolsOpen] = useState(false);
+  const feedBadge = feedBadgeFromConnection(quotesConnectionState, chartBatchSource);
 
   return (
     <div
@@ -443,9 +459,11 @@ export function ChartShellToolbar({
           </div>
 
           <div className="hidden min-w-0 flex-wrap items-center justify-end gap-2 md:flex">
-            <TerminalBadge variant={connectionBadgeVariant(quotesConnectionState)} size="sm" dot className="font-bold">
-              DATA: {quotesConnectionState.toUpperCase()}
-            </TerminalBadge>
+            <span data-testid="chart-shell-feed-state">
+              <TerminalBadge variant={feedBadge.variant} size="sm" dot className="font-bold">
+                DATA: {feedBadge.label}
+              </TerminalBadge>
+            </span>
             {batchLoadingAny ? (
               <TerminalBadge variant="live" size="sm" dot className="animate-pulse font-bold">
                 LOADING CHARTS

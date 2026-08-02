@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { useMarketStatus } from "../../hooks/useStocks";
+import { useNetworkStatus } from "../../hooks/useNetworkStatus";
+import { useQuotesStore } from "../../realtime/useQuotesStream";
 import { useSettingsStore } from "../../store/settingsStore";
 import { useStockStore } from "../../store/stockStore";
 import { APP_VERSION } from "../../utils/constants";
+import { feedStateLabel, resolveFeedState } from "../../shared/feedState";
 import { TerminalBadge } from "./TerminalBadge";
 
 function nowLabel(now: Date): string {
@@ -22,6 +25,8 @@ export function StatusBar({ tickerOverride }: Props) {
   const tickerFromStore = useStockStore((s) => s.ticker);
   const stockLoading = useStockStore((s) => s.loading);
   const stockError = useStockStore((s) => s.error);
+  const connectionState = useQuotesStore((s) => s.connectionState);
+  const { online } = useNetworkStatus();
   const {
     data: marketStatus,
     isLoading: marketLoading,
@@ -40,6 +45,14 @@ export function StatusBar({ tickerOverride }: Props) {
     return Boolean(payload?.fallbackEnabled) || Boolean(payload?.error);
   }, [marketStatus]);
 
+  const marketPayload = (marketStatus ?? {}) as {
+    marketState?: Array<{ marketStatus?: string }>;
+    nyseStatus?: string;
+    fallbackEnabled?: boolean;
+  };
+  const nyseRaw = String(marketPayload.nyseStatus || marketPayload.marketState?.[0]?.marketStatus || "").toUpperCase();
+  const marketOpen = nyseRaw.includes("OPEN") ? true : nyseRaw.includes("CLOSE") ? false : null;
+
   const dataState = useMemo(() => {
     if (marketError || stockError) {
       return { label: "ERROR", variant: "warn" as const };
@@ -50,11 +63,34 @@ export function StatusBar({ tickerOverride }: Props) {
     if (marketFetching || (marketLoading && !marketStatus)) {
       return { label: "POLLING", variant: "mock" as const };
     }
-    if (marketStatus) {
-      return { label: "READY", variant: "live" as const };
-    }
-    return { label: "DISCONNECTED", variant: "neutral" as const };
-  }, [marketError, marketFetching, marketLoading, marketStatus, stockError, stockLoading]);
+    const feed = resolveFeedState({
+      online,
+      connectionState,
+      marketOpen,
+      fallbackEnabled: isMock,
+      hasQuotes: Boolean(marketStatus),
+    });
+    const variant =
+      feed === "Live"
+        ? ("live" as const)
+        : feed === "Offline"
+          ? ("neutral" as const)
+          : feed === "Closed"
+            ? ("neutral" as const)
+            : ("mock" as const);
+    return { label: feedStateLabel(feed).toUpperCase(), variant };
+  }, [
+    connectionState,
+    isMock,
+    marketError,
+    marketFetching,
+    marketLoading,
+    marketOpen,
+    marketStatus,
+    online,
+    stockError,
+    stockLoading,
+  ]);
   const ticker = (tickerOverride || tickerFromStore || "").toUpperCase();
 
   return (
@@ -64,7 +100,7 @@ export function StatusBar({ tickerOverride }: Props) {
           <span>{selectedMarket}</span>
           <span>{displayCurrency}</span>
           <span>{ticker || "NO-SYMBOL"}</span>
-          <TerminalBadge variant={isMock ? "mock" : "live"}>{isMock ? "MOCK" : "LIVE"}</TerminalBadge>
+          <TerminalBadge variant={isMock ? "mock" : "live"}>{isMock ? "DELAYED" : "LIVE"}</TerminalBadge>
           <span className="tabular-nums">{nowLabel(now)}</span>
         </div>
         <div className="flex items-center gap-2 border-l border-terminal-border pl-2">

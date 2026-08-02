@@ -25,10 +25,9 @@
   .ot-agent-panel { transition: none; }
 }
 .ot-agent-launcher {
-  position: fixed;
-  bottom: var(--ot-space-4);
-  right: var(--ot-space-4);
-  z-index: 1100;
+  position: static;
+  z-index: auto;
+  align-self: flex-end;
   border-radius: var(--ot-radius-md);
   border: 1px solid var(--ot-color-border-default);
   background: var(--ot-color-accent-primary);
@@ -37,6 +36,7 @@
   font-weight: var(--ot-font-weight-semibold);
   padding: var(--ot-space-2) var(--ot-space-3);
   cursor: pointer;
+  pointer-events: auto;
 }
 /* Phone: Agent lives in More menu — hide floating launcher below md */
 @media (max-width: 767px) {

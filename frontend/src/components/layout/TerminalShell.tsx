@@ -28,6 +28,7 @@ import { executeParsedCommand, parseCommand } from "./commanding";
 import { useSettingsStore } from "../../store/settingsStore";
 import { HudOverlay } from "./HudOverlay";
 import { AlertToasts } from "./AlertToasts";
+import { OverlayPortal } from "./OverlayRegion";
 import { useAuth } from "../../contexts/AuthContext";
 import { useNotificationStore } from "../../store/notificationStore";
 import type { ThemeVariant } from "../../store/settingsStore";
@@ -439,8 +440,13 @@ export function TerminalShell({
           ) : null}
         </div>
 
-        <UpdateAvailableBanner />
-        {showInstallPrompt ? <InstallPromptBanner /> : null}
+        <OverlayPortal>
+          <div className="ot-overlay-notices" data-testid="overlay-notices">
+            <UpdateAvailableBanner />
+            {showInstallPrompt ? <InstallPromptBanner /> : null}
+            <AlertToasts />
+          </div>
+        </OverlayPortal>
         {mobileNavEnabled ? (
           <MobileBottomNav
             forceMoreOpen={mobileMoreOpen}
@@ -470,7 +476,6 @@ export function TerminalShell({
         </div>
         <CommandPalette />
         <HudOverlay />
-        <AlertToasts />
         <div className="hidden md:contents">
           <ShortcutOverlay />
         </div>

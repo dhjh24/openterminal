@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import { fetchCryptoSearch, searchSymbols, type SearchSymbolItem } from "../../api/client";
 import { isUsOnly } from "../../config/marketProfile";
@@ -9,6 +9,11 @@ import { useNavigationHistory } from "../../hooks/useNavigationHistory";
 import { inferRecentSecurityAssetClass, inferRecentSecurityMarket, useRecentSecurities } from "../../hooks/useRecentSecurities";
 import { useMarketStatus, useTopBarTickers } from "../../hooks/useStocks";
 import { useQuotesStore } from "../../realtime/useQuotesStream";
+import {
+  applyTickerToActiveWorkstationPane,
+  isChartWorkstationPath,
+} from "../../shared/workstationTickerBridge";
+import { useChartWorkstationStore } from "../../store/chartWorkstationStore";
 import { useSettingsStore } from "../../store/settingsStore";
 import { useStockStore } from "../../store/stockStore";
 import { COUNTRY_MARKETS } from "../../types";
@@ -31,10 +36,16 @@ const BRAND_ICON_SRC = "/favicon.png";
 
 export function TopBar({ hideTickerLoader = false, hideMarketMarquee = false }: TopBarProps) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const onChartWorkstation = isChartWorkstationPath(location.pathname);
   const setTicker = useStockStore((s) => s.setTicker);
   const load = useStockStore((s) => s.load);
   const stock = useStockStore((s) => s.stock);
   const ticker = useStockStore((s) => s.ticker);
+  const workstationTicker = useChartWorkstationStore((s) => {
+    const active = s.slots.find((slot) => slot.id === s.activeSlotId) ?? s.slots[0];
+    return active?.ticker ? active.ticker.toUpperCase() : null;
+  });
   const selectedCountry = useSettingsStore((s) => s.selectedCountry);
   const selectedMarket = useSettingsStore((s) => s.selectedMarket);
   const displayCurrency = useSettingsStore((s) => s.displayCurrency);
@@ -136,8 +147,12 @@ export function TopBar({ hideTickerLoader = false, hideMarketMarquee = false }: 
   }, [breadcrumbs]);
 
   useEffect(() => {
+    if (onChartWorkstation && workstationTicker) {
+      setQuery(workstationTicker);
+      return;
+    }
     setQuery(ticker);
-  }, [ticker]);
+  }, [onChartWorkstation, ticker, workstationTicker]);
 
   useEffect(() => {
     const normalizedTicker = ticker.trim().toUpperCase();
@@ -267,6 +282,12 @@ export function TopBar({ hideTickerLoader = false, hideMarketMarquee = false }: 
     setIsSuggestionsOpen(false);
     setQuery(symbol);
     setTicker(symbol);
+    if (onChartWorkstation) {
+      applyTickerToActiveWorkstationPane(symbol, {
+        companyName: item?.name ?? null,
+        exchange: item?.exchange ?? selectedMarket,
+      });
+    }
     addRecent(
       symbol,
       item?.name || symbol,
@@ -274,8 +295,8 @@ export function TopBar({ hideTickerLoader = false, hideMarketMarquee = false }: 
       inferRecentSecurityMarket(item?.country_code || selectedCountry, item?.exchange || selectedMarket),
     );
     void handleLoad();
-  }, [addRecent, handleLoad, selectedCountry, selectedMarket, setTicker]);
-  const safeTicker = (ticker || "SPY").toUpperCase();
+  }, [addRecent, handleLoad, onChartWorkstation, selectedCountry, selectedMarket, setTicker]);
+  const safeTicker = ((onChartWorkstation && workstationTicker) || ticker || "SPY").toUpperCase();
   const usOnly = isUsOnly();
 
   return (
@@ -309,6 +330,7 @@ export function TopBar({ hideTickerLoader = false, hideMarketMarquee = false }: 
           <div className="ml-2 flex min-w-0 flex-[1.4] items-center gap-1 md:min-w-[360px] xl:min-w-[460px]">
             <input
               ref={searchInputRef}
+              data-testid="topbar-ticker-input"
               className="w-full rounded border border-terminal-border bg-terminal-bg px-2 py-1 text-xs outline-none focus:border-terminal-accent"
               placeholder={`Search ${selectedMarket} symbol ( / )`}
               value={query}
@@ -341,6 +363,8 @@ export function TopBar({ hideTickerLoader = false, hideMarketMarquee = false }: 
               }}
             />
             <button
+              type="button"
+              data-testid="topbar-ticker-load"
               className="rounded bg-terminal-accent px-2 py-1 text-xs font-medium text-black"
               onClick={() => {
                 selectTicker(query);
