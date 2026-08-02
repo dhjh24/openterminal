@@ -71,7 +71,7 @@ test("fno option chain table renders with mocked backend data", async ({ page })
   await expect(page.locator("label", { hasText: "Symbol" }).first()).toBeVisible();
   await expect(page.locator("label", { hasText: "Expiry" }).first()).toBeVisible();
   await expect(page.getByText("Strike Range")).toBeVisible();
-  await expect(page.getByRole("button", { name: /All/i })).toBeVisible();
+  await expect(page.getByRole("button", { name: "All", exact: true })).toBeVisible();
   await expect(page.getByRole("combobox", { name: "Expiry" })).toHaveValue("2026-03-27");
 
   // Accept any valid terminal state: mocked data loaded, backend error, or empty.
