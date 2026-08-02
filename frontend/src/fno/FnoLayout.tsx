@@ -8,6 +8,7 @@ import { TerminalShell } from "../components/layout/TerminalShell";
 import { TerminalBadge } from "../components/terminal/TerminalBadge";
 import { TerminalPanel } from "../components/terminal/TerminalPanel";
 import { TerminalSelect } from "../components/terminal/TerminalSelect";
+import { useFeedState } from "../hooks/useFeedState";
 import { useSettingsStore } from "../store/settingsStore";
 import { fetchExpiries } from "./api/fnoApi";
 import type { FnoContextValue } from "./types/fno";
@@ -77,6 +78,8 @@ export function useFnoContext(): FnoContextValue {
 }
 
 export function FnoLayout() {
+  const { label: feedLabel, detail: feedDetail } = useFeedState();
+
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const setSelectedCountry = useSettingsStore((s) => s.setSelectedCountry);
@@ -221,7 +224,14 @@ export function FnoLayout() {
             </label>
             <div className="text-[11px]">
               <span className="mb-1 block uppercase tracking-wide text-terminal-muted">Data</span>
-              <div className="rounded border border-terminal-border bg-terminal-bg px-2 py-1 text-xs">{expiryQuery.isFetching ? "Refreshing..." : "Live cache 60s"}</div>
+              <div
+                className="rounded border border-terminal-border bg-terminal-bg px-2 py-1 text-xs"
+                data-testid="fno-feed-state"
+                title={feedDetail ?? undefined}
+              >
+                {expiryQuery.isFetching ? "Refreshing..." : feedLabel}
+                {!expiryQuery.isFetching && feedDetail ? ` · ${feedDetail}` : ""}
+              </div>
             </div>
             <div className="text-[11px]">
               <span className="mb-1 block uppercase tracking-wide text-terminal-muted">Universe</span>

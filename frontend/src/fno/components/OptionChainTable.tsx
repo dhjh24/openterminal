@@ -76,10 +76,10 @@ function StaleMarker({ show }: { show: boolean }) {
   return (
     <span
       className="ml-1 inline-block rounded border border-terminal-border/80 bg-terminal-bg px-1 ot-type-label-compact uppercase text-terminal-muted"
-      title="Delayed or stale quote"
-      aria-label="Delayed data"
+      title="Delayed"
+      aria-label="Delayed"
     >
-      DLY
+      Delayed
     </span>
   );
 }

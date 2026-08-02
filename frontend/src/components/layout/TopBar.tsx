@@ -294,7 +294,10 @@ export function TopBar({ hideTickerLoader = false, hideMarketMarquee = false }: 
       inferRecentSecurityAssetClass(symbol, item?.exchange),
       inferRecentSecurityMarket(item?.country_code || selectedCountry, item?.exchange || selectedMarket),
     );
-    void handleLoad();
+    // Workstation panes load via useBatchChartData; skip unused stock-detail fetch.
+    if (!onChartWorkstation) {
+      void handleLoad();
+    }
   }, [addRecent, handleLoad, onChartWorkstation, selectedCountry, selectedMarket, setTicker]);
   const usOnly = isUsOnly();
 

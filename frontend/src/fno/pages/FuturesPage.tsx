@@ -11,6 +11,7 @@ import { chartPointsToBars } from "../../shared/chart/chartUtils";
 import type { ChartKind, ChartTimeframe, IndicatorConfig } from "../../shared/chart/types";
 import { useSettingsStore } from "../../store/settingsStore";
 import { TerminalBadge } from "../../components/terminal/TerminalBadge";
+import { useFeedState } from "../../hooks/useFeedState";
 import { useFnoContext } from "../FnoLayout";
 import { fetchChainSummary } from "../api/fnoApi";
 
@@ -31,6 +32,9 @@ export function FuturesPage() {
   const { symbol, expiry } = useFnoContext();
   const { formatDisplayMoney } = useDisplayCurrency();
   const selectedMarket = useSettingsStore((s) => s.selectedMarket);
+  const { state: feedState, label: feedLabel, detail: feedDetail } = useFeedState();
+  const feedBadgeVariant =
+    feedState === "Live" ? ("live" as const) : feedState === "Offline" ? ("warn" as const) : ("mock" as const);
   const [timeframe, setTimeframe] = useState<ChartTimeframe>("1D");
   const [chartType, setChartType] = useState<ChartKind>("candle");
   const [showIndicators, setShowIndicators] = useState(true);
@@ -97,7 +101,9 @@ export function FuturesPage() {
               {tick ? `${tick.change_pct >= 0 ? "+" : ""}${tick.change_pct.toFixed(2)}%` : "-"}
             </div>
             <div className="mt-2 flex items-center gap-2">
-              <TerminalBadge variant="live">F&O LIVE</TerminalBadge>
+              <span title={feedDetail ?? undefined} data-testid="futures-feed-state">
+                <TerminalBadge variant={feedBadgeVariant}>{feedLabel.toUpperCase()}</TerminalBadge>
+              </span>
               <button
                 className={`rounded border px-2 py-0.5 text-[11px] ${showVolume ? "border-terminal-accent text-terminal-accent" : "border-terminal-border text-terminal-muted"}`}
                 onClick={() => setShowVolume((v) => !v)}

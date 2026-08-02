@@ -35,6 +35,16 @@ vi.mock("../hooks/useBatchChartData", () => ({
   useBatchChartData: () => ({ bySlotId: {}, loadingAny: false, source: "batch" as const }),
 }));
 
+vi.mock("../hooks/useFeedState", () => ({
+  useFeedState: () => ({
+    state: "Live",
+    label: "Live",
+    tone: "green",
+    detail: null,
+    input: {},
+  }),
+}));
+
 vi.mock("../hooks/useWorkstationQuotes", () => ({
   useWorkstationQuotes: () => ({ connectionState: "connected" as const, quoteBySlotId: {} }),
 }));

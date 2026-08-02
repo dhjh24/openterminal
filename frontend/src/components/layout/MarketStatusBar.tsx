@@ -1,17 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Bell, CircleDot } from "lucide-react";
 
+import { useFeedState } from "../../hooks/useFeedState";
 import { useMarketStatus } from "../../hooks/useStocks";
-import { useNetworkStatus } from "../../hooks/useNetworkStatus";
 import { useAlertsStore } from "../../store/alertsStore";
-import { useQuotesStore } from "../../realtime/useQuotesStream";
-import {
-  feedStateDetail,
-  feedStateLabel,
-  feedStateTone,
-  resolveFeedState,
-  type FeedState,
-} from "../../shared/feedState";
+import type { FeedState } from "../../shared/feedState";
+import { feedStateTone } from "../../shared/feedState";
 
 function formatZone(now: Date, timeZone: string) {
   return now.toLocaleTimeString([], {
@@ -47,9 +41,7 @@ function feedTone(state: FeedState): "green" | "yellow" | "red" | "gray" {
 export function MarketStatusBar(_props: { tickerOverride?: string | null } = {}) {
   const { data: marketStatus } = useMarketStatus();
   const unreadAlerts = useAlertsStore((s) => s.unreadCount);
-  const connectionState = useQuotesStore((s) => s.connectionState);
-  const ticksByToken = useQuotesStore((s) => s.ticksByToken);
-  const { online } = useNetworkStatus();
+  const { state: feedState, label: feedLabel, detail: feedDetail } = useFeedState();
   const [now, setNow] = useState(() => new Date());
   const [lagMs, setLagMs] = useState(0);
   const lagRef = useRef(performance.now());
@@ -88,30 +80,6 @@ export function MarketStatusBar(_props: { tickerOverride?: string | null } = {})
 
   const nseOpen = marketLabel(marketPayload.marketState?.[0]?.marketStatus ?? marketPayload.nseStatus);
   const nyseOpen = marketLabel(marketPayload.nyseStatus);
-  const quoteCount = Object.keys(ticksByToken).length;
-  const newestAgeMs = useMemo(() => {
-    let newest = 0;
-    for (const tick of Object.values(ticksByToken)) {
-      const ts = Date.parse(String(tick.ts || ""));
-      if (Number.isFinite(ts) && ts > newest) newest = ts;
-    }
-    return newest > 0 ? Date.now() - newest : null;
-  }, [ticksByToken, now]);
-
-  const feedState = resolveFeedState({
-    online,
-    connectionState,
-    marketOpen: nyseOpen === "OPEN" || nseOpen === "OPEN",
-    fallbackEnabled: Boolean(marketPayload.fallbackEnabled),
-    hasQuotes: quoteCount > 0,
-    lastUpdateAgeMs: newestAgeMs,
-  });
-  const feedDetail = feedStateDetail(feedState, {
-    online,
-    connectionState,
-    hasQuotes: quoteCount > 0,
-    fallbackEnabled: Boolean(marketPayload.fallbackEnabled),
-  });
 
   return (
     <div className="border-t border-terminal-border bg-[#0D1117] px-3 py-0.5 text-[11px]" data-testid="market-status-bar">
@@ -136,7 +104,7 @@ export function MarketStatusBar(_props: { tickerOverride?: string | null } = {})
         <div className="inline-flex items-center gap-3 ot-type-data whitespace-nowrap">
           <span className="inline-flex items-center gap-1" data-testid="feed-state-badge" title={feedDetail ?? undefined}>
             <Dot tone={feedTone(feedState)} />
-            <span>{feedStateLabel(feedState).toUpperCase()}</span>
+            <span>{feedLabel.toUpperCase()}</span>
             {feedDetail ? <span className="hidden text-terminal-muted xl:inline">· {feedDetail}</span> : null}
           </span>
           <span className="inline-flex items-center gap-1">

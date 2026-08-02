@@ -131,14 +131,19 @@ label {
 
 /* Shared overlay stack: Agent, notices, workspace toasts (issue #25) */
 .ot-overlay-stack {
+  --ot-overlay-z: 1100;
+  --ot-overlay-gap: 0.5rem;
+  --ot-overlay-bottom-desktop: max(0.75rem, env(safe-area-inset-bottom, 0px));
+  --ot-overlay-bottom-phone: calc(3.75rem + env(safe-area-inset-bottom, 0px) + 0.5rem);
+  --ot-overlay-max-height: min(40dvh, 320px);
   position: fixed;
-  z-index: 1100;
+  z-index: var(--ot-overlay-z);
   right: max(0.75rem, env(safe-area-inset-right, 0px));
-  bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
+  bottom: var(--ot-overlay-bottom-desktop);
   display: flex;
   flex-direction: column-reverse;
   align-items: flex-end;
-  gap: 0.5rem;
+  gap: var(--ot-overlay-gap);
   max-width: min(420px, calc(100vw - 1.5rem));
   pointer-events: none;
 }
@@ -149,18 +154,24 @@ label {
   display: flex;
   flex-direction: column-reverse;
   align-items: flex-end;
-  gap: 0.5rem;
+  gap: var(--ot-overlay-gap);
   width: 100%;
+  max-height: var(--ot-overlay-max-height);
+  overflow-y: auto;
 }
 .ot-overlay-card,
 .ot-overlay-toasts {
   max-width: 100%;
 }
+.ot-overlay-toasts {
+  max-height: var(--ot-overlay-max-height);
+  overflow-y: auto;
+}
 @media (max-width: 767px) {
   .ot-overlay-stack {
     left: 0.5rem;
     right: 0.5rem;
-    bottom: calc(3.75rem + env(safe-area-inset-bottom, 0px) + 0.5rem);
+    bottom: var(--ot-overlay-bottom-phone);
     max-width: none;
     align-items: stretch;
   }
