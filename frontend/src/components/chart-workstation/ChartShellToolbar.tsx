@@ -5,7 +5,7 @@ import { TerminalBadge } from "../terminal/TerminalBadge";
 import { TerminalButton } from "../terminal/TerminalButton";
 import { TerminalDropdown } from "../terminal/TerminalDropdown";
 import { TerminalInput } from "../terminal/TerminalInput";
-import { feedStateLabel, resolveFeedState } from "../../shared/feedState";
+import { useFeedState } from "../../hooks/useFeedState";
 import type { ChartSlot, ChartSlotTimeframe, ChartSlotType, GridTemplate, SlotMarket } from "../../store/chartWorkstationStore";
 
 const TIMEFRAMES: ChartSlotTimeframe[] = ["1m", "5m", "15m", "1h", "1D", "1W", "1M"];
@@ -140,24 +140,11 @@ type Props = {
   onDrillInto: (route: DrillRoute) => void;
 };
 
-function feedBadgeFromConnection(
-  state: QuotesConnectionState,
-  batchSource: BatchSource,
-): { label: string; variant: "success" | "info" | "danger" | "warn" } {
-  const feed = resolveFeedState({
-    connectionState: state,
-    fallbackEnabled: batchSource === "fallback",
-    hasQuotes: state === "connected" || batchSource !== "idle",
-  });
-  const variant =
-    feed === "Live"
-      ? ("success" as const)
-      : feed === "Offline"
-        ? ("danger" as const)
-        : feed === "Closed"
-          ? ("info" as const)
-          : ("warn" as const);
-  return { label: feedStateLabel(feed).toUpperCase(), variant };
+function feedBadgeVariant(state: string): "success" | "info" | "danger" | "warn" {
+  if (state === "Live") return "success";
+  if (state === "Offline") return "danger";
+  if (state === "Closed") return "info";
+  return "warn";
 }
 
 function sourceBadgeVariant(source: BatchSource): "success" | "warn" {
@@ -339,7 +326,7 @@ export function ChartShellToolbar({
   templateDraftName,
   snapshots,
   selectedSnapshotId,
-  quotesConnectionState,
+  quotesConnectionState: _quotesConnectionState,
   chartBatchSource,
   batchLoadingAny,
   gridTemplate,
@@ -393,7 +380,15 @@ export function ChartShellToolbar({
   const replayScopeLabel = linkSettings.replay && activeLinkGroup !== "off" ? `Replay Link ${activeLinkGroup}` : "Replay Active";
   const rangeScopeLabel = linkSettings.dateRange && activeLinkGroup !== "off" ? `Range Link ${activeLinkGroup}` : "Range Active";
   const [toolsOpen, setToolsOpen] = useState(false);
-  const feedBadge = feedBadgeFromConnection(quotesConnectionState, chartBatchSource);
+  const feedOverrides =
+    chartBatchSource === "fallback"
+      ? { fallbackEnabled: true as const }
+      : undefined;
+  const feed = useFeedState(feedOverrides);
+  const feedBadge = {
+    label: feed.label.toUpperCase(),
+    variant: feedBadgeVariant(feed.state),
+  };
 
   return (
     <div

@@ -1,18 +1,35 @@
 import { useEffect, useMemo, useState } from "react";
 
+import { useFeedState } from "../../hooks/useFeedState";
 import { useMarketStatus } from "../../hooks/useStocks";
-import { useNetworkStatus } from "../../hooks/useNetworkStatus";
-import { useQuotesStore } from "../../realtime/useQuotesStream";
 import { useSettingsStore } from "../../store/settingsStore";
 import { useStockStore } from "../../store/stockStore";
 import { APP_VERSION } from "../../utils/constants";
-import { feedStateLabel, resolveFeedState } from "../../shared/feedState";
+import type { FeedState } from "../../shared/feedState";
 import { TerminalBadge } from "./TerminalBadge";
 
 function nowLabel(now: Date): string {
   const time = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
   return `${time} ${tz}`;
+}
+
+function feedBadgeVariant(state: FeedState): "live" | "mock" | "warn" | "neutral" {
+  switch (state) {
+    case "Live":
+      return "live";
+    case "Offline":
+      return "warn";
+    case "Closed":
+      return "neutral";
+    case "Delayed":
+    case "Cached":
+      return "mock";
+    default: {
+      const _exhaustive: never = state;
+      return _exhaustive;
+    }
+  }
 }
 
 type Props = {
@@ -25,33 +42,19 @@ export function StatusBar({ tickerOverride }: Props) {
   const tickerFromStore = useStockStore((s) => s.ticker);
   const stockLoading = useStockStore((s) => s.loading);
   const stockError = useStockStore((s) => s.error);
-  const connectionState = useQuotesStore((s) => s.connectionState);
-  const { online } = useNetworkStatus();
   const {
     data: marketStatus,
     isLoading: marketLoading,
     isFetching: marketFetching,
     error: marketError,
   } = useMarketStatus();
+  const { state: feedState, label: feedLabel, detail: feedDetail } = useFeedState();
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
-
-  const isMock = useMemo(() => {
-    const payload = marketStatus as { fallbackEnabled?: boolean; error?: string } | undefined;
-    return Boolean(payload?.fallbackEnabled) || Boolean(payload?.error);
-  }, [marketStatus]);
-
-  const marketPayload = (marketStatus ?? {}) as {
-    marketState?: Array<{ marketStatus?: string }>;
-    nyseStatus?: string;
-    fallbackEnabled?: boolean;
-  };
-  const nyseRaw = String(marketPayload.nyseStatus || marketPayload.marketState?.[0]?.marketStatus || "").toUpperCase();
-  const marketOpen = nyseRaw.includes("OPEN") ? true : nyseRaw.includes("CLOSE") ? false : null;
 
   const dataState = useMemo(() => {
     if (marketError || stockError) {
@@ -63,31 +66,14 @@ export function StatusBar({ tickerOverride }: Props) {
     if (marketFetching || (marketLoading && !marketStatus)) {
       return { label: "POLLING", variant: "mock" as const };
     }
-    const feed = resolveFeedState({
-      online,
-      connectionState,
-      marketOpen,
-      fallbackEnabled: isMock,
-      hasQuotes: Boolean(marketStatus),
-    });
-    const variant =
-      feed === "Live"
-        ? ("live" as const)
-        : feed === "Offline"
-          ? ("neutral" as const)
-          : feed === "Closed"
-            ? ("neutral" as const)
-            : ("mock" as const);
-    return { label: feedStateLabel(feed).toUpperCase(), variant };
+    return { label: feedLabel.toUpperCase(), variant: feedBadgeVariant(feedState) };
   }, [
-    connectionState,
-    isMock,
+    feedLabel,
+    feedState,
     marketError,
     marketFetching,
     marketLoading,
-    marketOpen,
     marketStatus,
-    online,
     stockError,
     stockLoading,
   ]);
@@ -100,7 +86,9 @@ export function StatusBar({ tickerOverride }: Props) {
           <span>{selectedMarket}</span>
           <span>{displayCurrency}</span>
           <span>{ticker || "NO-SYMBOL"}</span>
-          <TerminalBadge variant={isMock ? "mock" : "live"}>{isMock ? "DELAYED" : "LIVE"}</TerminalBadge>
+          <span title={feedDetail ?? undefined}>
+            <TerminalBadge variant={feedBadgeVariant(feedState)}>{feedLabel.toUpperCase()}</TerminalBadge>
+          </span>
           <span className="tabular-nums">{nowLabel(now)}</span>
         </div>
         <div className="flex items-center gap-2 border-l border-terminal-border pl-2">

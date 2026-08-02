@@ -36,9 +36,7 @@ import { buildActionQueue } from "../home/actionQueue";
 import { readHomeDeskDetailsExpanded, writeHomeDeskDetailsExpanded } from "../home/deskDetails";
 import { NAV_CARD_SECTIONS, slugifyNav } from "../home/navCards";
 import { readRecentTools, recordRecentTool, type RecentTool } from "../home/recentTools";
-import { useNetworkStatus } from "../hooks/useNetworkStatus";
-import { useQuotesStore } from "../realtime/useQuotesStream";
-import { feedStateDetail, feedStateLabel, resolveFeedState } from "../shared/feedState";
+import { useFeedState } from "../hooks/useFeedState";
 import { useSettingsStore } from "../store/settingsStore";
 import type { PortfolioItem } from "../types";
 import { getWorkspacePresetConfig, readWorkspacePreset } from "../workspace/presets";
@@ -162,8 +160,7 @@ export function HomePage() {
   const realtimeMode = useSettingsStore((s) => s.realtimeMode);
   const newsAutoRefresh = useSettingsStore((s) => s.newsAutoRefresh);
   const newsRefreshSec = useSettingsStore((s) => s.newsRefreshSec);
-  const quotesConnectionState = useQuotesStore((s) => s.connectionState);
-  const { online } = useNetworkStatus();
+  const { state: homeFeedState, label: homeFeedLabel, detail: homeFeedDetail } = useFeedState();
 
   const [marketRows, setMarketRows] = useState<MarketRow[]>(INITIAL_MARKET_ROWS);
   const [newsLog, setNewsLog] = useState<NewsLatestApiItem[]>([]);
@@ -520,19 +517,6 @@ export function HomePage() {
 
   const marketQuotesReady = marketRows.some((row) => row.ltp > 0);
   const snapshotAgeMs = snapshot.updatedAt == null ? null : Date.now() - snapshot.updatedAt;
-  const homeFeedState = resolveFeedState({
-    online,
-    connectionState: quotesConnectionState,
-    fallbackEnabled: realtimeMode !== "ws",
-    hasQuotes: marketQuotesReady,
-    lastUpdateAgeMs: snapshotAgeMs,
-  });
-  const homeFeedDetail = feedStateDetail(homeFeedState, {
-    online,
-    connectionState: quotesConnectionState,
-    hasQuotes: marketQuotesReady,
-    fallbackEnabled: realtimeMode !== "ws",
-  });
   const providerIssues = snapshot.fnoSignal === "NA" && !marketQuotesReady;
   const actionQueueItems = useMemo(
     () =>
@@ -584,7 +568,7 @@ export function HomePage() {
       {
         id: "relay",
         label: "FEED",
-        value: `${selectedMarket} ${feedStateLabel(homeFeedState).toUpperCase()}`,
+        value: `${selectedMarket} ${homeFeedLabel.toUpperCase()}`,
         tone:
           homeFeedState === "Live"
             ? "ok"
@@ -611,7 +595,7 @@ export function HomePage() {
         tone: getSystemTone(snapshot.fnoSignal),
       },
     ],
-    [homeFeedState, newsAutoRefresh, newsRefreshSec, selectedMarket, snapshot.fnoPcr, snapshot.fnoSignal, snapshot.updatedAt, updatedLabel, user],
+    [homeFeedLabel, homeFeedState, newsAutoRefresh, newsRefreshSec, selectedMarket, snapshot.fnoPcr, snapshot.fnoSignal, snapshot.updatedAt, updatedLabel, user],
   );
 
   const leadHeadline = newsLog[0] ?? null;
@@ -745,7 +729,7 @@ export function HomePage() {
               {/* Status row: market / connection / primary action */}
               <div className="mt-2 flex items-center justify-between gap-2">
                 <span className="text-[11px] text-terminal-muted truncate">
-                  {selectedMarket} · {feedStateLabel(homeFeedState).toUpperCase()} · {updatedLabel}
+                  {selectedMarket} · {homeFeedLabel.toUpperCase()} · {updatedLabel}
                 </span>
                 <button
                   type="button"
@@ -906,7 +890,7 @@ export function HomePage() {
                 </div>
                 <div className="flex flex-wrap gap-2 text-[11px] uppercase tracking-[0.12em]">
                   <span className="rounded-sm border border-terminal-border px-2 py-1 text-terminal-muted">
-                    {selectedMarket} · {feedStateLabel(homeFeedState).toUpperCase()}
+                    {selectedMarket} · {homeFeedLabel.toUpperCase()}
                   </span>
                   <span
                     className={`rounded-sm border px-2 py-1 ${
@@ -919,7 +903,7 @@ export function HomePage() {
                     data-testid="home-feed-state"
                     title={homeFeedDetail ?? undefined}
                   >
-                    {feedStateLabel(homeFeedState)}
+                    {homeFeedLabel}
                     {homeFeedDetail ? ` · ${homeFeedDetail}` : ""}
                   </span>
                   <span className="rounded-sm border border-terminal-border px-2 py-1 text-terminal-muted">

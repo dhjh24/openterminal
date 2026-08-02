@@ -40,6 +40,11 @@ import { shouldDefaultExtendedHoursOn } from "../shared/chart/candlePresentation
 import { fetchChartData } from "../services/chartDataService";
 import type { ChartPoint } from "../types";
 import { useStockStore } from "../store/stockStore";
+import {
+  registerWorkstationLinkedPropagator,
+  seedActiveWorkstationPaneIfEmpty,
+  syncStockTickerFromActiveWorkstationPane,
+} from "../shared/workstationTickerBridge";
 import { SavedViewsControl } from "../components/savedViews/SavedViewsControl";
 import {
   LEGACY_WORKSTATION_STORE_KEY,
@@ -1337,6 +1342,20 @@ export function ChartWorkstationPage() {
     }
   }, [linkSettings.crosshair, linkSettings.interval, setSyncCrosshair, setSyncTimeframe, syncCrosshair, syncTimeframe, workspaceReady]);
 
+  const paneSeededRef = useRef(false);
+  useEffect(() => {
+    if (!workspaceReady || paneSeededRef.current) return;
+    paneSeededRef.current = true;
+    const params = new URLSearchParams(location.search);
+    const urlSymbol = params.get("ticker") || params.get("symbol");
+    seedActiveWorkstationPaneIfEmpty(urlSymbol);
+  }, [location.search, workspaceReady]);
+
+  useEffect(() => {
+    if (!workspaceReady) return;
+    syncStockTickerFromActiveWorkstationPane();
+  }, [activeSlotId, workspaceReady]);
+
   const visibleCapacity = getLayoutCapacity(gridTemplate.cols || 1, gridTemplate.rows || 1);
   const visibleSlots = useMemo(() => slots.slice(0, visibleCapacity), [slots, visibleCapacity]);
   const hiddenSlotCount = Math.max(0, slots.length - visibleSlots.length);
@@ -1592,6 +1611,24 @@ export function ChartWorkstationPage() {
       },
     [linkSettings.symbol, setTicker, slotLinkGroups, updateSlotTicker],
   );
+
+  useEffect(() => {
+    registerWorkstationLinkedPropagator((slotId, ticker, market, companyName) => {
+      if (!linkSettings.symbol) return;
+      const sourceGroup = slotLinkGroups[slotId] ?? "off";
+      if (sourceGroup === "off") return;
+      useChartWorkstationStore.setState((state) => ({
+        slots: propagateLinkedSlots(state.slots, slotLinkGroups, slotId, (slot) => ({
+          ...slot,
+          ticker,
+          companyName: typeof companyName === "string" ? companyName : slot.companyName ?? null,
+          market,
+          extendedHours: { ...slot.extendedHours, enabled: market === "US" },
+        })),
+      }));
+    });
+    return () => registerWorkstationLinkedPropagator(null);
+  }, [linkSettings.symbol, slotLinkGroups]);
 
   const handleTimeframeChange = useCallback(
     (slotId: string) =>

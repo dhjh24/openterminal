@@ -5,6 +5,16 @@ import { describe, expect, it, vi } from "vitest";
 import { ChartShellToolbar } from "../components/chart-workstation/ChartShellToolbar";
 import type { ChartSlot } from "../store/chartWorkstationStore";
 
+vi.mock("../hooks/useFeedState", () => ({
+  useFeedState: () => ({
+    state: "Live",
+    label: "Live",
+    tone: "green",
+    detail: null,
+    input: {},
+  }),
+}));
+
 function makeSlot(overrides: Partial<ChartSlot> = {}): ChartSlot {
   return {
     id: "slot-1",

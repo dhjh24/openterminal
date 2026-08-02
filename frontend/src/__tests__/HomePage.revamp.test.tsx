@@ -52,6 +52,16 @@ vi.mock("../contexts/AuthContext", () => ({
   }),
 }));
 
+vi.mock("../hooks/useFeedState", () => ({
+  useFeedState: () => ({
+    state: "Delayed",
+    label: "Delayed",
+    tone: "yellow",
+    detail: "Fallback feed",
+    input: {},
+  }),
+}));
+
 vi.mock("../store/settingsStore", () => ({
   useSettingsStore: (
     selector: (state: {

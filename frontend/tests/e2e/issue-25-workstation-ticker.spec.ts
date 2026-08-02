@@ -21,9 +21,14 @@ async function seedAuth(page: Page) {
       localStorage.setItem("ot-access-token", at);
       localStorage.setItem("ot-refresh-token", rt);
       localStorage.removeItem("ot_chart_workstation");
+      localStorage.removeItem("ot:chart-workstation:tabs:v1");
       localStorage.setItem(
         "ot:workspace:preset:v1",
         JSON.stringify("trader"),
+      );
+      localStorage.setItem(
+        "stock-state",
+        JSON.stringify({ state: { ticker: "AAPL", interval: "1d", range: "6mo" }, version: 0 }),
       );
     },
     [accessToken, refreshToken],
@@ -51,16 +56,18 @@ async function mockChartApis(page: Page) {
     });
   });
   await page.route("**/api/charts/batch**", async (route) => {
+    const chartPayload = {
+      ticker: "AAPL",
+      interval: "1d",
+      currency: "USD",
+      data: sampleData,
+    };
+    // Backend keys: MARKET:SYMBOL|interval|range|ext=bool
     await route.fulfill({
       json: {
-        results: [
-          {
-            ticker: "AAPL",
-            interval: "1d",
-            currency: "USD",
-            data: sampleData,
-          },
-        ],
+        "NASDAQ:AAPL|1d|1y|ext=false": chartPayload,
+        "NASDAQ:AAPL|1d|1y|ext=true": chartPayload,
+        AAPL: chartPayload,
       },
     });
   });
@@ -94,6 +101,9 @@ test.describe("Issue #25 workstation ticker + overlays", () => {
     const pane = page.locator('[data-testid^="chart-panel-"]').first();
     await expect(pane).toBeVisible();
     await expect(page.getByTestId("ticker-search-input").first()).toHaveValue(/AAPL/i, { timeout: 30_000 });
+    // Chart surface is present (canvas/engine or status line), not only the ticker field.
+    const chartSurface = pane.locator("canvas, [data-testid='chart-status-line'], .tv-lightweight-charts").first();
+    await expect(chartSurface).toBeVisible({ timeout: 30_000 });
   });
 
   test("overlay stack keeps agent and notices above mobile nav on phone", async ({ page }) => {
@@ -113,7 +123,8 @@ test.describe("Issue #25 workstation ticker + overlays", () => {
     }
 
     // Floating agent is intentionally hidden on phone (More menu owns Agent).
-    await expect(page.getByTestId("agent-launcher")).toHaveCount(0);
+    await expect(page.getByTestId("agent-launcher")).toBeHidden();
+    await expect(page.locator("#ot-pwa-update-banner")).toHaveCount(0);
 
     await page.setViewportSize({ width: 1280, height: 800 });
     await expect(page.getByTestId("agent-launcher")).toBeVisible({ timeout: 15_000 });
@@ -125,5 +136,33 @@ test.describe("Issue #25 workstation ticker + overlays", () => {
       expect(agentBox.x).toBeGreaterThan(chartBox.x + chartBox.width * 0.45);
       expect(agentBox.y).toBeGreaterThan(chartBox.y + chartBox.height * 0.35);
     }
+
+    // Drawing controls (when present) should sit left of the agent FAB.
+    const draw = page.getByTestId("chart-drawing-controls");
+    if (await draw.count()) {
+      const drawBox = await draw.boundingBox();
+      if (drawBox && agentBox) {
+        expect(drawBox.x + drawBox.width).toBeLessThanOrEqual(agentBox.x + 8);
+      }
+    }
+  });
+
+  test("home and status bar share feed-state vocabulary", async ({ page }) => {
+    await seedAuth(page);
+    await page.goto("/home", { waitUntil: "domcontentloaded" });
+    const homeFeed = page.getByTestId("home-feed-state");
+    const statusFeed = page.getByTestId("feed-state-badge");
+    await expect(homeFeed).toBeVisible({ timeout: 30_000 });
+    await expect(statusFeed).toBeVisible({ timeout: 30_000 });
+    const homeText = (await homeFeed.innerText()).toUpperCase();
+    const statusText = (await statusFeed.innerText()).toUpperCase();
+    for (const token of ["LIVE", "DELAYED", "CACHED", "CLOSED", "OFFLINE"]) {
+      if (homeText.includes(token)) {
+        expect(statusText).toContain(token);
+        break;
+      }
+    }
+    expect(homeText).not.toMatch(/QUOTES READY/);
+    expect(statusText).not.toMatch(/DISCONNECTED/);
   });
 });

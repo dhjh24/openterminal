@@ -2987,7 +2987,10 @@ export function TradingChart({
         />
       ))}
       {selectedDrawing ? (
-        <div className="absolute bottom-2 right-2 z-[45] flex items-center gap-1 rounded border border-terminal-border bg-terminal-panel/95 p-1 text-[10px]">
+        <div
+          className="absolute bottom-2 right-2 z-[45] flex items-center gap-1 rounded border border-terminal-border bg-terminal-panel/95 p-1 text-[10px] md:right-[7.5rem]"
+          data-testid="chart-drawing-controls"
+        >
           <span className="text-terminal-muted">DRAW</span>
           <button
             type="button"
@@ -3103,7 +3106,7 @@ export function TradingChart({
       )}
       {surfaceSettings.statusLineVisible ? (
         <div
-          className="pointer-events-none absolute bottom-2 left-2 right-24 z-[6] truncate rounded border border-terminal-border bg-terminal-panel/95 px-2 py-1 text-[10px] text-terminal-text"
+          className="pointer-events-none absolute bottom-2 left-2 right-24 z-[6] truncate rounded border border-terminal-border bg-terminal-panel/95 px-2 py-1 text-[10px] text-terminal-text md:right-36"
           data-testid="chart-status-line"
         >
           {statusLine}
