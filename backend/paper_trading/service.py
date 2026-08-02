@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import re
 from datetime import datetime, timezone
 from statistics import mean, pstdev
 from typing import Any
@@ -220,7 +221,15 @@ class PaperTradingEngine:
         return (fill_price - _f(pos.avg_entry_price)) * _f(order.quantity)
 
     async def maybe_fill_market_order_now(self, db: Session, order: VirtualOrder) -> None:
-        if str(order.order_type).lower() != VirtualOrderType.MARKET.value:
+        otype = str(order.order_type).lower()
+        # Paper options: fill limit orders immediately at the submitted premium so
+        # Buy Call / Buy Put tickets create positions without waiting for OCC ticks.
+        if otype == VirtualOrderType.LIMIT.value and order.limit_price is not None:
+            if self._looks_like_option_symbol(str(order.symbol or "")):
+                self._fill_order(db, order, _f(order.limit_price))
+                return
+            return
+        if otype != VirtualOrderType.MARKET.value:
             return
         ltp = self._mark_prices.get(order.symbol)
         if ltp is None:
@@ -230,6 +239,14 @@ class PaperTradingEngine:
             ltp = _f(quote.get("last_price") or quote.get("c") or quote.get("regularMarketPrice") or quote.get("price"))
         if ltp and ltp > 0:
             self._fill_order(db, order, ltp)
+
+    @staticmethod
+    def _looks_like_option_symbol(symbol: str) -> bool:
+        raw = str(symbol or "").split(":")[-1].upper()
+        if re.search(r"\d{6}[CP]\d{8}$", raw):
+            return True
+        # Synthetic fallback: AAPL-2026-03-27-C-150
+        return bool(re.search(r"-\d{4}-\d{2}-\d{2}-[CP]-", raw))
 
     def portfolio_performance(self, db: Session, portfolio_id: str) -> dict[str, Any]:
         trades = (

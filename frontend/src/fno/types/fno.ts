@@ -16,6 +16,9 @@ export type OptionLegData = {
   ask: number;
   price_change?: number;
   greeks: Greeks;
+  /** OCC / venue contract id when provided by the adapter. */
+  contract_symbol?: string | null;
+  occ_symbol?: string | null;
 };
 
 export type StrikeData = {
@@ -23,6 +26,91 @@ export type StrikeData = {
   ce: OptionLegData | null;
   pe: OptionLegData | null;
 };
+
+export type OptionSide = "CE" | "PE";
+
+/** US equity options multiplier (shares per contract). */
+export const OPTION_CONTRACT_MULTIPLIER = 100;
+
+export type SelectedOptionContract = {
+  side: OptionSide;
+  strike: number;
+  bid: number;
+  ask: number;
+  spread: number;
+  delta: number;
+  iv: number;
+  volume: number;
+  oi: number;
+  ltp: number;
+  contractSymbol: string;
+};
+
+export function optionSpread(bid: number, ask: number): number {
+  if (!Number.isFinite(bid) || !Number.isFinite(ask)) return 0;
+  return Math.max(0, ask - bid);
+}
+
+export function estimatedDebit(ask: number, quantity: number, multiplier = OPTION_CONTRACT_MULTIPLIER): number {
+  const qty = Math.max(0, quantity);
+  const premium = Number.isFinite(ask) ? Math.max(0, ask) : 0;
+  return premium * qty * multiplier;
+}
+
+export function buildPaperOptionSymbol(params: {
+  underlying: string;
+  expiry: string;
+  side: OptionSide;
+  strike: number;
+  contractSymbol?: string | null;
+}): string {
+  const occ = String(params.contractSymbol || "").trim().toUpperCase();
+  if (occ) {
+    return occ.includes(":") ? occ : `NASDAQ:${occ}`;
+  }
+  const root = String(params.underlying || "AAPL").trim().toUpperCase() || "AAPL";
+  const expiryDigits = String(params.expiry || "").replace(/-/g, "").slice(2, 8); // YYMMDD
+  const cp = params.side === "CE" ? "C" : "P";
+  const strikeCode = Math.round(Number(params.strike) * 1000)
+    .toString()
+    .padStart(8, "0");
+  if (expiryDigits.length === 6) {
+    return `NASDAQ:${root}${expiryDigits}${cp}${strikeCode}`;
+  }
+  return `NASDAQ:${root}-${params.expiry}-${cp}-${params.strike}`;
+}
+
+export function selectContractFromStrike(
+  row: StrikeData,
+  side: OptionSide,
+  underlying: string,
+  expiry: string,
+): SelectedOptionContract | null {
+  const leg = side === "CE" ? row.ce : row.pe;
+  if (!leg) return null;
+  const bid = Number(leg.bid || 0);
+  const ask = Number(leg.ask || leg.ltp || 0);
+  const strike = Number(row.strike_price || 0);
+  return {
+    side,
+    strike,
+    bid,
+    ask,
+    spread: optionSpread(bid, ask),
+    delta: Number(leg.greeks?.delta || 0),
+    iv: Number(leg.iv || 0),
+    volume: Number(leg.volume || 0),
+    oi: Number(leg.oi || 0),
+    ltp: Number(leg.ltp || 0),
+    contractSymbol: buildPaperOptionSymbol({
+      underlying,
+      expiry,
+      side,
+      strike,
+      contractSymbol: leg.contract_symbol || leg.occ_symbol,
+    }),
+  };
+}
 
 export type OptionChainResponse = {
   symbol: string;
