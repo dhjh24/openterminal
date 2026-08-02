@@ -187,7 +187,7 @@ export function FnoLayout() {
 
   return (
     <TerminalShell
-      contentClassName="pb-20 md:pb-0"
+      contentClassName="pb-[calc(3.75rem+env(safe-area-inset-bottom,0px)+6rem)] md:pb-0"
       showInstallPrompt
       showMobileBottomNav
       workspacePresetStorageKey="ot:shell:fno:preset"

@@ -59,7 +59,7 @@ describe("OptionChainTable render performance", () => {
     const start = performance.now();
     render(
       <QueryClientProvider client={client}>
-        <OptionChainTable rows={rows} atmStrike={22500} />
+        <OptionChainTable rows={rows} atmStrike={22500} underlying="AAPL" expiry="2026-08-15" />
       </QueryClientProvider>
     );
     const elapsedMs = performance.now() - start;

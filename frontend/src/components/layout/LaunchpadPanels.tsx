@@ -178,6 +178,8 @@ export function LaunchpadOptionChainPanel({ panel }: PanelProps) {
         <OptionChainTable
           rows={(chain?.strikes || []) as any}
           atmStrike={chain?.atm_strike || 0}
+          underlying={symbol}
+          expiry={expiry}
           dataTimestamp={chain?.timestamp}
         />
       </div>

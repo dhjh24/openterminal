@@ -103,7 +103,7 @@ export function PaperOptionOrderTicket({ selected, underlying, expiry, onClear }
 
   return (
     <section
-      className="sticky bottom-0 z-20 border-t border-terminal-border bg-terminal-panel/95 p-3 backdrop-blur supports-[backdrop-filter]:bg-terminal-panel/90 md:static md:rounded md:border md:backdrop-blur-none"
+      className="sticky bottom-[calc(3.75rem+env(safe-area-inset-bottom,0px))] z-20 border-t border-terminal-border bg-terminal-panel/95 p-3 backdrop-blur supports-[backdrop-filter]:bg-terminal-panel/90 md:static md:bottom-auto md:rounded md:border md:backdrop-blur-none"
       aria-label="Paper option order ticket"
       data-testid="paper-option-ticket"
     >
