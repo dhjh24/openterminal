@@ -6,9 +6,9 @@ import { TerminalBadge } from "../components/terminal/TerminalBadge";
 import { TerminalButton } from "../components/terminal/TerminalButton";
 import { TerminalPanel } from "../components/terminal/TerminalPanel";
 import { AsciiHero } from "../home/AsciiHero";
+import { REPO_STARGAZERS_URL, REPO_URL } from "../utils/repo";
 
-const REPO_URL = "https://github.com/Hitheshkaranth/OpenTerminalUI";
-const STAR_URL = `${REPO_URL}/stargazers`;
+const STAR_URL = REPO_STARGAZERS_URL;
 
 const PLATFORM_STATS = [
   { value: "79", label: "Routes Indexed", tone: "accent" },

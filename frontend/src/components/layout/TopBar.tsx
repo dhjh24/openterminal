@@ -296,12 +296,11 @@ export function TopBar({ hideTickerLoader = false, hideMarketMarquee = false }: 
     );
     void handleLoad();
   }, [addRecent, handleLoad, onChartWorkstation, selectedCountry, selectedMarket, setTicker]);
-  const safeTicker = ((onChartWorkstation && workstationTicker) || ticker || "SPY").toUpperCase();
   const usOnly = isUsOnly();
 
   return (
     <div className="relative z-20 border-b border-terminal-border bg-terminal-panel">
-      <div className="relative flex items-center gap-2 overflow-x-auto px-3 py-1.5">
+      <div className="relative flex items-center gap-2 px-3 py-1.5 md:overflow-x-visible overflow-x-auto">
         <Link
           to="/"
           className="inline-flex h-7 items-center rounded border border-terminal-border bg-terminal-bg px-1.5"
@@ -309,23 +308,7 @@ export function TopBar({ hideTickerLoader = false, hideMarketMarquee = false }: 
         >
           <img src={BRAND_ICON_SRC} alt="OpenTerminalUI" className="h-5 w-5 object-contain" />
         </Link>
-        <div className="hidden shrink-0 items-center gap-2 lg:flex" data-testid="topbar-primary-nav">
-          <Link className="rounded border border-terminal-border px-2 py-1 text-[11px] text-terminal-muted hover:text-terminal-text" to="/">
-            HOME
-          </Link>
-          <Link className="rounded border border-terminal-border px-2 py-1 text-[11px] text-terminal-muted hover:text-terminal-text" to="/equity/screener">
-            SCREENER
-          </Link>
-          <Link className="rounded border border-terminal-border px-2 py-1 text-[11px] text-terminal-muted hover:text-terminal-text" to="/equity/compare">
-            COMPARE
-          </Link>
-          <Link className="rounded border border-terminal-border px-2 py-1 text-[11px] text-terminal-muted hover:text-terminal-text" to={`/fno/heatmap?symbol=${encodeURIComponent(safeTicker)}`}>
-            HEATMAP
-          </Link>
-          <Link className="rounded border border-terminal-border px-2 py-1 text-[11px] text-terminal-muted hover:text-terminal-text" to={`/fno?symbol=${encodeURIComponent(safeTicker)}`}>
-            Options & Futures -&gt;
-          </Link>
-        </div>
+        {/* Primary destinations live on the icon rail + command palette (issue #26). */}
         {!hideTickerLoader ? (
           <div className="ml-2 flex min-w-0 flex-[1.4] items-center gap-1 md:min-w-[360px] xl:min-w-[460px]">
             <input

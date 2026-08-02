@@ -21,7 +21,7 @@
 </p>
 
 <p align="center">
-  <a href="https://hitheshkaranth.github.io/OpenTerminalUI/">Website</a> |
+  <a href="https://dhjh24.github.io/openterminal/">Website</a> |
   <a href="#features">Features</a> |
   <a href="#screenshots">Screenshots</a> |
   <a href="#architecture">Architecture</a> |
@@ -570,7 +570,7 @@ OpenTerminalUI defaults to the **U.S. market profile** (`MARKET_PROFILE=US`, `VI
 ### One command (recommended)
 
 ```bash
-git clone https://github.com/Hitheshkaranth/OpenTerminalUI.git
+git clone https://github.com/dhjh24/openterminal.git
 cd OpenTerminalUI
 ./install.sh          # macOS / Linux / WSL   (Windows: ./install.ps1)
 ```

@@ -113,7 +113,7 @@ label {
 
 @media (max-width: 1280px) {
   :root {
-    --ot-type-size-2xs: 11px;
+    --ot-type-size-2xs: 12px;
     --ot-type-size-xs: 12px;
     --ot-type-size-sm: 13px;
     --ot-type-size-md: 14px;
@@ -123,8 +123,8 @@ label {
     --ot-type-heading-lg-size: 16px;
     --ot-type-table-cell-size: 13px;
     --ot-type-table-header-size: 12px;
-    --ot-type-status-size: 11px;
-    --ot-type-badge-size: 11px;
+    --ot-type-status-size: 12px;
+    --ot-type-badge-size: 12px;
     --ot-density-row-default: 28px;
   }
 }

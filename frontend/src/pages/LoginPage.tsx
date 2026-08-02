@@ -6,8 +6,11 @@ import { MarketTicker } from "../components/MarketTicker";
 import { StatusBar } from "../components/StatusBar";
 import { useAuth } from "../contexts/AuthContext";
 import logo from "../assets/logo.png";
+import { REPO_SHORT, REPO_URL } from "../utils/repo";
 
 const TRANSITION_FLAG_KEY = "ot-terminal-transition";
+const DEMO_EMAIL = "demo@openterminal.dev";
+const DEMO_PASSWORD = "demo12345";
 
 function delay(ms: number) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
@@ -50,26 +53,12 @@ export function LoginPage() {
     window.setTimeout(() => setInputErrorFlash(false), 420);
   };
 
-  const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const completeLogin = async (email: string, pwd: string) => {
     setError(null);
-
-    if (!userId.trim() || !password) {
-      setError("CREDENTIALS REQUIRED");
-      triggerInputFlash();
-      return;
-    }
-
-    if (!userId.includes("@")) {
-      setError("USER ID MUST BE A REGISTERED EMAIL");
-      triggerInputFlash();
-      return;
-    }
-
+    setAuthenticating(true);
     try {
-      setAuthenticating(true);
       const startedAt = Date.now();
-      await login(userId.trim(), password);
+      await login(email.trim(), pwd);
 
       const elapsedMs = Date.now() - startedAt;
       if (elapsedMs < 2000) {
@@ -77,7 +66,7 @@ export function LoginPage() {
       }
 
       if (rememberTerminal) {
-        localStorage.setItem("ot-login-user", userId.trim());
+        localStorage.setItem("ot-login-user", email.trim());
       } else {
         localStorage.removeItem("ot-login-user");
       }
@@ -97,11 +86,36 @@ export function LoginPage() {
     }
   };
 
+  const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!userId.trim() || !password) {
+      setError("CREDENTIALS REQUIRED");
+      triggerInputFlash();
+      return;
+    }
+
+    if (!userId.includes("@")) {
+      setError("USER ID MUST BE A REGISTERED EMAIL");
+      triggerInputFlash();
+      return;
+    }
+
+    await completeLogin(userId, password);
+  };
+
+  const onDemoAccess = async () => {
+    setUserId(DEMO_EMAIL);
+    setPassword(DEMO_PASSWORD);
+    setError(null);
+    await completeLogin(DEMO_EMAIL, DEMO_PASSWORD);
+  };
+
   return (
     <div className="ot-login-layout">
       <StatusBar left="OPENTERMINALUI" center="SYSTEM STATUS: ONLINE" centerDotColor="green" />
 
-      <section className="ot-login-hero">
+      <section className="ot-login-hero" aria-label="Product brand">
         <div className="ot-login-ticker-wrap">
           <MarketTicker />
         </div>
@@ -116,7 +130,7 @@ export function LoginPage() {
 
         <div className="ot-brand-block">
           <div className="ot-brand-logo-row">
-            <img src={logo} alt="OpenTerminalUI" className="ot-brand-logo" />
+            <img src={logo} alt="" className="ot-brand-logo" aria-hidden="true" />
             <span className="ot-brand-kicker">OPEN-SOURCE TRADING TERMINAL</span>
           </div>
           <h1 className="ot-brand-title">
@@ -206,10 +220,9 @@ export function LoginPage() {
               type="button"
               className="ot-demo-button ot-stagger"
               style={{ ["--stagger-index" as string]: 9 }}
+              disabled={authenticating || isLoading}
               onClick={() => {
-                setUserId("demo@openterminal.dev");
-                setPassword("demo12345");
-                setError(null);
+                void onDemoAccess();
               }}
             >
               <span>&gt;</span> DEMO ACCESS
@@ -220,7 +233,12 @@ export function LoginPage() {
             <p>
               New to OpenTerminal? <Link to="/register">Request access</Link>
             </p>
-            <p className="ot-login-meta">v1.0.0 | MIT LICENSE | github.com/Hitheshkaranth/OpenTerminalUI</p>
+            <p className="ot-login-meta">
+              v1.0.0 | MIT LICENSE |{" "}
+              <a href={REPO_URL} target="_blank" rel="noreferrer">
+                {REPO_SHORT}
+              </a>
+            </p>
           </footer>
         </div>
       </section>
