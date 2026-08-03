@@ -92,7 +92,7 @@ export function StrikeSummaryBar({
   ];
 
   return (
-    <div>
+    <div data-testid="option-chain-summary">
       {/* Mobile: 2-column grid */}
       <div className="grid grid-cols-2 gap-2 md:hidden">
         {metrics.map((m) => (
