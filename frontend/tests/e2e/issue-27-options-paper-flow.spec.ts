@@ -1,123 +1,132 @@
 /**
- * Issue #27 — options contract selection → paper buy call.
+ * Issue #27 — options contract selection → paper buy call (desktop + mobile).
  */
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 function makeJwt(payload: Record<string, unknown>): string {
   const encoded = Buffer.from(JSON.stringify(payload)).toString("base64url");
   return `x.${encoded}.y`;
 }
 
-test.describe("Issue #27 options paper buy flow", () => {
-  test("select call → preview → confirm paper buy", async ({ page }) => {
-    const accessToken = makeJwt({
-      sub: "e2e-user",
-      email: "e2e@example.com",
-      role: "trader",
-      exp: Math.floor(Date.now() / 1000) + 3600,
-    });
+async function seedAuth(page: Page): Promise<void> {
+  const accessToken = makeJwt({
+    sub: "e2e-user",
+    email: "e2e@example.com",
+    role: "trader",
+    exp: Math.floor(Date.now() / 1000) + 3600,
+  });
+  await page.addInitScript((token) => {
+    localStorage.setItem("ot-access-token", token as string);
+    localStorage.setItem("ot-refresh-token", token as string);
+  }, accessToken);
+}
 
-    await page.addInitScript((token) => {
-      localStorage.setItem("ot-access-token", token as string);
-      localStorage.setItem("ot-refresh-token", token as string);
-    }, accessToken);
+const CHAIN_PAYLOAD = {
+  symbol: "AAPL",
+  expiry_date: "2025-08-15",
+  spot_price: 150,
+  atm_strike: 150,
+  timestamp: new Date().toISOString(),
+  available_expiries: ["2025-08-15"],
+  strikes: [
+    {
+      strike_price: 150,
+      ce: {
+        oi: 1000,
+        oi_change: 10,
+        volume: 200,
+        iv: 22,
+        ltp: 3.2,
+        bid: 3.1,
+        ask: 3.3,
+        greeks: { delta: 0.45, gamma: 0.02, theta: -0.05, vega: 0.1, rho: 0.01 },
+        contract_symbol: "AAPL250815C00150000",
+      },
+      pe: {
+        oi: 900,
+        oi_change: -5,
+        volume: 180,
+        iv: 24,
+        ltp: 2.8,
+        bid: 2.7,
+        ask: 2.9,
+        greeks: { delta: -0.4, gamma: 0.02, theta: -0.04, vega: 0.1, rho: -0.01 },
+      },
+    },
+  ],
+  totals: {
+    ce_oi_total: 1000,
+    pe_oi_total: 900,
+    ce_volume_total: 200,
+    pe_volume_total: 180,
+    pcr_oi: 0.9,
+    pcr_volume: 0.9,
+  },
+};
 
-    await page.route("**/api/fno/expiries**", async (route) => {
-      await route.fulfill({
-        json: { symbol: "AAPL", expiries: ["2025-08-15"] },
-      });
+async function setupPaperFlowRoutes(page: Page): Promise<void> {
+  // NOTE: Playwright checks routes in reverse registration order, so the
+  // generic chain route must be registered BEFORE the more specific
+  // expiries / summary routes for those to take precedence.
+  await page.route("**/api/fno/chain/**", async (route) => {
+    await route.fulfill({ json: CHAIN_PAYLOAD });
+  });
+  // Specific routes registered AFTER the generic chain route so they are
+  // matched first (Playwright checks routes in reverse registration order).
+  await page.route("**/api/fno/chain/AAPL/expiries", async (route) => {
+    await route.fulfill({ json: { symbol: "AAPL", expiries: ["2025-08-15"] } });
+  });
+  await page.route("**/api/fno/chain/AAPL/summary**", async (route) => {
+    await route.fulfill({
+      json: {
+        symbol: "AAPL",
+        expiry_date: "2025-08-15",
+        spot_price: 150,
+        atm_strike: 150,
+        atm_iv: 22,
+        pcr: { pcr_oi: 1, pcr_volume: 1, pcr_oi_change: 0, signal: "neutral" },
+        max_pain: 150,
+        support_resistance: { support: [], resistance: [] },
+        timestamp: new Date().toISOString(),
+        delay_status: "realtime",
+      },
     });
-    await page.route("**/api/fno/summary**", async (route) => {
-      await route.fulfill({
-        json: {
-          symbol: "AAPL",
-          expiry_date: "2025-08-15",
-          spot_price: 150,
-          atm_strike: 150,
-          atm_iv: 22,
-          pcr: { pcr_oi: 1, pcr_volume: 1, pcr_oi_change: 0, signal: "neutral" },
-          max_pain: 150,
-          support_resistance: { support: [], resistance: [] },
-          timestamp: new Date().toISOString(),
-          delay_status: "realtime",
-        },
-      });
+  });
+  await page.route("**/api/paper/portfolios", async (route) => {
+    if (route.request().method() === "GET") {
+      await route.fulfill({ json: { items: [{ id: "pf-1", name: "Demo", initial_capital: 100000, current_cash: 100000 }] } });
+      return;
+    }
+    await route.fulfill({ json: { id: "pf-1", name: "Demo", initial_capital: 100000, current_cash: 100000 } });
+  });
+  await page.route("**/api/paper/orders", async (route) => {
+    await route.fulfill({
+      json: { id: "ord-1", status: "filled", symbol: "NASDAQ:AAPL250815C00150000", fill_price: 3.3 },
     });
-    await page.route("**/api/fno/chain/**", async (route) => {
-      await route.fulfill({
-        json: {
-          symbol: "AAPL",
-          expiry_date: "2025-08-15",
-          spot_price: 150,
-          atm_strike: 150,
-          timestamp: new Date().toISOString(),
-          available_expiries: ["2025-08-15"],
-          strikes: [
-            {
-              strike_price: 150,
-              ce: {
-                oi: 1000,
-                oi_change: 10,
-                volume: 200,
-                iv: 22,
-                ltp: 3.2,
-                bid: 3.1,
-                ask: 3.3,
-                greeks: { delta: 0.45, gamma: 0.02, theta: -0.05, vega: 0.1, rho: 0.01 },
-                contract_symbol: "AAPL250815C00150000",
-              },
-              pe: {
-                oi: 900,
-                oi_change: -5,
-                volume: 180,
-                iv: 24,
-                ltp: 2.8,
-                bid: 2.7,
-                ask: 2.9,
-                greeks: { delta: -0.4, gamma: 0.02, theta: -0.04, vega: 0.1, rho: -0.01 },
-              },
-            },
-          ],
-          totals: {
-            ce_oi_total: 1000,
-            pe_oi_total: 900,
-            ce_volume_total: 200,
-            pe_volume_total: 180,
-            pcr_oi: 0.9,
-            pcr_volume: 0.9,
+  });
+  await page.route("**/api/paper/portfolios/*/positions", async (route) => {
+    await route.fulfill({
+      json: {
+        items: [
+          {
+            id: "pos-1",
+            symbol: "NASDAQ:AAPL250815C00150000",
+            quantity: 1,
+            avg_entry_price: 3.3,
+            mark_price: 3.3,
+            unrealized_pnl: 0,
+            side: "long",
           },
-        },
-      });
+        ],
+      },
     });
-    await page.route("**/api/paper/portfolios", async (route) => {
-      if (route.request().method() === "GET") {
-        await route.fulfill({ json: { items: [{ id: "pf-1", name: "Demo", initial_capital: 100000, current_cash: 100000 }] } });
-        return;
-      }
-      await route.fulfill({ json: { id: "pf-1", name: "Demo", initial_capital: 100000, current_cash: 100000 } });
-    });
-    await page.route("**/api/paper/orders", async (route) => {
-      await route.fulfill({
-        json: { id: "ord-1", status: "filled", symbol: "NASDAQ:AAPL250815C00150000", fill_price: 3.3 },
-      });
-    });
-    await page.route("**/api/paper/portfolios/*/positions", async (route) => {
-      await route.fulfill({
-        json: {
-          items: [
-            {
-              id: "pos-1",
-              symbol: "NASDAQ:AAPL250815C00150000",
-              quantity: 1,
-              avg_entry_price: 3.3,
-              mark_price: 3.3,
-              unrealized_pnl: 0,
-              side: "long",
-            },
-          ],
-        },
-      });
-    });
+  });
+}
+
+test.describe("Issue #27 options paper buy flow", () => {
+  test("select call → preview → confirm paper buy (desktop)", async ({ page }) => {
+    await seedAuth(page);
+    await setupPaperFlowRoutes(page);
 
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto("/fno?symbol=AAPL", { waitUntil: "domcontentloaded" });
@@ -132,5 +141,38 @@ test.describe("Issue #27 options paper buy flow", () => {
     await page.getByTestId("paper-option-confirm").click();
     await expect(page.getByTestId("paper-option-success")).toBeVisible({ timeout: 15_000 });
     await expect(page.getByTestId("paper-option-position-summary")).toBeVisible();
+  });
+
+  test("compact phone chain renders one side at a time with 44px touch targets", async ({ page }) => {
+    await seedAuth(page);
+    await setupPaperFlowRoutes(page);
+
+    // Small phone viewport: 320 CSS px wide (narrowest supported).
+    await page.setViewportSize({ width: 320, height: 700 });
+    await page.goto("/fno?symbol=AAPL", { waitUntil: "domcontentloaded" });
+
+    // The full desktop table must not be squeezed into the phone viewport.
+    await expect(page.getByTestId("option-chain-table")).toBeVisible({ timeout: 60_000 });
+    const mobileCards = page.getByTestId("option-chain-mobile-cards");
+    await expect(mobileCards).toBeVisible();
+    await expect(page.getByTestId("option-chain-desktop-table")).toBeHidden();
+
+    // One side at a time: a call card is visible; switch to puts.
+    const callCard = page.getByTestId("option-card-CE-150");
+    await expect(callCard).toBeVisible();
+    // Touch target ≥ 44 × 44 CSS px.
+    const box = await callCard.boundingBox();
+    expect(box).not.toBeNull();
+    expect(box!.width).toBeGreaterThanOrEqual(44);
+    expect(box!.height).toBeGreaterThanOrEqual(44);
+
+    await page.getByRole("tab", { name: "puts" }).click();
+    await expect(page.getByTestId("option-card-PE-150")).toBeVisible();
+    await expect(callCard).toHaveCount(0);
+
+    // Selecting a card opens the paper ticket with accessible state.
+    await page.getByTestId("option-card-PE-150").click();
+    await expect(page.getByTestId("paper-option-ticket")).toBeVisible();
+    await expect(page.getByTestId("option-card-PE-150")).toHaveAttribute("aria-pressed", "true");
   });
 });

@@ -87,7 +87,7 @@ export function StrikeSummaryBar({
       label: "Data",
       value: hasSummary ? freshness.label : emDash,
       muted: !hasSummary || freshness.stale,
-      testId: "option-chain-freshness",
+      testId: "option-chain-freshness-mobile",
     },
   ];
 
