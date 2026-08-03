@@ -1,6 +1,10 @@
 /**
- * Issue #27 — options contract selection → paper buy call (desktop + mobile).
+ * Issue #27 — options contract selection → paper buy call.
+ * Covers the desktop flow, the compact phone chain, keyboard-only operation,
+ * responsive breakpoints, 200% zoom, and an axe-core accessibility audit on
+ * the chain + order ticket (contrast, naming, focus, selected state).
  */
+import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
 function makeJwt(payload: Record<string, unknown>): string {
@@ -174,5 +178,156 @@ test.describe("Issue #27 options paper buy flow", () => {
     await page.getByTestId("option-card-PE-150").click();
     await expect(page.getByTestId("paper-option-ticket")).toBeVisible();
     await expect(page.getByTestId("option-card-PE-150")).toHaveAttribute("aria-pressed", "true");
+  });
+});
+
+test.describe("Issue #27 keyboard-only operation", () => {
+  test("selects a call and previews the paper buy without a pointer", async ({ page }) => {
+    await seedAuth(page);
+    await setupPaperFlowRoutes(page);
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto("/fno?symbol=AAPL", { waitUntil: "domcontentloaded" });
+
+    await expect(page.getByTestId("option-chain-table")).toBeVisible({ timeout: 60_000 });
+
+    // Keyboard focus lands on the first call Last-price control; Enter selects.
+    await page.getByTestId("option-select-CE-150").focus();
+    await expect(page.getByTestId("option-select-CE-150")).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("paper-option-ticket")).toBeVisible();
+    await expect(page.getByTestId("option-select-CE-150")).toHaveAttribute("aria-pressed", "true");
+
+    // Focus the Paper Buy Call action and open the preview with Enter.
+    await page.getByTestId("paper-option-preview").focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("paper-option-preview-dialog")).toBeVisible();
+    // Focus moves into the dialog (confirm action), not left behind.
+    await expect(page.getByTestId("paper-option-confirm")).toBeFocused();
+
+    // Escape closes the dialog and restores focus to the invoking control.
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("paper-option-preview-dialog")).toBeHidden();
+    await expect(page.getByTestId("paper-option-preview")).toBeFocused();
+  });
+
+  test("space also activates contract selection", async ({ page }) => {
+    await seedAuth(page);
+    await setupPaperFlowRoutes(page);
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto("/fno?symbol=AAPL", { waitUntil: "domcontentloaded" });
+
+    await expect(page.getByTestId("option-chain-table")).toBeVisible({ timeout: 60_000 });
+    await page.getByTestId("option-select-CE-150").focus();
+    await page.keyboard.press("Space");
+    await expect(page.getByTestId("paper-option-ticket")).toBeVisible();
+    await expect(page.getByTestId("option-select-CE-150")).toHaveAttribute("aria-pressed", "true");
+  });
+});
+
+// Breakpoints from the issue: 320, 375, 390, 768, 1024, 1440.
+const LAYOUT_VIEWPORTS = [
+  { width: 320, height: 700, mobile: true },
+  { width: 375, height: 800, mobile: true },
+  { width: 390, height: 844, mobile: true },
+  { width: 768, height: 1024, mobile: false },
+  { width: 1024, height: 768, mobile: false },
+  { width: 1440, height: 900, mobile: false },
+] as const;
+
+test.describe("Issue #27 responsive layout", () => {
+  for (const vp of LAYOUT_VIEWPORTS) {
+    test(`chain and order ticket usable at ${vp.width}px`, async ({ page }) => {
+      await seedAuth(page);
+      await setupPaperFlowRoutes(page);
+      await page.setViewportSize({ width: vp.width, height: vp.height });
+      await page.goto("/fno?symbol=AAPL", { waitUntil: "domcontentloaded" });
+
+      await expect(page.getByTestId("option-chain-table")).toBeVisible({ timeout: 60_000 });
+
+      // Select a contract using whichever surface the breakpoint exposes.
+      if (vp.mobile) {
+        await page.getByTestId("option-card-CE-150").click();
+        await expect(page.getByTestId("option-chain-desktop-table")).toBeHidden();
+      } else {
+        await page.getByTestId("option-select-CE-150").click();
+        await expect(page.getByTestId("option-chain-mobile-cards")).toBeHidden();
+      }
+      await expect(page.getByTestId("paper-option-ticket")).toBeVisible();
+
+      // The order action must be on-screen and reachable (not covered).
+      await page.getByTestId("paper-option-preview").scrollIntoViewIfNeeded();
+      await expect(page.getByTestId("paper-option-preview")).toBeVisible();
+      await expect(page.getByTestId("paper-option-preview")).toBeEnabled();
+
+      // No horizontal overflow at any of the required widths.
+      const overflow = await page.evaluate(
+        () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      );
+      expect(overflow).toBeLessThanOrEqual(0);
+    });
+  }
+
+  test("main flow remains usable at 200% zoom", async ({ page }) => {
+    await seedAuth(page);
+    await setupPaperFlowRoutes(page);
+    // Real 200% zoom halves the CSS layout viewport: a 1280×800 window renders
+    // at 640×400 CSS px, so the compact phone chain is the active surface.
+    // (CSS `html { zoom }` does not shift Tailwind's min-width media queries in
+    // Chromium, so a halved viewport is the faithful emulation.)
+    await page.setViewportSize({ width: 640, height: 400 });
+    await page.goto("/fno?symbol=AAPL", { waitUntil: "domcontentloaded" });
+
+    await expect(page.getByTestId("option-chain-table")).toBeVisible({ timeout: 60_000 });
+    await page.getByTestId("option-card-CE-150").click();
+    await expect(page.getByTestId("paper-option-ticket")).toBeVisible();
+    await page.getByTestId("paper-option-preview").scrollIntoViewIfNeeded();
+    await expect(page.getByTestId("paper-option-preview")).toBeVisible();
+    await expect(page.getByTestId("paper-option-preview")).toBeEnabled();
+
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(overflow).toBeLessThanOrEqual(0);
+  });
+});
+
+test.describe("Issue #27 accessibility audit", () => {
+  test("chain, summary, and order ticket have no axe violations (contrast, naming, focus)", async ({ page }) => {
+    await seedAuth(page);
+    await setupPaperFlowRoutes(page);
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto("/fno?symbol=AAPL", { waitUntil: "domcontentloaded" });
+
+    await expect(page.getByTestId("option-chain-summary")).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByTestId("option-chain-table")).toBeVisible();
+    await page.getByTestId("option-select-CE-150").click();
+    await expect(page.getByTestId("paper-option-ticket")).toBeVisible();
+    await page.getByTestId("paper-option-preview").click();
+    await expect(page.getByTestId("paper-option-preview-dialog")).toBeVisible();
+    // Let the focus trap + preview settle before scanning.
+    await page.waitForTimeout(300);
+
+    const results = await new AxeBuilder({ page })
+      // Scope the audit to the components this issue changed: the summary bar
+      // and the chain (which contains the table, phone cards, contract detail,
+      // and the paper order ticket).
+      .include('[data-testid="option-chain-summary"]')
+      .include('[data-testid="option-chain-table"]')
+      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa", "best-practice"])
+      // The `region` rule flags content outside landmark regions. The app shell
+      // is div-based and landmark coverage is app-wide/pre-existing (several
+      // routes render their own <main>), so it is out of scope for this issue;
+      // every other rule (color-contrast, aria, naming, focus, selected state)
+      // is enforced strictly.
+      .disableRules(["region"])
+      .analyze();
+
+    const violations = results.violations.map((v) => ({
+      id: v.id,
+      impact: v.impact,
+      help: v.help,
+      nodes: v.nodes.map((n) => n.html.slice(0, 160)),
+    }));
+    expect(violations).toEqual([]);
   });
 });
