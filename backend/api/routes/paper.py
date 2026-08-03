@@ -17,6 +17,7 @@ from backend.models import (
     VirtualTrade,
 )
 from backend.paper_trading import get_paper_engine
+from backend.paper_trading.service import contract_multiplier, looks_like_option_symbol
 
 router = APIRouter()
 
@@ -114,7 +115,8 @@ async def place_virtual_order(
         raise HTTPException(status_code=400, detail="order_type must be market/limit/sl")
     symbol = payload.symbol.strip().upper()
     if ":" not in symbol:
-        symbol = f"NSE:{symbol}"
+        # OCC / synthetic option ids are US paper contracts; equities keep legacy NSE default.
+        symbol = f"NASDAQ:{symbol}" if looks_like_option_symbol(symbol) else f"NSE:{symbol}"
     row = VirtualOrder(
         portfolio_id=payload.portfolio_id,
         symbol=symbol,
@@ -154,7 +156,8 @@ def get_positions(
     items = []
     for row in rows:
         mark = mark_map.get(row.symbol, row.avg_entry_price)
-        unrealized = (mark - row.avg_entry_price) * row.quantity
+        multiplier = contract_multiplier(str(row.symbol or ""))
+        unrealized = (mark - row.avg_entry_price) * row.quantity * multiplier
         items.append(
             {
                 "id": row.id,
@@ -163,6 +166,7 @@ def get_positions(
                 "avg_entry_price": row.avg_entry_price,
                 "mark_price": mark,
                 "unrealized_pnl": unrealized,
+                "contract_multiplier": multiplier,
             }
         )
     return {"items": items}

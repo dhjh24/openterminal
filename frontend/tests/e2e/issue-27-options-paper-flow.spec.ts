@@ -38,6 +38,8 @@ test.describe("Issue #27 options paper buy flow", () => {
           pcr: { pcr_oi: 1, pcr_volume: 1, pcr_oi_change: 0, signal: "neutral" },
           max_pain: 150,
           support_resistance: { support: [], resistance: [] },
+          timestamp: new Date().toISOString(),
+          delay_status: "realtime",
         },
       });
     });
@@ -108,6 +110,8 @@ test.describe("Issue #27 options paper buy flow", () => {
               symbol: "NASDAQ:AAPL250815C00150000",
               quantity: 1,
               avg_entry_price: 3.3,
+              mark_price: 3.3,
+              unrealized_pnl: 0,
               side: "long",
             },
           ],
@@ -122,8 +126,11 @@ test.describe("Issue #27 options paper buy flow", () => {
     await page.getByTestId("option-select-CE-150").click();
     await expect(page.getByTestId("paper-option-ticket")).toBeVisible();
     await expect(page.getByTestId("paper-option-debit")).toContainText(/330/);
+    await expect(page.getByTestId("option-chain-freshness")).toBeVisible();
     await page.getByTestId("paper-option-preview").click();
+    await expect(page.getByTestId("paper-option-preview-dialog")).toBeVisible();
     await page.getByTestId("paper-option-confirm").click();
     await expect(page.getByTestId("paper-option-success")).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByTestId("paper-option-position-summary")).toBeVisible();
   });
 });

@@ -72,7 +72,16 @@ describe("OptionChainTable paper flow (issue #27)", () => {
     fetchPaperPositionsMock.mockReset();
     fetchPaperPortfoliosMock.mockResolvedValue([{ id: "pf-1", name: "Demo", initial_capital: 100000, current_cash: 100000 }]);
     placePaperOrderMock.mockResolvedValue({ id: "ord-1", status: "filled", symbol: "NASDAQ:AAPL250815C00150000" });
-    fetchPaperPositionsMock.mockResolvedValue([]);
+    fetchPaperPositionsMock.mockResolvedValue([
+      {
+        id: "pos-1",
+        symbol: "NASDAQ:AAPL250815C00150000",
+        quantity: 1,
+        avg_entry_price: 3.3,
+        mark_price: 3.3,
+        unrealized_pnl: 0,
+      },
+    ]);
   });
 
   it("selects a call and previews a paper buy with estimated debit", async () => {
@@ -108,6 +117,8 @@ describe("OptionChainTable paper flow (issue #27)", () => {
     await waitFor(() => {
       expect(screen.getByTestId("paper-option-success")).toBeInTheDocument();
     });
+    expect(screen.getByTestId("paper-option-position-summary")).toHaveTextContent(/Qty/i);
+    expect(fetchPaperPositionsMock).toHaveBeenCalledWith("pf-1");
   });
 
   it("exposes accessible selection state on the last price control", () => {

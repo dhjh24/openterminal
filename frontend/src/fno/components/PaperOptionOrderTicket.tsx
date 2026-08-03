@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -23,6 +23,18 @@ type Props = {
   onClear: () => void;
 };
 
+type OpenedPosition = {
+  orderId: string;
+  symbol: string;
+  quantity: number;
+  avgEntry: number;
+  mark: number;
+  unrealizedPnl: number;
+};
+
+const FOCUSABLE =
+  'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
 export function PaperOptionOrderTicket({ selected, underlying, expiry, onClear }: Props) {
   const { formatDisplayMoney } = useDisplayCurrency();
   const queryClient = useQueryClient();
@@ -30,7 +42,9 @@ export function PaperOptionOrderTicket({ selected, underlying, expiry, onClear }
   const [previewOpen, setPreviewOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<{ orderId: string; symbol: string } | null>(null);
+  const [success, setSuccess] = useState<OpenedPosition | null>(null);
+  const previewRef = useRef<HTMLDivElement | null>(null);
+  const lastFocusedRef = useRef<HTMLElement | null>(null);
 
   const portfoliosQuery = useQuery({
     queryKey: ["paper-portfolios", "options-ticket"],
@@ -46,6 +60,41 @@ export function PaperOptionOrderTicket({ selected, underlying, expiry, onClear }
     setSuccess(null);
     setQuantity(1);
   }, [selected?.contractSymbol, selected?.side, selected?.strike]);
+
+  useEffect(() => {
+    if (!previewOpen) return;
+    lastFocusedRef.current = document.activeElement as HTMLElement | null;
+    const handler = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setPreviewOpen(false);
+        return;
+      }
+      if (event.key !== "Tab" || !previewRef.current) return;
+      const focusable = previewRef.current.querySelectorAll<HTMLElement>(FOCUSABLE);
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", handler);
+    requestAnimationFrame(() => {
+      const confirm = previewRef.current?.querySelector<HTMLElement>(
+        '[data-testid="paper-option-confirm"]',
+      );
+      (confirm ?? previewRef.current?.querySelector<HTMLElement>(FOCUSABLE))?.focus();
+    });
+    return () => {
+      document.removeEventListener("keydown", handler);
+      lastFocusedRef.current?.focus();
+    };
+  }, [previewOpen]);
 
   const debit = useMemo(
     () => (selected ? estimatedDebit(selected.ask, quantity) : 0),
@@ -82,8 +131,18 @@ export function PaperOptionOrderTicket({ selected, underlying, expiry, onClear }
       });
       await queryClient.invalidateQueries({ queryKey: ["paper-portfolios"] });
       await queryClient.invalidateQueries({ queryKey: ["paper", "positions", id] });
-      void fetchPaperPositions(id);
-      setSuccess({ orderId: String(order.id), symbol: selected.contractSymbol });
+      const positions = await fetchPaperPositions(id);
+      const match = Array.isArray(positions)
+        ? positions.find((p) => String(p.symbol).toUpperCase() === selected.contractSymbol.toUpperCase())
+        : undefined;
+      setSuccess({
+        orderId: String(order.id),
+        symbol: selected.contractSymbol,
+        quantity: Number(match?.quantity ?? quantity),
+        avgEntry: Number(match?.avg_entry_price ?? selected.ask),
+        mark: Number(match?.mark_price ?? selected.ask),
+        unrealizedPnl: Number(match?.unrealized_pnl ?? 0),
+      });
       setPreviewOpen(false);
       window.dispatchEvent(
         new CustomEvent("ot:alert-toast", {
@@ -100,6 +159,13 @@ export function PaperOptionOrderTicket({ selected, underlying, expiry, onClear }
       setSubmitting(false);
     }
   };
+
+  const pnlTone =
+    success && success.unrealizedPnl > 0
+      ? "text-terminal-pos"
+      : success && success.unrealizedPnl < 0
+        ? "text-terminal-neg"
+        : "text-terminal-muted";
 
   return (
     <section
@@ -122,7 +188,7 @@ export function PaperOptionOrderTicket({ selected, underlying, expiry, onClear }
         </div>
         <button
           type="button"
-          className="min-h-11 min-w-11 rounded border border-terminal-border px-3 text-xs text-terminal-muted hover:text-terminal-text"
+          className="min-h-11 min-w-11 rounded border border-terminal-border px-3 text-xs text-terminal-muted hover:text-terminal-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-terminal-accent"
           onClick={onClear}
           aria-label="Clear selected contract"
         >
@@ -141,7 +207,7 @@ export function PaperOptionOrderTicket({ selected, underlying, expiry, onClear }
             step={1}
             value={quantity}
             onChange={(e) => setQuantity(Math.max(1, Math.floor(Number(e.target.value) || 1)))}
-            className="mt-1 min-h-11 w-full rounded border border-terminal-border bg-terminal-bg px-3 text-sm text-terminal-text"
+            className="mt-1 min-h-11 w-full rounded border border-terminal-border bg-terminal-bg px-3 text-sm text-terminal-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-terminal-accent"
           />
         </label>
         <div className="rounded border border-terminal-border bg-terminal-bg/50 px-3 py-2">
@@ -154,7 +220,7 @@ export function PaperOptionOrderTicket({ selected, underlying, expiry, onClear }
         <button
           type="button"
           data-testid="paper-option-preview"
-          className="min-h-11 rounded border border-terminal-accent bg-terminal-accent/10 px-4 text-sm font-semibold text-terminal-accent hover:bg-terminal-accent/20"
+          className="min-h-11 rounded border border-terminal-accent bg-terminal-accent/10 px-4 text-sm font-semibold text-terminal-accent hover:bg-terminal-accent/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-terminal-accent"
           onClick={() => {
             setPreviewOpen(true);
             setError(null);
@@ -167,6 +233,7 @@ export function PaperOptionOrderTicket({ selected, underlying, expiry, onClear }
 
       {previewOpen ? (
         <div
+          ref={previewRef}
           className="mt-3 rounded border border-terminal-accent/40 bg-terminal-bg p-3"
           role="dialog"
           aria-modal="true"
@@ -190,7 +257,7 @@ export function PaperOptionOrderTicket({ selected, underlying, expiry, onClear }
             <button
               type="button"
               data-testid="paper-option-confirm"
-              className="min-h-11 rounded border border-terminal-accent bg-terminal-accent px-4 text-sm font-semibold text-black disabled:opacity-60"
+              className="min-h-11 rounded border border-terminal-accent bg-terminal-accent px-4 text-sm font-semibold text-black disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-terminal-accent"
               disabled={submitting}
               onClick={() => {
                 void confirmBuy();
@@ -200,7 +267,7 @@ export function PaperOptionOrderTicket({ selected, underlying, expiry, onClear }
             </button>
             <button
               type="button"
-              className="min-h-11 rounded border border-terminal-border px-4 text-sm text-terminal-muted"
+              className="min-h-11 rounded border border-terminal-border px-4 text-sm text-terminal-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-terminal-accent"
               disabled={submitting}
               onClick={() => setPreviewOpen(false)}
             >
@@ -217,14 +284,45 @@ export function PaperOptionOrderTicket({ selected, underlying, expiry, onClear }
       ) : null}
 
       {success ? (
-        <div className="mt-3 rounded border border-terminal-pos/40 bg-terminal-pos/10 p-3 text-xs" data-testid="paper-option-success">
+        <div
+          className="mt-3 rounded border border-terminal-pos/40 bg-terminal-pos/10 p-3 text-xs"
+          data-testid="paper-option-success"
+        >
           <p className="font-semibold text-terminal-pos">Position opened</p>
           <p className="mt-1 text-terminal-text">
-            Order {success.orderId} filled for {success.symbol}. Track P/L on the paper desk.
+            Order {success.orderId} filled for {success.symbol}.
           </p>
+          <dl
+            className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4"
+            data-testid="paper-option-position-summary"
+            aria-label="New paper position"
+          >
+            <div>
+              <dt className="text-terminal-muted">Qty</dt>
+              <dd className="font-semibold text-terminal-text">{success.quantity}</dd>
+            </div>
+            <div>
+              <dt className="text-terminal-muted">Avg entry</dt>
+              <dd className="font-semibold text-terminal-text">{formatDisplayMoney(success.avgEntry)}</dd>
+            </div>
+            <div>
+              <dt className="text-terminal-muted">Mark</dt>
+              <dd className="font-semibold text-terminal-text">{formatDisplayMoney(success.mark)}</dd>
+            </div>
+            <div>
+              <dt className="text-terminal-muted">Unrealized P/L</dt>
+              <dd className={`font-semibold tabular-nums ${pnlTone}`} aria-label={`Unrealized P/L ${success.unrealizedPnl}`}>
+                {formatDisplayMoney(success.unrealizedPnl)}
+                <span className="sr-only">
+                  {" "}
+                  ({success.unrealizedPnl > 0 ? "up" : success.unrealizedPnl < 0 ? "down" : "unchanged"})
+                </span>
+              </dd>
+            </div>
+          </dl>
           <Link
             to="/equity/paper"
-            className="mt-2 inline-flex min-h-11 items-center rounded border border-terminal-pos px-3 text-terminal-pos"
+            className="mt-2 inline-flex min-h-11 items-center rounded border border-terminal-pos px-3 text-terminal-pos focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-terminal-accent"
           >
             Open paper positions
           </Link>

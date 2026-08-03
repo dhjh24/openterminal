@@ -154,4 +154,7 @@ async def get_chain_summary(
         "pcr": pcr,
         "max_pain": max_pain,
         "support_resistance": sr,
+        "timestamp": chain.get("timestamp"),
+        "delay_status": chain.get("delay_status"),
+        "data_quality": chain.get("data_quality"),
     }
