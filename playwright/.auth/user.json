@@ -5,12 +5,16 @@
       "origin": "http://127.0.0.1:4173",
       "localStorage": [
         {
+          "name": "ot:workspace:onboarding:v1",
+          "value": "1"
+        },
+        {
           "name": "ot-access-token",
-          "value": "x.eyJzdWIiOiJlMmUtdXNlciIsImVtYWlsIjoiZTJlQGV4YW1wbGUuY29tIiwicm9sZSI6InRyYWRlciIsImV4cCI6MTc4NTQ2OTgwN30.y"
+          "value": "x.eyJzdWIiOiJlMmUtdXNlciIsImVtYWlsIjoiZTJlQGV4YW1wbGUuY29tIiwicm9sZSI6InRyYWRlciIsImV4cCI6MTc4NTcyNTIxMX0.y"
         },
         {
           "name": "ot-refresh-token",
-          "value": "x.eyJleHAiOjE3ODU0NzM0MDd9.y"
+          "value": "x.eyJleHAiOjE3ODU3Mjg4MTF9.y"
         }
       ]
     }
