@@ -20,6 +20,9 @@ from backend.models import (
 )
 from backend.services.marketdata_hub import MarketDataHub, get_marketdata_hub
 
+# US equity options: premium is quoted per share; cash impact is ×100 per contract.
+OPTION_CONTRACT_MULTIPLIER = 100
+
 
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
@@ -31,6 +34,18 @@ def _f(value: Any, default: float = 0.0) -> float:
         return out if out == out else default
     except (TypeError, ValueError):
         return default
+
+
+def looks_like_option_symbol(symbol: str) -> bool:
+    raw = str(symbol or "").split(":")[-1].upper()
+    if re.search(r"\d{6}[CP]\d{8}$", raw):
+        return True
+    # Synthetic fallback: AAPL-2026-03-27-C-150
+    return bool(re.search(r"-\d{4}-\d{2}-\d{2}-[CP]-", raw))
+
+
+def contract_multiplier(symbol: str) -> float:
+    return float(OPTION_CONTRACT_MULTIPLIER) if looks_like_option_symbol(symbol) else 1.0
 
 
 class PaperTradingEngine:
@@ -135,7 +150,8 @@ class PaperTradingEngine:
             return
         slip = max(0.0, _f(order.slippage_bps))
         fill_price = market_price * (1 + (slip / 10000.0) if side == "buy" else 1 - (slip / 10000.0))
-        order_value = qty * fill_price
+        multiplier = contract_multiplier(str(order.symbol or ""))
+        order_value = qty * fill_price * multiplier
         commission = max(0.0, _f(order.commission))
         if commission <= 0:
             commission = order_value * 0.0005
@@ -218,14 +234,15 @@ class PaperTradingEngine:
         )
         if pos is None:
             return None
-        return (fill_price - _f(pos.avg_entry_price)) * _f(order.quantity)
+        multiplier = contract_multiplier(str(order.symbol or ""))
+        return (fill_price - _f(pos.avg_entry_price)) * _f(order.quantity) * multiplier
 
     async def maybe_fill_market_order_now(self, db: Session, order: VirtualOrder) -> None:
         otype = str(order.order_type).lower()
         # Paper options: fill limit orders immediately at the submitted premium so
         # Buy Call / Buy Put tickets create positions without waiting for OCC ticks.
         if otype == VirtualOrderType.LIMIT.value and order.limit_price is not None:
-            if self._looks_like_option_symbol(str(order.symbol or "")):
+            if looks_like_option_symbol(str(order.symbol or "")):
                 self._fill_order(db, order, _f(order.limit_price))
                 return
             return
@@ -242,11 +259,7 @@ class PaperTradingEngine:
 
     @staticmethod
     def _looks_like_option_symbol(symbol: str) -> bool:
-        raw = str(symbol or "").split(":")[-1].upper()
-        if re.search(r"\d{6}[CP]\d{8}$", raw):
-            return True
-        # Synthetic fallback: AAPL-2026-03-27-C-150
-        return bool(re.search(r"-\d{4}-\d{2}-\d{2}-[CP]-", raw))
+        return looks_like_option_symbol(symbol)
 
     def portfolio_performance(self, db: Session, portfolio_id: str) -> dict[str, Any]:
         trades = (
@@ -262,7 +275,7 @@ class PaperTradingEngine:
         equity = portfolio.current_cash
         for pos in positions:
             mark = self._mark_prices.get(pos.symbol, pos.avg_entry_price)
-            equity += _f(pos.quantity) * _f(mark)
+            equity += _f(pos.quantity) * _f(mark) * contract_multiplier(str(pos.symbol or ""))
         pnl = equity - _f(portfolio.initial_capital)
         cumulative_return = (pnl / _f(portfolio.initial_capital, 1.0)) if portfolio.initial_capital else 0.0
 

@@ -51,6 +51,9 @@ export function OptionChainPage() {
         expiry={expiry}
         spotPrice={hasExpiry ? Number(chain?.spot_price || 0) : 0}
         summary={hasExpiry ? summaryQuery.data : undefined}
+        dataTimestamp={hasExpiry ? chain?.timestamp : undefined}
+        delayStatus={hasExpiry ? chain?.delay_status : undefined}
+        isDelayed={hasExpiry ? String(chain?.delay_status || "").toLowerCase() === "delayed" : false}
       />
 
       {/* Strike range filter — only show when data loaded */}
@@ -105,6 +108,7 @@ export function OptionChainPage() {
             underlying={symbol}
             expiry={expiry}
             dataTimestamp={chain?.timestamp}
+            isDelayed={String(chain?.delay_status || "").toLowerCase() === "delayed"}
           />
           <OIChart rows={rows} title="OI Distribution By Strike" />
         </>

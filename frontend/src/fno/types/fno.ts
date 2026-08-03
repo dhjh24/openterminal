@@ -122,6 +122,8 @@ export type OptionChainResponse = {
   atm_strike: number;
   iv_rank?: number;
   iv_percentile?: number;
+  delay_status?: string;
+  data_quality?: string;
   strikes: StrikeData[];
   totals: {
     ce_oi_total: number;
@@ -163,6 +165,9 @@ export type ChainSummary = {
   pcr: { pcr_oi: number; pcr_volume: number; pcr_oi_change: number; signal: string };
   max_pain: number;
   support_resistance: { support: number[]; resistance: number[] };
+  timestamp?: string;
+  delay_status?: string;
+  data_quality?: string;
 };
 
 export type GreeksChainResponse = {
