@@ -241,7 +241,7 @@ export function OptionChainTable({
         </div>
 
         {/* Desktop / tablet table */}
-        <div className="hidden max-h-[520px] overflow-auto md:block">
+        <div className="hidden max-h-[520px] overflow-auto md:block" data-testid="option-chain-desktop-table">
           <table className="min-w-full ot-type-table-cell">
             <thead className="sticky top-0 z-10 bg-terminal-panel">
               <tr className={`border-b border-terminal-border ${headerLabel}`}>
