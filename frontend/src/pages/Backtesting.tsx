@@ -570,7 +570,7 @@ export function BacktestingPage() {
           },
         },
       });
-      setRunId(res.run_id || res.job_id);
+      setRunId(res.run_id || res.job_id || null);
       setJobState("queued");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to submit backtest");
@@ -1271,9 +1271,16 @@ export function BacktestingPage() {
         });
         let done = false;
         while (!done) {
-          const status = await fetchBacktestJobStatus(submitRes.run_id || submitRes.job_id);
+          const jobRunId = submitRes.run_id || submitRes.job_id;
+          if (!jobRunId) {
+            nextMap.set(key, { result: null, status: "failed" });
+            setCompareResults(new Map(nextMap));
+            done = true;
+            break;
+          }
+          const status = await fetchBacktestJobStatus(jobRunId);
           if ((status.status as string) === "done" || status.status === "failed") {
-            const payload = await fetchBacktestJobResult(submitRes.run_id || submitRes.job_id);
+            const payload = await fetchBacktestJobResult(jobRunId);
             nextMap.set(key, { result: payload, status: payload.status });
             setCompareResults(new Map(nextMap));
             done = true;
