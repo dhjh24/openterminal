@@ -6,6 +6,7 @@ import pytest
 from fastapi import HTTPException
 
 from backend.api.routes import backtests
+from backend.services.backtest_jobs import BacktestJobRequest
 
 
 class _FakeBacktestService:
@@ -16,6 +17,16 @@ class _FakeBacktestService:
         if run_id == "missing":
             return {"run_id": run_id, "status": "not_found"}
         return {"run_id": run_id, "status": "running"}
+
+    async def get_request(self, run_id: str):
+        if run_id == "missing":
+            return None
+        return BacktestJobRequest(
+            symbol="RELIANCE",
+            market="NSE",
+            strategy="example:sma_crossover",
+            context={"short_window": 20, "long_window": 50},
+        )
 
     async def get_result(self, run_id: str):
         if run_id == "missing":
@@ -65,10 +76,21 @@ def test_v1_submit_adapts_legacy_submit(monkeypatch) -> None:
 
 def test_v1_walkforward_works(monkeypatch) -> None:
     monkeypatch.setattr(backtests, "get_backtest_job_service", lambda: _FakeBacktestService())
+    monkeypatch.setattr(
+        backtests,
+        "run_walk_forward_oos",
+        lambda **kwargs: {
+            "windows": [{"window": "Fold 1", "sharpe": 1.1, "selected_params": {"short_window": 20}}],
+            "summary": {"avg_train_sharpe": 1.3, "avg_test_sharpe": 1.1, "degradation": 0.2},
+            "method": "train_fit_then_unseen_test",
+        },
+    )
     payload = backtests.WalkForwardPayload(run_id="bt_test_1", folds=2, in_sample_ratio=0.7)
     result = asyncio.run(backtests.v1_validate_walkforward(payload))
     assert result["run_id"] == "bt_test_1"
     assert "validation" in result
+    assert result["validation"]["method"] == "train_fit_then_unseen_test"
+    assert result["validation"]["windows"][0]["selected_params"] == {"short_window": 20}
 
 
 def test_v1_monte_carlo_works(monkeypatch) -> None:
