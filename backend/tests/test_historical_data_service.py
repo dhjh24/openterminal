@@ -29,6 +29,33 @@ def test_historical_service_uses_provider_and_limit() -> None:
     assert bars[0].date == "2026-01-02"
 
 
+class _EmptyProvider:
+    def get_daily_ohlcv(self, symbol, start: str, end: str):  # noqa: ANN001
+        return []
+
+    def get_intraday_ohlcv(self, symbol, start: str, end: str, interval: str):  # noqa: ANN001
+        return []
+
+
+def test_allow_synthetic_false_returns_empty_when_provider_has_no_bars() -> None:
+    service = HistoricalDataService(provider=_EmptyProvider())
+    symbol, bars = service.fetch_daily_ohlcv(
+        "aapl",
+        market="NASDAQ",
+        start="2026-01-01",
+        end="2026-01-03",
+        allow_synthetic=False,
+    )
+    assert symbol.canonical == "AAPL"
+    assert bars == []
+
+
+def test_allow_synthetic_default_still_synthesizes_for_other_callers() -> None:
+    service = HistoricalDataService(provider=_EmptyProvider())
+    _symbol, bars = service.fetch_daily_ohlcv("aapl", market="NASDAQ", start="2026-01-01", end="2026-01-05")
+    assert len(bars) > 0
+
+
 def test_ohlcv_route_returns_mocked_payload(monkeypatch) -> None:
     service = HistoricalDataService(provider=_FakeProvider())
     monkeypatch.setattr(data_route, "get_historical_data_service", lambda: service)

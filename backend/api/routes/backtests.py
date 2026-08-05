@@ -33,6 +33,7 @@ class BacktestSubmitPayload(BaseModel):
     strategy: str = "example:sma_crossover"
     context: dict[str, Any] | None = None
     config: dict[str, Any] | None = None
+    allow_synthetic: bool = False
 
 
 class ComparePayload(BaseModel):
@@ -147,6 +148,7 @@ async def submit_backtest(payload: BacktestSubmitPayload) -> dict[str, str]:
             strategy=payload.strategy,
             context=payload.context,
             config=payload.config,
+            allow_synthetic=payload.allow_synthetic,
         )
     )
     return {"run_id": run_id, "status": "queued"}

@@ -89,6 +89,16 @@ def test_post_jobs_defaults_timeframe_to_1d(client: TestClient, contract_service
     assert contract_service.submitted[0].timeframe == "1d"
 
 
+def test_post_jobs_allow_synthetic_defaults_false(client: TestClient, contract_service: _FakeBacktestService) -> None:
+    client.post("/api/v1/backtest/jobs", json={"symbol": "AAPL"})
+    assert contract_service.submitted[0].allow_synthetic is False
+
+
+def test_post_jobs_allow_synthetic_explicit_toggle(client: TestClient, contract_service: _FakeBacktestService) -> None:
+    client.post("/api/v1/backtest/jobs", json={"symbol": "AAPL", "allow_synthetic": True})
+    assert contract_service.submitted[0].allow_synthetic is True
+
+
 # ── Canonical contract: GET /api/v1/backtest/jobs/{run_id} ───────────────────
 
 

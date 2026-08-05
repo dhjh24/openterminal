@@ -10,11 +10,11 @@
         },
         {
           "name": "ot-access-token",
-          "value": "x.eyJzdWIiOiJlMmUtdXNlciIsImVtYWlsIjoiZTJlQGV4YW1wbGUuY29tIiwicm9sZSI6InRyYWRlciIsImV4cCI6MTc4NTg5NzE1M30.y"
+          "value": "x.eyJzdWIiOiJlMmUtdXNlciIsImVtYWlsIjoiZTJlQGV4YW1wbGUuY29tIiwicm9sZSI6InRyYWRlciIsImV4cCI6MTc4NTg5OTI2MH0.y"
         },
         {
           "name": "ot-refresh-token",
-          "value": "x.eyJleHAiOjE3ODU5MDA3NTN9.y"
+          "value": "x.eyJleHAiOjE3ODU5MDI4NjB9.y"
         }
       ]
     }

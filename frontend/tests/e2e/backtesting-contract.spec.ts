@@ -44,7 +44,10 @@ const RESULT_PAYLOAD = {
   error: "",
 };
 
-async function mockCanonicalBackend(page: Page): Promise<{ submitBody: () => Record<string, unknown> | null }> {
+async function mockCanonicalBackend(
+  page: Page,
+  resultPayload: Record<string, unknown> = RESULT_PAYLOAD,
+): Promise<{ submitBody: () => Record<string, unknown> | null }> {
   let capturedBody: Record<string, unknown> | null = null;
   let statusPolls = 0;
 
@@ -74,7 +77,7 @@ async function mockCanonicalBackend(page: Page): Promise<{ submitBody: () => Rec
   });
 
   await page.route(`**/api/v1/backtest/jobs/${RUN_ID}/result`, async (route) => {
-    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(RESULT_PAYLOAD) });
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(resultPayload) });
   });
 
   await page.route("**/api/data/version/active", (route) =>
@@ -161,4 +164,41 @@ test("canonical job contract: Run submits, polls, and completes with a run ID", 
   await vizPanel.getByRole("button", { name: /^Equity Curve$/ }).click();
   await expect(vizPanel.locator("svg polyline").first()).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText("Run a backtest to see equity curve")).not.toBeVisible();
+});
+
+test("synthetic results carry a persistent NOT FOR EVALUATION banner", async ({ page }) => {
+  test.slow();
+  const accessToken = makeJwt({
+    sub: "e2e-user",
+    email: "e2e@example.com",
+    role: "trader",
+    exp: Math.floor(Date.now() / 1000) + 3600,
+  });
+  const refreshToken = makeJwt({ exp: Math.floor(Date.now() / 1000) + 7200 });
+
+  await page.addInitScript(
+    ([at, rt]) => {
+      localStorage.setItem("ot-access-token", at);
+      localStorage.setItem("ot-refresh-token", rt);
+    },
+    [accessToken, refreshToken],
+  );
+
+  const syntheticResult = {
+    ...RESULT_PAYLOAD,
+    result: {
+      ...RESULT_PAYLOAD.result,
+      synthetic_data_used: true,
+      warnings: ["SYNTHETIC DATA — NOT FOR EVALUATION"],
+      data_provenance: { requested_market: "NASDAQ", market_used: "NASDAQ", synthetic_used: true },
+    },
+  };
+  await mockCanonicalBackend(page, syntheticResult);
+
+  await page.goto("/backtesting");
+  await expect(page.getByText("Backtesting Control Deck")).toBeVisible({ timeout: 90_000 });
+
+  await page.getByRole("button", { name: "Run", exact: true }).click();
+  await expect(page.getByText("Status: DONE")).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByRole("alert")).toContainText("SYNTHETIC DATA — NOT FOR EVALUATION");
 });
