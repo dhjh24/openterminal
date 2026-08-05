@@ -163,13 +163,29 @@ const VIZ_TABS: { key: VizTab; label: string; icon: string }[] = [
   { key: "metrics", label: "Metrics", icon: "" },
   { key: "trades", label: "Trade Analysis", icon: "" },
   { key: "compare", label: "Compare", icon: "CMP" },
-  { key: "surface3d", label: "3D Surface", icon: "3D" },
+  { key: "surface3d", label: "3D Surface (Proxy)", icon: "3D" },
   { key: "robustness", label: "Robustness", icon: "" },
   { key: "sweep", label: "Param Sweep", icon: "" },
 ];
 
 const CUSTOM_STRATEGY_VALUE = "custom";
 const KNOWN_MARKETS: BacktestMarket[] = ["NYSE", "NASDAQ"];
+
+/** Build a real parameter grid from a strategy's context (issue #32 Phase 4).
+ *  Never generic p1/p2 — the optimizer receives the strategy's actual params. */
+function buildParamSpace(context: Record<string, unknown>): Record<string, Array<number>> {
+  const space: Record<string, Array<number>> = {};
+  const entries = Object.entries(context).filter(
+    (entry): entry is [string, number] => typeof entry[1] === "number",
+  );
+  for (const [key, value] of entries.slice(0, 2)) {
+    const isInt = Number.isInteger(value);
+    const mk = (factor: number): number =>
+      isInt ? Math.max(1, Math.round(value * factor)) : Math.round(value * factor * 1000) / 1000;
+    space[key] = [mk(0.8), mk(1.0), mk(1.2)];
+  }
+  return space;
+}
 
 function strategyIndicator(
   id: string,
@@ -669,6 +685,9 @@ export function BacktestingPage() {
       }
 
       try {
+        const paramKeys = Object.keys(
+          buildParamSpace(strategyMode === CUSTOM_STRATEGY_VALUE ? {} : (activePreset?.default_context ?? {})),
+        );
         const optResp = await fetch("/api/v1/backtest/optimize", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -680,30 +699,29 @@ export function BacktestingPage() {
             end,
             limit: 500,
             max_trials: 12,
-            param_space: { p1: [0.8, 1.0, 1.2], p2: [0.8, 1.0, 1.2] },
+            param_space: buildParamSpace(strategyMode === CUSTOM_STRATEGY_VALUE ? {} : (activePreset?.default_context ?? {})),
           }),
         });
         const optJson = optResp.ok ? await optResp.json() : null;
         const trials = Array.isArray(optJson?.optimization?.trials) ? optJson.optimization.trials : [];
         if (trials.length) {
+          const k1 = paramKeys[0] ?? "p1";
+          const k2 = paramKeys[1] ?? "p2";
           const byP1 = new Map<string, Array<{ x: string; y: number }>>();
           for (const t of trials) {
-            const p1 = String(t?.params?.p1 ?? "base");
-            const p2 = String(t?.params?.p2 ?? "base");
+            const v1 = String(t?.params?.[k1] ?? "base");
+            const v2 = String(t?.params?.[k2] ?? "base");
             const score = Number(t?.score ?? 0);
-            const row = byP1.get(p1) ?? [];
-            row.push({ x: p2, y: Number.isFinite(score) ? score : 0 });
-            byP1.set(p1, row);
+            const row = byP1.get(v1) ?? [];
+            row.push({ x: v2, y: Number.isFinite(score) ? score : 0 });
+            byP1.set(v1, row);
           }
           const rows = Array.from(byP1.entries()).map(([id, data]) => ({ id, data }));
           if (active) setSensitivityRows(rows);
         } else if (active) {
-          const base = Number(result?.result?.sharpe ?? 0);
-          setSensitivityRows([
-            { id: "low", data: [{ x: "low", y: base - 0.3 }, { x: "base", y: base - 0.1 }, { x: "high", y: base + 0.1 }] },
-            { id: "base", data: [{ x: "low", y: base - 0.1 }, { x: "base", y: base }, { x: "high", y: base + 0.2 }] },
-            { id: "high", data: [{ x: "low", y: base + 0.05 }, { x: "base", y: base + 0.15 }, { x: "high", y: base + 0.3 }] },
-          ]);
+          // Issue #32 Phase 4: never fabricate sensitivity from base sharpe —
+          // no measured trials means an empty panel.
+          setSensitivityRows([]);
         }
       } catch {
         if (active) setSensitivityRows([]);

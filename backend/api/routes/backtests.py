@@ -16,7 +16,7 @@ from backend.core.param_optimizer import optimize_strategy_parameters
 from backend.core.portfolio_backtest import run_portfolio_backtest
 from backend.core.strategy_runner import get_strategy_catalog
 from backend.core.vectorized_backtest import vectorized_sweep
-from backend.core.walk_forward import run_walk_forward_validation
+from backend.core.walk_forward import run_walk_forward_oos, run_walk_forward_validation
 from backend.services.backtest_jobs import BacktestJobRequest, get_backtest_job_service
 
 router = APIRouter()
@@ -335,11 +335,28 @@ async def v1_backtest_presets() -> dict[str, Any]:
 
 @router.post("/v1/backtest/validate/walkforward")
 async def v1_validate_walkforward(payload: WalkForwardPayload) -> dict[str, Any]:
+    """True out-of-sample walk-forward (issue #32 Phase 4).
+
+    Rebuilds the original job request, fits/selects parameters on each fold's
+    training slice, then reruns the strategy on the unseen test slice.
+    """
     result = await _resolve_finished_result(payload.run_id)
+    service = get_backtest_job_service()
+    req = await service.get_request(payload.run_id)
+    if req is None:
+        raise HTTPException(status_code=404, detail="Backtest run not found")
     return {
         "run_id": payload.run_id,
-        "validation": run_walk_forward_validation(
-            equity_curve=result.get("equity_curve", []),
+        "validation": run_walk_forward_oos(
+            symbol=req.symbol,
+            market=req.market,
+            strategy=req.strategy,
+            start=req.start,
+            end=req.end,
+            limit=req.limit,
+            timeframe=req.timeframe,
+            context=req.context,
+            config=req.config,
             folds=payload.folds,
             in_sample_ratio=payload.in_sample_ratio,
         ),

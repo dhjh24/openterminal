@@ -256,6 +256,17 @@ class BacktestJobService:
         finally:
             db.close()
 
+    async def get_request(self, run_id: str) -> BacktestJobRequest | None:
+        """Rebuild the original job request so validation can re-run the strategy."""
+        db = next(get_db())
+        try:
+            row = db.query(BacktestRun).filter(BacktestRun.run_id == run_id).first()
+            if row is None:
+                return None
+            return BacktestJobRequest(**json.loads(row.request_json))
+        finally:
+            db.close()
+
     async def get_result(self, run_id: str) -> dict:
         db = next(get_db())
         try:

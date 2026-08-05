@@ -83,6 +83,27 @@ Supporting endpoints (non-job lifecycle, still live):
   metrics (win rate, avg win/loss, profit factor, loss streaks, AM/PM win
   rates, trades/day) derive from this ledger, so shorts are counted.
 
+## Validation Integrity Rules (issue #32 Phase 4)
+
+- **Real out-of-sample walk-forward**: `POST /api/v1/backtest/validate/walkforward`
+  rebuilds the original job request (symbol/market/strategy/context/config)
+  and, per fold, FITS/SELECTS parameters on the training slice only, then
+  RERUNS the strategy on the unseen test slice. Response:
+  `{validation: {windows: [...], summary: {avg_train_sharpe, avg_test_sharpe,
+  degradation}, method: "train_fit_then_unseen_test"}}`. The legacy
+  equity-curve splitter is kept as a deprecated helper only.
+- **Real parameter grids**: the optimizer and walk-forward receive each
+  strategy's actual context parameters (e.g. `short_window`/`long_window`),
+  never generic `p1`/`p2`. The UI derives a ±20% grid around the selected
+  model's defaults.
+- **Measured sensitivity only**: if the optimizer returns zero trials, the
+  sensitivity panel is empty — the UI never fabricates a matrix from base
+  Sharpe.
+- **Derived experiments are labeled as proxies**: the depth-derived 3D
+  surface tab is titled "3D Surface (Proxy)"; order-book and implied-volatility
+  panels are not surfaced (no Level 2 / options-chain source data for a
+  backtest).
+
 ## Compatibility Rules
 
 - **Legacy job endpoints are DEPRECATED** (marked in OpenAPI) and kept only as
