@@ -15,7 +15,10 @@ class BacktestConfig(BaseModel):
     position_fraction: float | None = Field(default=None, gt=0, le=1)
     allow_short: bool = True
     timeframe: str = Field("1d")
-    fill_delay_bars: int = Field(0, ge=0)
+    # Issue #32 Phase 3 — close-derived signals execute at the NEXT tradable
+    # bar by default (signal at bar i close → fill at bar i+1), removing the
+    # same-bar execution bias. Set 0 explicitly to opt back into same-bar fills.
+    fill_delay_bars: int = Field(1, ge=0)
     intraday_slippage_model: bool = Field(False)
 
     # Issue #32 Phase 2 — every visible execution setting is declared so the
@@ -38,6 +41,27 @@ class TradeRecord(BaseModel):
     cash_after: float
     position_after: float
     hold_time_minutes: float = 0.0
+
+
+class ClosedTrade(BaseModel):
+    """Normalized closed-trade record (issue #32 Phase 3).
+
+    Direction-aware: LONG (BUY→SELL) and SHORT (SELL→BUY) round trips are both
+    recorded, and all trade metrics derive from this ledger.
+    """
+
+    direction: str  # LONG | SHORT
+    entry_time: str
+    exit_time: str
+    entry_price: float
+    exit_price: float
+    quantity: float
+    gross_pnl: float
+    commission: float
+    slippage: float
+    spread_impact_cost: float
+    net_pnl: float
+    holding_period_minutes: float
 
 
 class EquityPoint(BaseModel):
@@ -90,6 +114,8 @@ class BacktestResult(BaseModel):
     rolling_metrics: list[dict[str, float | str]] = Field(default_factory=list)
     trades: list[TradeRecord]
     equity_curve: list[EquityPoint]
+    # Issue #32 Phase 3 — normalized closed-trade ledger (longs and shorts).
+    closed_trades: list[ClosedTrade] = Field(default_factory=list)
     # Issue #32 Phase 2 — provenance echo: what the engine actually applied.
     applied_config: dict[str, Any] = Field(default_factory=dict)
     costs_breakdown: dict[str, float] = Field(default_factory=dict)

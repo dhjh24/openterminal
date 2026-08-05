@@ -687,6 +687,21 @@ export type BacktestJobResult = {
       action: string;
       quantity: number;
     }>;
+    // Issue #32 Phase 3 — normalized closed-trade ledger (longs and shorts).
+    closed_trades?: Array<{
+      direction: string;
+      entry_time: string;
+      exit_time: string;
+      entry_price: number;
+      exit_price: number;
+      quantity: number;
+      gross_pnl: number;
+      commission: number;
+      slippage: number;
+      spread_impact_cost: number;
+      net_pnl: number;
+      holding_period_minutes: number;
+    }>;
     asset?: string;
     initial_cash?: number;
     final_equity?: number;
