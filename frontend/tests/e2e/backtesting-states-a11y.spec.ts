@@ -89,7 +89,8 @@ const COMPLETED_RESULT = {
   error: "",
 };
 
-async function mockCanonicalBackend(page: Page, opts: { fail: boolean }) {
+async function mockCanonicalBackend(page: Page, opts: { fail?: boolean; running?: boolean }) {
+  const statusValue = opts.running ? "running" : opts.fail ? "failed" : "done";
   await page.route("**/api/**", async (route) => {
     const path = new URL(route.request().url()).pathname;
     if (path.startsWith("/api/v1/backtest/") || path.startsWith("/api/backtests/")) {
@@ -107,7 +108,7 @@ async function mockCanonicalBackend(page: Page, opts: { fail: boolean }) {
   });
 
   await page.route(`**/api/v1/backtest/jobs/${RUN_ID}`, async (route) => {
-    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ run_id: RUN_ID, status: opts.fail ? "failed" : "done" }) });
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ run_id: RUN_ID, status: statusValue }) });
   });
 
   await page.route(`**/api/v1/backtest/jobs/${RUN_ID}/result`, async (route) => {
@@ -174,11 +175,23 @@ async function scanSerious(page: Page, label: string) {
 test("axe: setup state has no serious/critical violations", async ({ page }) => {
   test.slow();
   await seedAuth(page);
-  await mockCanonicalBackend(page, { fail: false });
+  await mockCanonicalBackend(page, {});
   await page.goto("/backtesting");
   await expect(page.getByText("Backtesting Control Deck")).toBeVisible({ timeout: 90_000 });
   await page.waitForTimeout(800);
   await scanSerious(page, "setup");
+});
+
+test("axe: running state has no serious/critical violations", async ({ page }) => {
+  test.slow();
+  await seedAuth(page);
+  await mockCanonicalBackend(page, { running: true });
+  await page.goto("/backtesting");
+  await expect(page.getByText("Backtesting Control Deck")).toBeVisible({ timeout: 90_000 });
+
+  await page.getByRole("button", { name: "Run", exact: true }).click();
+  await expect(page.getByText("Status: RUNNING")).toBeVisible({ timeout: 60_000 });
+  await scanSerious(page, "running");
 });
 
 test("axe: failed state has no serious/critical violations and shows No valid result", async ({ page }) => {
