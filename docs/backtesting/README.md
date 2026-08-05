@@ -69,6 +69,20 @@ Supporting endpoints (non-job lifecycle, still live):
   flattened into engine config, so spread/impact/volume-cap now affect fills.
   Legacy `fee_bps` remains as an alias for `commission_bps`.
 
+## Execution Integrity Rules (issue #32 Phase 3)
+
+- **No same-bar fills**: close-derived signals execute at the NEXT tradable
+  bar by default (`fill_delay_bars: 1`). Daily fills at the next close;
+  intraday fills at the next bar's open. Result metadata states
+  `signal_timing: "bar_close"`, `fill_timing: "next_bar"` (or `"same_bar"`
+  when `fill_delay_bars: 0` is explicitly requested).
+- **Direction-aware trade accounting**: the engine emits a normalized
+  `closed_trades` ledger covering LONG (BUY→SELL) and SHORT (SELL→BUY) round
+  trips — direction, entry/exit time and price, quantity, gross P/L,
+  commission/slippage/spread+impact costs, net P/L, holding period. All trade
+  metrics (win rate, avg win/loss, profit factor, loss streaks, AM/PM win
+  rates, trades/day) derive from this ledger, so shorts are counted.
+
 ## Compatibility Rules
 
 - **Legacy job endpoints are DEPRECATED** (marked in OpenAPI) and kept only as

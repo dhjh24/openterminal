@@ -6,7 +6,7 @@ import math
 import numpy as np
 import pandas as pd
 
-from backend.core.backtesting_models import BacktestConfig, BacktestResult, EquityPoint, TradeRecord
+from backend.core.backtesting_models import BacktestConfig, BacktestResult, ClosedTrade, EquityPoint, TradeRecord
 from backend.core.execution_model import ExecutionModelConfig, estimate_slippage_bps
 
 
@@ -16,46 +16,140 @@ def _safe_float(value: float | int | np.floating | None) -> float:
     return float(value)
 
 
-def _max_consecutive_losses(trades: list[TradeRecord]) -> int:
+def _holding_minutes(entry_time: str, exit_time: str) -> float:
+    entry_dt = pd.to_datetime(entry_time, errors="coerce")
+    exit_dt = pd.to_datetime(exit_time, errors="coerce")
+    if entry_dt is pd.NaT or exit_dt is pd.NaT or exit_dt <= entry_dt:
+        return 0.0
+    return float((exit_dt - entry_dt).total_seconds() / 60.0)
+
+
+def _build_closed_trades(trades: list[TradeRecord], fill_costs: list[dict[str, float]]) -> list[ClosedTrade]:
+    """Pair fills into direction-aware closed trades (LONG and SHORT).
+
+    Tracks an open leg with average entry price; opposite-side fills reduce or
+    close it (a larger opposite fill closes the leg and opens the flipped leg).
+    Costs are tracked per component and split proportionally on flips so the
+    ledger's cost totals reconcile with the engine's cost accumulation.
+    """
+    closed: list[ClosedTrade] = []
+    leg: dict[str, float | str] | None = None
+
+    for trade, cost in zip(trades, fill_costs):
+        qty = float(trade.quantity)
+        if qty == 0:
+            continue
+        side = "LONG" if qty > 0 else "SHORT"
+        components = {
+            "commission": float(cost.get("commission", 0.0)),
+            "slippage": float(cost.get("slippage", 0.0)),
+            "spread_impact": float(cost.get("spread_impact", 0.0)),
+        }
+
+        if leg is None:
+            leg = {
+                "direction": side,
+                "qty": abs(qty),
+                "entry_price": float(trade.price),
+                "entry_time": trade.date,
+                "commission": components["commission"],
+                "slippage": components["slippage"],
+                "spread_impact": components["spread_impact"],
+            }
+            continue
+
+        if leg["direction"] == side:
+            # Averaging into the same direction.
+            old_qty = float(leg["qty"])
+            old_px = float(leg["entry_price"])
+            add_qty = abs(qty)
+            new_qty = old_qty + add_qty
+            leg["qty"] = new_qty
+            leg["entry_price"] = ((old_px * old_qty) + (float(trade.price) * add_qty)) / new_qty
+            leg["commission"] = float(leg["commission"]) + components["commission"]
+            leg["slippage"] = float(leg["slippage"]) + components["slippage"]
+            leg["spread_impact"] = float(leg["spread_impact"]) + components["spread_impact"]
+            continue
+
+        # Opposite side: reduces, closes, or flips the leg.
+        reduce_qty = abs(qty)
+        leg_qty = float(leg["qty"])
+        if reduce_qty < leg_qty:
+            leg["qty"] = leg_qty - reduce_qty
+            leg["commission"] = float(leg["commission"]) + components["commission"]
+            leg["slippage"] = float(leg["slippage"]) + components["slippage"]
+            leg["spread_impact"] = float(leg["spread_impact"]) + components["spread_impact"]
+            continue
+
+        exit_px = float(trade.price)
+        direction = str(leg["direction"])
+        gross = (exit_px - float(leg["entry_price"])) * (1.0 if direction == "LONG" else -1.0) * leg_qty
+        if reduce_qty > leg_qty:
+            # Flip: split this fill's cost between the closing leg and the new leg.
+            close_frac = leg_qty / reduce_qty
+            open_frac = (reduce_qty - leg_qty) / reduce_qty
+        else:
+            close_frac = 1.0
+            open_frac = 0.0
+
+        close_commission = float(leg["commission"]) + components["commission"] * close_frac
+        close_slippage = float(leg["slippage"]) + components["slippage"] * close_frac
+        close_spread_impact = float(leg["spread_impact"]) + components["spread_impact"] * close_frac
+        allocated = close_commission + close_slippage + close_spread_impact
+
+        closed.append(
+            ClosedTrade(
+                direction=direction,
+                entry_time=str(leg["entry_time"]),
+                exit_time=trade.date,
+                entry_price=round(float(leg["entry_price"]), 8),
+                exit_price=round(exit_px, 8),
+                quantity=round(leg_qty, 8),
+                gross_pnl=round(gross, 8),
+                commission=round(close_commission, 8),
+                slippage=round(close_slippage, 8),
+                spread_impact_cost=round(close_spread_impact, 8),
+                net_pnl=round(gross - allocated, 8),
+                holding_period_minutes=round(_holding_minutes(str(leg["entry_time"]), trade.date), 4),
+            )
+        )
+
+        if reduce_qty > leg_qty:
+            remainder = reduce_qty - leg_qty
+            leg = {
+                "direction": side,
+                "qty": remainder,
+                "entry_price": float(trade.price),
+                "entry_time": trade.date,
+                "commission": components["commission"] * open_frac,
+                "slippage": components["slippage"] * open_frac,
+                "spread_impact": components["spread_impact"] * open_frac,
+            }
+        else:
+            leg = None
+
+    return closed
+
+
+def _max_consecutive_losses(closed_trades: list[ClosedTrade]) -> int:
     streak = 0
     max_streak = 0
-    open_trade: TradeRecord | None = None
-    for trade in trades:
-        action = trade.action.upper()
-        if action == "BUY":
-            open_trade = trade
-            continue
-        if action != "SELL" or open_trade is None:
-            continue
-        pnl = (trade.price - open_trade.price) * abs(open_trade.quantity or trade.quantity or 1.0)
-        if pnl < 0:
+    for trade in closed_trades:
+        if trade.net_pnl < 0:
             streak += 1
             max_streak = max(max_streak, streak)
         else:
             streak = 0
-        open_trade = None
     return max_streak
 
 
-def _trade_stats(trades: list[TradeRecord]) -> tuple[float, float, float, float]:
-    pnls: list[float] = []
-    open_trade: TradeRecord | None = None
-    for trade in trades:
-        action = trade.action.upper()
-        if action == "BUY":
-            open_trade = trade
-            continue
-        if action != "SELL" or open_trade is None:
-            continue
-        qty = abs(open_trade.quantity or trade.quantity or 1.0)
-        pnls.append((trade.price - open_trade.price) * qty)
-        open_trade = None
-    if not pnls:
+def _trade_stats(closed_trades: list[ClosedTrade]) -> tuple[float, float, float, float]:
+    if not closed_trades:
         return 0.0, 0.0, 0.0, 0.0
-    pnl_series = pd.Series(pnls, dtype=float)
-    wins = pnl_series[pnl_series > 0]
-    losses = pnl_series[pnl_series < 0]
-    win_rate = _safe_float((wins.count() / pnl_series.count()) * 100.0)
+    pnls = pd.Series([t.net_pnl for t in closed_trades], dtype=float)
+    wins = pnls[pnls > 0]
+    losses = pnls[pnls < 0]
+    win_rate = _safe_float((wins.count() / pnls.count()) * 100.0)
     avg_win = _safe_float(wins.mean()) if not wins.empty else 0.0
     avg_loss = _safe_float(losses.mean()) if not losses.empty else 0.0
     gross_profit = _safe_float(wins.sum())
@@ -129,49 +223,30 @@ class Broker:
         return float(qty_delta), action
 
 
-def _intraday_trade_stats(trades: list[TradeRecord], date_index: pd.DatetimeIndex) -> tuple[float, float, float]:
-    if not trades:
+def _intraday_trade_stats(closed_trades: list[ClosedTrade]) -> tuple[float, float, float]:
+    """Average hold time and AM/PM win rates from the closed-trade ledger."""
+    if not closed_trades:
         return 0.0, 0.0, 0.0
 
-    hold_times = []
+    hold_times = [t.holding_period_minutes for t in closed_trades]
     morning_wins = 0
     morning_losses = 0
     afternoon_wins = 0
     afternoon_losses = 0
 
-    open_trade: TradeRecord | None = None
-    open_time: pd.Timestamp | None = None
-
-    for trade in trades:
-        action = trade.action.upper()
-        trade_time = pd.to_datetime(trade.date)
-
-        if action == "BUY":
-            open_trade = trade
-            open_time = trade_time
-            continue
-
-        if action == "SELL" and open_trade is not None:
-            qty = abs(open_trade.quantity or trade.quantity or 1.0)
-            pnl = (trade.price - open_trade.price) * qty
-
-            if open_time is not None:
-                hold_mins = (trade_time - open_time).total_seconds() / 60.0
-                hold_times.append(hold_mins)
-
-            is_morning = trade_time.hour < 12
-            if pnl > 0:
-                if is_morning:
-                    morning_wins += 1
-                else:
-                    afternoon_wins += 1
-            elif pnl < 0:
-                if is_morning:
-                    morning_losses += 1
-                else:
-                    afternoon_losses += 1
-
-            open_trade = None
+    for trade in closed_trades:
+        exit_dt = pd.to_datetime(trade.exit_time, errors="coerce")
+        is_morning = (exit_dt is not pd.NaT) and exit_dt.hour < 12
+        if trade.net_pnl > 0:
+            if is_morning:
+                morning_wins += 1
+            else:
+                afternoon_wins += 1
+        elif trade.net_pnl < 0:
+            if is_morning:
+                morning_losses += 1
+            else:
+                afternoon_losses += 1
 
     avg_hold = float(np.mean(hold_times)) if hold_times else 0.0
     morning_total = morning_wins + morning_losses
@@ -220,8 +295,9 @@ class BacktestEngine:
 
         timeframe = getattr(self.config, "timeframe", "1d")
         if timeframe != "1d":
-            trade_prices = np.roll(opens, -1)
-            trade_prices[-1] = closes[-1]
+            # Intraday: fill at the fill bar's OPEN (signal from a prior close
+            # executes at the next tradable bar's open).
+            trade_prices = opens
         else:
             trade_prices = closes
 
@@ -255,6 +331,7 @@ class BacktestEngine:
         total_impact = 0.0
 
         trades: list[TradeRecord] = []
+        fill_costs: list[dict[str, float]] = []
         equity_curve: list[EquityPoint] = []
 
         for i in range(N):
@@ -315,6 +392,13 @@ class BacktestEngine:
                             position_after=float(current_pos),
                         )
                     )
+                    fill_costs.append(
+                        {
+                            "commission": trade_notional * (commission_bps / 10000.0),
+                            "slippage": trade_notional * (eff_slippage_bps / 10000.0),
+                            "spread_impact": trade_notional * ((spread_bps + impact_bps) / 10000.0),
+                        }
+                    )
 
             positions[i] = current_pos
             cash[i] = current_cash
@@ -366,8 +450,10 @@ class BacktestEngine:
         lower_tail = abs(float(returns.quantile(0.05))) if not returns.empty else 0.0
         tail_ratio = float(upper_tail / lower_tail) if lower_tail > 0 else 0.0
 
-        win_rate, avg_win, avg_loss, profit_factor = _trade_stats(trades)
-        max_cons_losses = _max_consecutive_losses(trades)
+        closed_trades = _build_closed_trades(trades, fill_costs)
+
+        win_rate, avg_win, avg_loss, profit_factor = _trade_stats(closed_trades)
+        max_cons_losses = _max_consecutive_losses(closed_trades)
         drawdown_start, drawdown_trough, drawdown_recovery = _drawdown_metadata(pd.Series(drawdowns, index=date_index))
         rolling_metrics = _rolling_metrics(returns, window=60)
 
@@ -385,10 +471,10 @@ class BacktestEngine:
         daily_returns = [round(float(x), 8) for x in returns.tolist()][:500] # Limiting size for API
         drawdown_series = [round(float(x), 8) for x in np.nan_to_num(drawdowns).tolist()][:500]
 
-        # Intraday specific metrics
-        avg_hold, win_rate_morning, win_rate_afternoon = _intraday_trade_stats(trades, date_index)
+        # Intraday specific metrics — computed from the closed-trade ledger.
+        avg_hold, win_rate_morning, win_rate_afternoon = _intraday_trade_stats(closed_trades)
         unique_days = len(np.unique(date_index.dt.date)) if not date_index.empty else 1
-        trades_per_day = float(len(trades) / unique_days) if unique_days > 0 else 0.0
+        trades_per_day = float(len(closed_trades) / unique_days) if unique_days > 0 else 0.0
 
         # Issue #32 Phase 2 — echo exactly what the engine applied so the UI
         # can prove the run honored every visible execution setting.
@@ -405,6 +491,8 @@ class BacktestEngine:
             "allow_short": bool(self.config.allow_short),
             "timeframe": timeframe,
             "fill_delay_bars": int(delay),
+            "signal_timing": "bar_close",
+            "fill_timing": "next_bar" if delay >= 1 else "same_bar",
             "data_version_id": self.config.data_version_id,
             "adjusted": bool(self.config.adjusted),
             "allow_synthetic": bool(self.config.allow_synthetic),
@@ -454,6 +542,7 @@ class BacktestEngine:
             drawdown_series=drawdown_series,
             rolling_metrics=rolling_metrics,
             trades=trades,
+            closed_trades=closed_trades,
             equity_curve=equity_curve,
             applied_config=applied_config,
             costs_breakdown=costs_breakdown,
