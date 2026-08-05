@@ -104,6 +104,29 @@ Supporting endpoints (non-job lifecycle, still live):
   panels are not surfaced (no Level 2 / options-chain source data for a
   backtest).
 
+## Results UX & Accessibility (issue #32 Phase 5)
+
+- **Trust header**: completed runs show a "Run Provenance" panel above the
+  fold — status (incl. synthetic flag), provider + market, dataset version +
+  adjusted flag, date coverage + bar count, signal/fill timing, applied
+  transaction-cost total, closed-trade count, and the reproducible run ID.
+- **Failed state**: no valid-looking metrics — a "No valid result" panel with
+  a plain explanation, Retry, and Copy diagnostics actions; the performance
+  panel renders dashes.
+- **Setup clutter reduced**: model parameters are editable beside the model
+  selector; the SMA 20/50 model shows SMA 20 + SMA 50 (no stray RSI); the
+  indicator catalog sits under a collapsed "Advanced Chart Tools" section;
+  the raw dataset UUID is replaced by a readable label with a details
+  disclosure; bps fields are explained with an estimated one-way / round-trip
+  cost; walk-forward + sensitivity moved behind a collapsed "Advanced
+  Analysis" section.
+- **Accessibility**: accessible names on timeframe/chart-type selectors,
+  decorative tab icons marked aria-hidden (fixes "CMPCompare"/"3D3D Surface"
+  duplicated names), 44px minimum touch targets on tab buttons, `role="alert"`
+  on failure/error announcements, keyboard-focusable scrollable regions, and
+  axe audits (no serious/critical) for setup, running, failed, and completed
+  states in `frontend/tests/e2e/backtesting-states-a11y.spec.ts`.
+
 ## Compatibility Rules
 
 - **Legacy job endpoints are DEPRECATED** (marked in OpenAPI) and kept only as

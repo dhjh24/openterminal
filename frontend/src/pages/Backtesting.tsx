@@ -210,7 +210,7 @@ function cloneStrategyIndicators(indicators: IndicatorConfig[]): IndicatorConfig
 const STRATEGY_INDICATORS: Record<string, IndicatorConfig[]> = {
   sma_crossover: [
     strategyIndicator("sma", { period: 20 }, terminalColors.positive, 2),
-    strategyIndicator("rsi", { period: 14 }, terminalColors.warning, 1),
+    strategyIndicator("sma", { period: 50 }, terminalColors.info, 1),
   ],
   ema_crossover: [
     strategyIndicator("ema", { period: 12 }, terminalColors.info, 2),
@@ -424,6 +424,16 @@ export function BacktestingPage() {
   const [error, setError] = useState<string | null>(null);
   const [submitInFlight, setSubmitInFlight] = useState(false);
   const [result, setResult] = useState<BacktestJobResult | null>(null);
+  // Issue #32 Phase 5 — editable model parameters beside the selected model.
+  const [modelParams, setModelParams] = useState<Record<string, number>>(() => {
+    const ctx = STRATEGY_CATALOG[0]?.default_context ?? {};
+    const out: Record<string, number> = {};
+    for (const [key, value] of Object.entries(ctx)) {
+      if (typeof value === "number") out[key] = value;
+    }
+    return out;
+  });
+  const [dataVersionName, setDataVersionName] = useState<string>("");
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [robustness, setRobustness] = useState<RobustnessData | null>(null);
@@ -482,8 +492,10 @@ export function BacktestingPage() {
       try {
         const version = await fetchActiveDataVersion();
         setDataVersionId(version.id);
+        setDataVersionName(version.name || version.id);
       } catch {
         setDataVersionId("");
+        setDataVersionName("");
       }
     })();
   }, []);
@@ -520,9 +532,16 @@ export function BacktestingPage() {
   useEffect(() => {
     if (strategyMode === CUSTOM_STRATEGY_VALUE) {
       setActiveIndicators([]);
+      setModelParams({});
       return;
     }
     setActiveIndicators(cloneStrategyIndicators(STRATEGY_INDICATORS[strategyMode] || []));
+    const preset = STRATEGY_CATALOG.find((s) => s.key === strategyMode);
+    const next: Record<string, number> = {};
+    for (const [key, value] of Object.entries(preset?.default_context ?? {})) {
+      if (typeof value === "number") next[key] = value;
+    }
+    setModelParams(next);
   }, [strategyMode]);
 
   const symbol = useMemo(() => asset.trim().toUpperCase(), [asset]);
@@ -555,7 +574,7 @@ export function BacktestingPage() {
     setAnalytics(null);
     setRobustness(null);
     const strategy = strategyMode === CUSTOM_STRATEGY_VALUE ? script : `example:${strategyMode}`;
-    const context = strategyMode === CUSTOM_STRATEGY_VALUE ? {} : (activePreset?.default_context ?? {});
+    const context = strategyMode === CUSTOM_STRATEGY_VALUE ? {} : modelParams;
     const sanitize = (value: unknown, fallback = 0): number => {
       const numeric = Number(value);
       return Number.isFinite(numeric) ? numeric : fallback;
@@ -656,6 +675,30 @@ export function BacktestingPage() {
       setRobustnessLoading(false);
     }
   }, [runId, jobState]);
+
+  const copyDiagnostics = useCallback(async () => {
+    const payload = {
+      run_id: runId,
+      status: result?.status ?? jobState,
+      error: error ?? result?.error ?? null,
+      request: {
+        asset,
+        market,
+        start,
+        end,
+        timeframe: dataTimeframe,
+        strategy: strategyMode,
+        model_params: modelParams,
+        initial_cash: tradeCapital,
+        execution_profile: executionProfile,
+      },
+    };
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
+    } catch {
+      // Clipboard unavailable (e.g. non-secure context) — diagnostics stay on screen.
+    }
+  }, [asset, dataTimeframe, end, error, executionProfile, jobState, market, modelParams, result, runId, start, strategyMode, tradeCapital]);
 
   useEffect(() => {
     if (activeTab === "robustness" && !robustness && !robustnessLoading && runId && jobState === "done") {
@@ -1613,17 +1656,33 @@ export function BacktestingPage() {
           <div className="grid grid-cols-1 gap-2 text-xs md:grid-cols-8">
             <label className="md:col-span-1"><span className="mb-1 block text-[11px] uppercase tracking-wide text-terminal-muted">Asset (Ticker)</span><div className="relative"><input className="w-full rounded border border-terminal-border bg-terminal-bg px-2 py-1 text-xs uppercase" value={asset} onChange={(e) => { const raw = e.target.value.toUpperCase().trim(); const prefixed = raw.match(/^(NYSE|NASDAQ):([A-Z0-9._-]+)$/); if (prefixed) { const ex = prefixed[1] as BacktestMarket; setMarket(ex); setAsset(prefixed[2]); } else { setAsset(raw); } setShowAssetSuggestions(true); }} onFocus={() => setShowAssetSuggestions(true)} onBlur={() => window.setTimeout(() => setShowAssetSuggestions(false), 150)} />{showAssetSuggestions && assetSuggestions.length > 0 && <div className="absolute left-0 right-0 top-[calc(100%+2px)] z-20 max-h-48 overflow-auto rounded border border-terminal-border bg-terminal-panel shadow-lg">{assetSuggestions.map((item) => (<button key={`${item.ticker}:${item.name}`} type="button" className="flex w-full items-center justify-between border-b border-terminal-border/40 px-2 py-1 text-left text-xs hover:bg-terminal-bg" onMouseDown={(e) => e.preventDefault()} onClick={() => { setAsset((item.ticker || "").toUpperCase()); const ex = (item.exchange || "").toUpperCase(); if (KNOWN_MARKETS.includes(ex as BacktestMarket)) setMarket(ex as BacktestMarket); setShowAssetSuggestions(false); }}><span>{item.ticker}</span><span className="ml-2 truncate text-[10px] text-terminal-muted">{item.name}</span></button>))}</div>}</div></label>
             <label className="md:col-span-1"><span className="mb-1 block text-[11px] uppercase tracking-wide text-terminal-muted">Market</span><select className="w-full rounded border border-terminal-border bg-terminal-bg px-2 py-1 text-xs uppercase" value={market} onChange={(e) => setMarket(e.target.value as BacktestMarket)}><option value="NYSE">NYSE</option><option value="NASDAQ">NASDAQ</option></select></label>
-            <label className="md:col-span-1"><span className="mb-1 block text-[11px] uppercase tracking-wide text-terminal-muted">Data TF</span><select className="w-full rounded border border-terminal-border bg-terminal-bg px-2 py-1 text-xs" value={dataTimeframe} onChange={(e) => setDataTimeframe(e.target.value as any)}><option value="1d">Daily</option><option value="1h">1 Hour</option><option value="15m">15 Min</option><option value="5m">5 Min</option><option value="1m">1 Min</option></select></label>
+            <label className="md:col-span-1"><span className="mb-1 block text-[11px] uppercase tracking-wide text-terminal-muted">Data TF</span><select aria-label="Data timeframe" className="w-full rounded border border-terminal-border bg-terminal-bg px-2 py-1 text-xs" value={dataTimeframe} onChange={(e) => setDataTimeframe(e.target.value as any)}><option value="1d">Daily</option><option value="1h">1 Hour</option><option value="15m">15 Min</option><option value="5m">5 Min</option><option value="1m">1 Min</option></select></label>
             <label className="md:col-span-1"><span className="mb-1 block text-[11px] uppercase tracking-wide text-terminal-muted">Start</span><input type="date" className="w-full rounded border border-terminal-border bg-terminal-bg px-2 py-1 text-xs" value={start} onChange={(e) => setStart(e.target.value)} min={dataTimeframe !== "1d" ? new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] : undefined} /></label>
             <label className="md:col-span-1"><span className="mb-1 block text-[11px] uppercase tracking-wide text-terminal-muted">End</span><input type="date" className="w-full rounded border border-terminal-border bg-terminal-bg px-2 py-1 text-xs" value={end} onChange={(e) => setEnd(e.target.value)} /></label>
             <label className="md:col-span-2"><span className="mb-1 block text-[11px] uppercase tracking-wide text-terminal-muted">Model</span><select className="w-full rounded border border-terminal-border bg-terminal-bg px-2 py-1 text-xs" value={strategyMode} onChange={(e) => setStrategyMode(e.target.value)}>{STRATEGY_CATALOG.map((opt) => <option key={opt.key} value={opt.key}>[{opt.category.toUpperCase()}] {opt.label}</option>)}<option value={CUSTOM_STRATEGY_VALUE}>Custom Python Script</option></select></label>
             <label className="md:col-span-1"><span className="mb-1 block text-[11px] uppercase tracking-wide text-terminal-muted">Trade Capital</span><input type="number" min={1} step={100} className="w-full rounded border border-terminal-border bg-terminal-bg px-2 py-1 text-xs" value={tradeCapital} onChange={(e) => setTradeCapital(Number.isFinite(e.target.valueAsNumber) ? e.target.valueAsNumber : 0)} /></label>
           </div>
+          {strategyMode !== CUSTOM_STRATEGY_VALUE && Object.keys(modelParams).length > 0 && (
+            <div className="mt-2 grid grid-cols-2 gap-2 text-xs md:grid-cols-6">
+              {Object.entries(modelParams).map(([key, value]) => (
+                <label key={key}>
+                  <span className="mb-1 block text-[11px] uppercase tracking-wide text-terminal-muted">{key}</span>
+                  <input type="number" step="any" aria-label={`Model parameter ${key}`} className="w-full rounded border border-terminal-border bg-terminal-bg px-2 py-1 text-xs" value={value} onChange={(e) => setModelParams((s) => ({ ...s, [key]: Number.isFinite(e.target.valueAsNumber) ? e.target.valueAsNumber : 0 }))} />
+                </label>
+              ))}
+            </div>
+          )}
           {dataTimeframe !== "1d" && <div className="mt-2 text-[10px] text-terminal-warning">Intraday data is heavy. Start date is limited to the last 6 months. Fetching may take longer.</div>}
           <div className="mt-2 grid grid-cols-1 gap-2 text-xs md:grid-cols-7">
             <label className="md:col-span-2">
-              <span className="mb-1 block text-[11px] uppercase tracking-wide text-terminal-muted">Data Version ID</span>
-              <input className="w-full rounded border border-terminal-border bg-terminal-bg px-2 py-1 text-xs" value={dataVersionId} onChange={(e) => setDataVersionId(e.target.value)} />
+              <span className="mb-1 block text-[11px] uppercase tracking-wide text-terminal-muted">Dataset</span>
+              <input className="w-full rounded border border-terminal-border bg-terminal-bg px-2 py-1 text-xs" value={dataVersionName || dataVersionId} onChange={(e) => { setDataVersionName(e.target.value); setDataVersionId(e.target.value); }} aria-label="Dataset version" />
+              {dataVersionId && dataVersionName && dataVersionName !== dataVersionId && (
+                <details className="mt-1 text-[10px] text-terminal-muted">
+                  <summary>Dataset details</summary>
+                  <div className="mt-1 break-all">ID: {dataVersionId}</div>
+                </details>
+              )}
             </label>
             <label className="md:col-span-1">
               <span className="mb-1 block text-[11px] uppercase tracking-wide text-terminal-muted">Series</span>
@@ -1671,6 +1730,10 @@ export function BacktestingPage() {
                 <input type="number" min={0.1} max={100} step={0.5} className="w-full rounded border border-terminal-border bg-terminal-bg px-2 py-1 text-xs" value={executionProfile.volume_cap_pct} onChange={(e) => setExecutionProfile((s) => ({ ...s, volume_cap_pct: Number(e.target.value) }))} />
               </label>
             </div>
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] text-terminal-muted">
+              <span>bps = basis points (1 bps = 0.01% of notional, applied per side).</span>
+              <span className="rounded border border-terminal-border/60 px-2 py-0.5 text-terminal-text">One-way: {(executionProfile.commission_bps + executionProfile.slippage_bps + executionProfile.spread_bps + executionProfile.market_impact_bps).toFixed(2)} bps · Est. round-trip: {((executionProfile.commission_bps + executionProfile.slippage_bps + executionProfile.spread_bps + executionProfile.market_impact_bps) * 2).toFixed(2)} bps ({(executionProfile.commission_bps + executionProfile.slippage_bps + executionProfile.spread_bps + executionProfile.market_impact_bps) / 50}%)</span>
+            </div>
           </div>
           {strategyMode !== CUSTOM_STRATEGY_VALUE && activePreset && <div className="mt-2"><span className="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase" style={{ backgroundColor: `${CATEGORY_COLORS[activePreset.category] ?? terminalColors.accent}22`, color: CATEGORY_COLORS[activePreset.category] ?? terminalColors.accent, border: `1px solid ${CATEGORY_COLORS[activePreset.category] ?? terminalColors.accent}44` }}>{activePreset.category}</span></div>}
           <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[11px]"><div className="rounded border border-terminal-border/60 bg-terminal-bg px-2 py-1 text-terminal-muted">{strategyMode === CUSTOM_STRATEGY_VALUE ? "Custom script mode: define generate_signals(df, context)." : activePreset?.description}</div><div className="rounded border border-terminal-border/60 bg-terminal-bg px-2 py-1 text-terminal-muted">Model allocation: {(modelAllocation * 100).toFixed(0)}%</div><div className="flex items-center gap-2"><span className="text-terminal-muted">Run ID: {runId || "-"}</span><span className="text-terminal-muted">Status: {jobState.toUpperCase()}</span><button type="button" className="rounded border border-terminal-accent bg-terminal-accent/15 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-terminal-accent disabled:opacity-50" onClick={() => void submit()} disabled={!canSubmit}>{submitInFlight ? "Submitting..." : (jobState === "queued" || jobState === "running" ? "Running..." : "Run")}</button></div></div>
@@ -1678,8 +1741,34 @@ export function BacktestingPage() {
           {result?.result && (result.result.synthetic_data_used || (result.result.warnings || []).some((w) => String(w).includes("SYNTHETIC"))) && (
             <div role="alert" className="mt-2 rounded border border-terminal-warning/60 bg-terminal-warning/10 p-2 text-[11px] font-semibold uppercase tracking-wide text-terminal-warning">SYNTHETIC DATA — NOT FOR EVALUATION. No live bars were available for the requested market; this run used generated data.</div>
           )}
-          {error && <div className="mt-2 rounded border border-terminal-neg bg-terminal-neg/10 p-2 text-xs text-terminal-neg">{error}</div>}
+          {error && <div role="alert" className="mt-2 rounded border border-terminal-neg bg-terminal-neg/10 p-2 text-xs text-terminal-neg">{error}</div>}
         </TerminalPanel>
+        {!result?.result && (jobState === "failed" || result?.status === "failed") && (
+          <TerminalPanel title="Backtest Result" subtitle="No valid result">
+            <div role="alert" className="space-y-2">
+              <div className="text-sm font-semibold uppercase tracking-wide text-terminal-neg">No valid result</div>
+              <div className="text-xs text-terminal-muted">{error || result?.error || "The backtest run failed before producing a result. Check the diagnostic details and retry."}</div>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" onClick={() => void submit()} className="min-h-11 rounded border border-terminal-accent bg-terminal-accent/15 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-terminal-accent">Retry</button>
+                <button type="button" onClick={() => void copyDiagnostics()} className="min-h-11 rounded border border-terminal-border px-3 py-1.5 text-xs uppercase tracking-wide text-terminal-muted hover:bg-terminal-border/20">Copy diagnostics</button>
+              </div>
+            </div>
+          </TerminalPanel>
+        )}
+        {result?.result && jobState === "done" && (
+          <TerminalPanel title="Run Provenance" subtitle="What this run actually used">
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+              <div className="text-terminal-muted">Status</div><div>Valid{result.result.data_provenance?.synthetic_used ? " (SYNTHETIC — FLAGGED)" : ""}</div>
+              <div className="text-terminal-muted">Provider / Market</div><div>{result.result.data_provenance?.provider ?? "-"} · {result.result.data_provenance?.market_used ?? "-"}</div>
+              <div className="text-terminal-muted">Dataset</div><div>{result.result.data_provenance?.data_version_id || "active"} ({result.result.data_provenance?.adjusted ? "adjusted" : "unadjusted"})</div>
+              <div className="text-terminal-muted">Coverage</div><div>{result.result.data_provenance?.date_start ?? "-"} → {result.result.data_provenance?.date_end ?? "-"} ({result.result.data_provenance?.bars ?? 0} bars)</div>
+              <div className="text-terminal-muted">Signal / Fill timing</div><div>{String(result.result.applied_config?.signal_timing ?? "-")} → {String(result.result.applied_config?.fill_timing ?? "-")} (delay {String(result.result.applied_config?.fill_delay_bars ?? 0)})</div>
+              <div className="text-terminal-muted">Applied costs</div><div>{fmtMoney(Number(result.result.costs_breakdown?.total_paid ?? 0))} total</div>
+              <div className="text-terminal-muted">Closed trades</div><div>{(result.result.closed_trades ?? []).length}</div>
+              <div className="text-terminal-muted">Run ID</div><div className="break-all font-mono">{runId}</div>
+            </div>
+          </TerminalPanel>
+        )}
         <TerminalPanel title="Backtest Performance" subtitle="Model result summary"><div className="space-y-2"><div className={`text-5xl font-bold tracking-tight ${returnClass}`}>{result?.result ? fmtPct(result.result.total_return) : "-"}</div><div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-terminal-text"><div className="text-terminal-muted">Initial Capital</div><div>{fmtMoney(initialCapital)}</div><div className="text-terminal-muted">Final Equity</div><div>{fmtMoney(finalEquity)}</div><div className="text-terminal-muted">Net P/L</div><div className={pnlAmount >= 0 ? "text-terminal-pos" : "text-terminal-neg"}>{fmtMoney(pnlAmount)}</div><div className="text-terminal-muted">Cash Left</div><div>{fmtMoney(endingCash)}</div><div className="text-terminal-muted">Sharpe</div><div>{result?.result ? result.result.sharpe.toFixed(2) : "-"}</div><div className="text-terminal-muted">Max Drawdown</div><div>{result?.result ? fmtPct(result.result.max_drawdown) : "-"}</div><div className="text-terminal-muted">Trades</div><div>{trades.length}</div><div className="text-terminal-muted">Total Qty</div><div>{totalTradeQty.toFixed(2)}</div></div><div className="border-t border-terminal-border/40 pt-2"><div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-terminal-text"><div className="text-terminal-muted">Win Rate</div><div>{(Number(analyticsSummary.win_rate) || 0).toFixed(2)}%</div><div className="text-terminal-muted">Profit Factor</div><div>{(Number(analyticsSummary.profit_factor) || 0).toFixed(2)}</div><div className="text-terminal-muted">Expectancy</div><div>{fmtMoney(Number(analyticsSummary.expectancy) || 0)}</div>{result?.result && (result.result.max_intraday_drawdown ?? 0) < 0 && (<><div className="text-terminal-muted">Max Intraday DD</div><div>{fmtPct(result.result.max_intraday_drawdown ?? 0)}</div><div className="text-terminal-muted">Avg Hold (Min)</div><div>{(result.result.average_hold_time_minutes || 0).toFixed(1)}m</div><div className="text-terminal-muted">Trades / Day</div><div>{(result.result.trades_per_day || 0).toFixed(1)}</div><div className="text-terminal-muted">Win Rate (AM/PM)</div><div>{(result.result.win_rate_morning || 0).toFixed(1)}% / {(result.result.win_rate_afternoon || 0).toFixed(1)}%</div></>)}</div></div></div></TerminalPanel>
       </div>
 
@@ -1717,10 +1806,10 @@ export function BacktestingPage() {
               return (
                 <button
                   key={tab.key}
-                  className={`rounded border px-2 py-1 text-[11px] ${active ? "border-terminal-accent bg-terminal-accent/10 text-terminal-accent" : "border-terminal-border text-terminal-muted hover:bg-terminal-border/20"}`}
+                  className={`min-h-11 min-w-11 rounded border px-2 py-1 text-[11px] ${active ? "border-terminal-accent bg-terminal-accent/10 text-terminal-accent" : "border-terminal-border text-terminal-muted hover:bg-terminal-border/20"}`}
                   onClick={() => setActiveTab(tab.key)}
                 >
-                  <span className="mr-1">{tab.icon}</span>
+                  {tab.icon && <span aria-hidden="true" className="mr-1">{tab.icon}</span>}
                   {tab.label}
                 </button>
               );
@@ -1741,10 +1830,13 @@ export function BacktestingPage() {
           </div>
         </TerminalPanel>
         <TerminalPanel title="Walk-Forward + Sensitivity" subtitle="Validation timeline and parameter response">
-          <div className="space-y-3">
-            <WalkForwardTimeline windows={walkForwardWindows} />
-            <ParameterSensitivityHeatmap rows={sensitivityRows} title="Backtest Parameter Sensitivity" />
-          </div>
+          <details className="space-y-3">
+            <summary className="cursor-pointer text-[11px] font-semibold uppercase tracking-wide text-terminal-accent">Advanced Analysis</summary>
+            <div className="mt-2 space-y-3">
+              <WalkForwardTimeline windows={walkForwardWindows} />
+              <ParameterSensitivityHeatmap rows={sensitivityRows} title="Backtest Parameter Sensitivity" />
+            </div>
+          </details>
         </TerminalPanel>
       </div>
 
@@ -1778,9 +1870,9 @@ export function BacktestingPage() {
               <div className="text-terminal-muted">Executed trades: <span className="text-terminal-text">{trades.length}</span></div>
               <div className="text-terminal-muted text-right">Total quantity: <span className="text-terminal-text">{totalTradeQty.toFixed(2)}</span></div>
             </div>
-            <div className="min-h-0 flex-1 overflow-auto"><table className="min-w-full text-[11px]"><thead className="text-terminal-muted"><tr className="border-b border-terminal-border"><th className="px-1 py-1 text-left">Date</th><th className="px-1 py-1 text-left">Asset</th><th className="px-1 py-1 text-left">Side</th><th className="px-1 py-1 text-right">Quantity</th><th className="px-1 py-1 text-right">Price</th></tr></thead><tbody>{trades.map((trade, idx) => { const isBuy = trade.action.toUpperCase() === "BUY"; return <tr key={`${trade.date}-${idx}`} className={`border-t border-terminal-border/40 ${isBuy ? "text-terminal-pos" : "text-terminal-neg"}`}><td className="px-1 py-1 text-terminal-text">{trade.date}</td><td className="px-1 py-1 text-terminal-text">{tradedAsset}</td><td className={`px-1 py-1 font-semibold ${isBuy ? "text-terminal-pos" : "text-terminal-neg"}`}>{trade.action.toUpperCase()}</td><td className="px-1 py-1 text-right">{trade.quantity.toFixed(2)}</td><td className="px-1 py-1 text-right">{fmtMoney(trade.price)}</td></tr>; })}</tbody></table></div>
+            <div className="min-h-0 flex-1 overflow-auto" tabIndex={0} role="region" aria-label="Execution trades table"><table className="min-w-full text-[11px]"><thead className="text-terminal-muted"><tr className="border-b border-terminal-border"><th className="px-1 py-1 text-left">Date</th><th className="px-1 py-1 text-left">Asset</th><th className="px-1 py-1 text-left">Side</th><th className="px-1 py-1 text-right">Quantity</th><th className="px-1 py-1 text-right">Price</th></tr></thead><tbody>{trades.map((trade, idx) => { const isBuy = trade.action.toUpperCase() === "BUY"; return <tr key={`${trade.date}-${idx}`} className={`border-t border-terminal-border/40 ${isBuy ? "text-terminal-pos" : "text-terminal-neg"}`}><td className="px-1 py-1 text-terminal-text">{trade.date}</td><td className="px-1 py-1 text-terminal-text">{tradedAsset}</td><td className={`px-1 py-1 font-semibold ${isBuy ? "text-terminal-pos" : "text-terminal-neg"}`}>{trade.action.toUpperCase()}</td><td className="px-1 py-1 text-right">{trade.quantity.toFixed(2)}</td><td className="px-1 py-1 text-right">{fmtMoney(trade.price)}</td></tr>; })}</tbody></table></div>
           </TerminalPanel>
-          <TerminalPanel title="Execution Logs" subtitle="Strategy stdout/stderr" className="h-1/2" bodyClassName="flex h-full min-h-0 flex-col overflow-hidden"><pre className="min-h-0 flex-1 overflow-auto whitespace-pre-wrap bg-terminal-bg p-2 font-mono text-[11px] text-terminal-muted">{result?.logs || "No logs"}</pre></TerminalPanel>
+          <TerminalPanel title="Execution Logs" subtitle="Strategy stdout/stderr" className="h-1/2" bodyClassName="flex h-full min-h-0 flex-col overflow-hidden"><pre tabIndex={0} role="region" aria-label="Execution logs" className="min-h-0 flex-1 overflow-auto whitespace-pre-wrap bg-terminal-bg p-2 font-mono text-[11px] text-terminal-muted">{result?.logs || "No logs"}</pre></TerminalPanel>
         </div>
       </div>
     </div>
