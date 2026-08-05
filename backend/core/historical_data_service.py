@@ -169,12 +169,13 @@ class HistoricalDataService:
         start: str | None = None,
         end: str | None = None,
         limit: int = 500,
+        allow_synthetic: bool = True,
     ) -> tuple[Symbol, list[OhlcvBar]]:
         symbol = normalize_symbol(raw_symbol, market)
         end_val = end or date.today().isoformat()
         start_val = start or "2000-01-01"
         bars = self._provider.get_daily_ohlcv(symbol, start=start_val, end=end_val)
-        if not bars:
+        if not bars and allow_synthetic:
             bars = _synthetic_ohlcv(symbol.canonical, start_val, end_val)
         if limit > 0:
             bars = bars[-limit:]
@@ -188,6 +189,7 @@ class HistoricalDataService:
         start: str | None = None,
         end: str | None = None,
         limit: int = 0,
+        allow_synthetic: bool = True,
     ) -> tuple[Symbol, list[OhlcvBar]]:
         symbol = normalize_symbol(raw_symbol, market)
         end_val = end or date.today().isoformat()
@@ -198,7 +200,7 @@ class HistoricalDataService:
         except Exception:
             bars = []
 
-        if not bars:
+        if not bars and allow_synthetic:
             # Fallback to synthetic intraday
             bars = _synthetic_intraday_ohlcv(symbol.canonical, start_val, end_val, timeframe, market)
 

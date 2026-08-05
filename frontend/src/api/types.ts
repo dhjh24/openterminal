@@ -700,6 +700,29 @@ export type BacktestJobResult = {
     trades_per_day?: number;
     win_rate_morning?: number;
     win_rate_afternoon?: number;
+    // Issue #32 Phase 2 — provenance echo and fail-closed markers.
+    synthetic_data_used?: boolean;
+    warnings?: Array<string>;
+    data_provenance?: {
+      requested_market?: string;
+      market_used?: string;
+      provider?: string;
+      requested_timeframe?: string;
+      bars?: number;
+      date_start?: string | null;
+      date_end?: string | null;
+      synthetic_used?: boolean;
+      data_version_id?: string | null;
+      adjusted?: boolean;
+    };
+    applied_config?: Record<string, unknown>;
+    costs_breakdown?: {
+      commission_paid?: number;
+      slippage_paid?: number;
+      spread_paid?: number;
+      impact_paid?: number;
+      total_paid?: number;
+    };
   };
   logs?: string;
   status: string;

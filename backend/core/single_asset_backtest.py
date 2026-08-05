@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import math
 
 import numpy as np
 import pandas as pd
 
 from backend.core.backtesting_models import BacktestConfig, BacktestResult, EquityPoint, TradeRecord
+from backend.core.execution_model import ExecutionModelConfig, estimate_slippage_bps
 
 
 def _safe_float(value: float | int | np.floating | None) -> float:
@@ -230,13 +232,27 @@ class BacktestEngine:
         current_cash = float(self.config.initial_cash)
         current_pos = 0.0
 
-        # Assume fee + slippage
-        cost_bps = self.config.fee_bps + self.config.slippage_bps
-        cost_multiplier_buy = 1.0 + (cost_bps / 10000.0)
-        cost_multiplier_sell = 1.0 - (cost_bps / 10000.0)
+        # Issue #32 Phase 2 — apply every visible execution setting.
+        # Commission falls back to the legacy fee_bps alias when set.
+        commission_bps = float(self.config.commission_bps or self.config.fee_bps or 0.0)
+        base_slippage_bps = float(self.config.slippage_bps or 0.0)
+        spread_bps = float(self.config.spread_bps or 0.0)
+        impact_bps = float(self.config.market_impact_bps or 0.0)
+        slippage_model = (self.config.slippage_model or "fixed_bps").strip().lower()
+        unsupported_settings: list[str] = []
+        if slippage_model not in {"fixed_bps", "volume_weighted", "impact_curve"}:
+            unsupported_settings.append(f"slippage_model={self.config.slippage_model}")
+            slippage_model = "fixed_bps"
+        volume_cap_pct = float(self.config.volume_cap_pct or 0.0)
+        volumes = frame["volume"].values.astype(float) if "volume" in frame.columns else None
 
         pos_size = float(self.config.position_size)
         pos_frac = float(self.config.position_fraction) if self.config.position_fraction is not None else None
+
+        total_commission = 0.0
+        total_slippage = 0.0
+        total_spread = 0.0
+        total_impact = 0.0
 
         trades: list[TradeRecord] = []
         equity_curve: list[EquityPoint] = []
@@ -258,28 +274,47 @@ class BacktestEngine:
 
             if target_pos != current_pos:
                 qty_delta = target_pos - current_pos
-                trade_notional = qty_delta * trade_px
 
-                if qty_delta > 0:
-                    cost = trade_notional * (cost_multiplier_buy - 1.0)
-                else:
-                    cost = abs(trade_notional) * (1.0 - cost_multiplier_sell)
+                # Volume cap: never trade more than volume_cap_pct% of the bar.
+                if volume_cap_pct > 0 and volumes is not None:
+                    cap_qty = (volume_cap_pct / 100.0) * max(0.0, float(volumes[i]))
+                    if abs(qty_delta) > cap_qty:
+                        qty_delta = math.copysign(cap_qty, qty_delta)
 
-                current_cash -= trade_notional
-                current_cash -= cost
-                current_pos = target_pos
+                if qty_delta != 0:
+                    trade_notional = abs(qty_delta) * trade_px
 
-                action = "BUY" if qty_delta > 0 else "SELL"
-                trades.append(
-                    TradeRecord(
-                        date=str(dates[i]),
-                        action=action,
-                        quantity=float(qty_delta),
-                        price=float(trade_px),
-                        cash_after=float(current_cash),
-                        position_after=float(current_pos),
+                    # Slippage depends on the model: flat bps, or participation-based.
+                    eff_slippage_bps = base_slippage_bps
+                    if slippage_model != "fixed_bps" and volumes is not None:
+                        eff_slippage_bps = estimate_slippage_bps(
+                            qty_delta,
+                            bar_volume=float(volumes[i]) if volumes[i] > 0 else None,
+                            config=ExecutionModelConfig(model=slippage_model, fixed_bps=base_slippage_bps),
+                        )
+
+                    total_bps = commission_bps + eff_slippage_bps + spread_bps + impact_bps
+                    cost = trade_notional * (total_bps / 10000.0)
+                    total_commission += trade_notional * (commission_bps / 10000.0)
+                    total_slippage += trade_notional * (eff_slippage_bps / 10000.0)
+                    total_spread += trade_notional * (spread_bps / 10000.0)
+                    total_impact += trade_notional * (impact_bps / 10000.0)
+
+                    current_cash -= qty_delta * trade_px
+                    current_cash -= cost
+                    current_pos += qty_delta
+
+                    action = "BUY" if qty_delta > 0 else "SELL"
+                    trades.append(
+                        TradeRecord(
+                            date=str(dates[i]),
+                            action=action,
+                            quantity=float(qty_delta),
+                            price=float(trade_px),
+                            cash_after=float(current_cash),
+                            position_after=float(current_pos),
+                        )
                     )
-                )
 
             positions[i] = current_pos
             cash[i] = current_cash
@@ -355,6 +390,33 @@ class BacktestEngine:
         unique_days = len(np.unique(date_index.dt.date)) if not date_index.empty else 1
         trades_per_day = float(len(trades) / unique_days) if unique_days > 0 else 0.0
 
+        # Issue #32 Phase 2 — echo exactly what the engine applied so the UI
+        # can prove the run honored every visible execution setting.
+        applied_config = {
+            "initial_cash": float(self.config.initial_cash),
+            "commission_bps": round(commission_bps, 6),
+            "slippage_model": slippage_model,
+            "slippage_bps": round(base_slippage_bps, 6),
+            "spread_bps": round(spread_bps, 6),
+            "market_impact_bps": round(impact_bps, 6),
+            "volume_cap_pct": round(volume_cap_pct, 6),
+            "position_size": pos_size,
+            "position_fraction": pos_frac,
+            "allow_short": bool(self.config.allow_short),
+            "timeframe": timeframe,
+            "fill_delay_bars": int(delay),
+            "data_version_id": self.config.data_version_id,
+            "adjusted": bool(self.config.adjusted),
+            "allow_synthetic": bool(self.config.allow_synthetic),
+        }
+        costs_breakdown = {
+            "commission_paid": round(total_commission, 6),
+            "slippage_paid": round(total_slippage, 6),
+            "spread_paid": round(total_spread, 6),
+            "impact_paid": round(total_impact, 6),
+            "total_paid": round(total_commission + total_slippage + total_spread + total_impact, 6),
+        }
+
         return BacktestResult(
             symbol=symbol,
             asset=(asset or symbol),
@@ -393,6 +455,9 @@ class BacktestEngine:
             rolling_metrics=rolling_metrics,
             trades=trades,
             equity_curve=equity_curve,
+            applied_config=applied_config,
+            costs_breakdown=costs_breakdown,
+            unsupported_settings=unsupported_settings,
         )
 
 

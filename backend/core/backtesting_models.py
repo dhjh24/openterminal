@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -7,14 +9,25 @@ class BacktestConfig(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     initial_cash: float = Field(100000.0, gt=0)
-    fee_bps: float = Field(0.0, ge=0)
-    slippage_bps: float = Field(0.0, ge=0)
+    fee_bps: float = Field(0.0, ge=0)  # legacy alias for commission_bps
+    slippage_bps: float = Field(0.0, ge=0)  # legacy flat slippage
     position_size: float = Field(1.0, gt=0)
     position_fraction: float | None = Field(default=None, gt=0, le=1)
     allow_short: bool = True
     timeframe: str = Field("1d")
     fill_delay_bars: int = Field(0, ge=0)
     intraday_slippage_model: bool = Field(False)
+
+    # Issue #32 Phase 2 — every visible execution setting is declared so the
+    # engine can apply it (or explicitly report it unsupported).
+    commission_bps: float = Field(0.0, ge=0)
+    slippage_model: str = Field("fixed_bps")  # fixed_bps | volume_weighted | impact_curve
+    spread_bps: float = Field(0.0, ge=0)
+    market_impact_bps: float = Field(0.0, ge=0)
+    volume_cap_pct: float = Field(0.0, ge=0, le=100)
+    data_version_id: str | None = None
+    adjusted: bool = True
+    allow_synthetic: bool = False
 
 
 class TradeRecord(BaseModel):
@@ -77,3 +90,7 @@ class BacktestResult(BaseModel):
     rolling_metrics: list[dict[str, float | str]] = Field(default_factory=list)
     trades: list[TradeRecord]
     equity_curve: list[EquityPoint]
+    # Issue #32 Phase 2 — provenance echo: what the engine actually applied.
+    applied_config: dict[str, Any] = Field(default_factory=dict)
+    costs_breakdown: dict[str, float] = Field(default_factory=dict)
+    unsupported_settings: list[str] = Field(default_factory=list)
