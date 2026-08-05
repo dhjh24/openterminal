@@ -23,6 +23,7 @@ const ROUTES = [
   { path: "/fno?symbol=SPY", label: "Options (auth)", auth: true },
   { path: "/equity/news?ticker=NVDA", label: "News (auth)", auth: true },
   { path: "/equity/security/AAPL", label: "Security (auth)", auth: true },
+  { path: "/backtesting", label: "Backtesting (auth)", auth: true },
 ] as const;
 
 function makeJwt(payload: Record<string, unknown>): string {
@@ -56,6 +57,7 @@ const DISABLED_RULES: Record<string, string[]> = {
   "options (auth)": ["color-contrast"],
   "news (auth)": ["color-contrast"],
   "security (auth)": ["color-contrast"],
+  "backtesting (auth)": ["color-contrast"],
 };
 
 test.describe("a11y: axe-core scan", () => {

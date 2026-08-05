@@ -110,10 +110,10 @@ export function ChartTabPanel(props: ChartTabProps) {
     <div className="grid grid-cols-1 gap-3 xl:grid-cols-[1fr_300px]">
       <div>
         <div className="mb-2 flex flex-wrap items-center gap-2 text-[11px]">
-          <select value={timeframe} onChange={(e) => setTimeframe(e.target.value as BacktestTimeframe)} className="rounded border border-terminal-border bg-terminal-bg px-2 py-1 text-[11px] text-terminal-text">
+          <select aria-label="Chart aggregation timeframe" value={timeframe} onChange={(e) => setTimeframe(e.target.value as BacktestTimeframe)} className="rounded border border-terminal-border bg-terminal-bg px-2 py-1 text-[11px] text-terminal-text">
             <option value="1D">1D</option><option value="1W">1W</option><option value="1M">1M</option>
           </select>
-          <select value={chartType} onChange={(e) => setChartType(e.target.value as ChartKind)} className="rounded border border-terminal-border bg-terminal-bg px-2 py-1 text-[11px] text-terminal-text">
+          <select aria-label="Chart type" value={chartType} onChange={(e) => setChartType(e.target.value as ChartKind)} className="rounded border border-terminal-border bg-terminal-bg px-2 py-1 text-[11px] text-terminal-text">
             <option value="candle">Candles</option><option value="line">Line</option><option value="area">Area</option>
           </select>
           <button className={`rounded border px-2 py-1 ${showVolume ? "border-terminal-accent text-terminal-accent" : "border-terminal-border text-terminal-muted"}`} onClick={() => setShowVolume((v) => !v)}>Volume</button>
@@ -160,7 +160,7 @@ export function ChartTabPanel(props: ChartTabProps) {
           </div>
         </div>
       </div>
-      <div>{showIndicators ? <IndicatorPanel symbol={symbol} activeIndicators={activeIndicators} onChange={setActiveIndicators} /> : <div className="rounded border border-terminal-border/40 p-3 text-[11px] text-terminal-muted">Indicators hidden. Use the chart toolbar toggle to show.</div>}</div>
+      <div>{showIndicators ? <details className="rounded border border-terminal-border/40 bg-terminal-bg/50 p-2"><summary className="cursor-pointer text-[11px] font-semibold uppercase tracking-wide text-terminal-accent">Advanced Chart Tools</summary><div className="mt-2"><IndicatorPanel symbol={symbol} activeIndicators={activeIndicators} onChange={setActiveIndicators} /></div></details> : <div className="rounded border border-terminal-border/40 p-3 text-[11px] text-terminal-muted">Indicators hidden. Use the chart toolbar toggle to show.</div>}</div>
     </div>
   );
 }
