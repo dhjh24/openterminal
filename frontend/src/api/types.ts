@@ -657,9 +657,9 @@ export type BacktestJobSubmitPayload = {
 };
 
 export type BacktestJobStatus = {
-  job_id: string;
-  status: "pending" | "running" | "completed" | "failed" | "done";
-  progress: number;
+  job_id?: string;
+  status: "pending" | "queued" | "running" | "completed" | "failed" | "done";
+  progress?: number;
   error?: string;
   result_id?: string;
   run_id?: string;

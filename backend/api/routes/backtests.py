@@ -29,6 +29,7 @@ class BacktestSubmitPayload(BaseModel):
     start: str | None = None
     end: str | None = None
     limit: int = Field(500, ge=1, le=5000)
+    timeframe: str = "1d"
     strategy: str = "example:sma_crossover"
     context: dict[str, Any] | None = None
     config: dict[str, Any] | None = None
@@ -40,6 +41,7 @@ class ComparePayload(BaseModel):
     start: str | None = None
     end: str | None = None
     limit: int = Field(500, ge=1, le=5000)
+    timeframe: str = "1d"
     strategies: list[str] = Field(min_length=1, max_length=6)
     config: dict[str, Any] | None = None
 
@@ -129,8 +131,9 @@ async def list_strategies() -> list[dict[str, Any]]:
     return get_strategy_catalog()
 
 
-@router.post("/backtests")
+@router.post("/backtests", deprecated=True)
 async def submit_backtest(payload: BacktestSubmitPayload) -> dict[str, str]:
+    """DEPRECATED: use POST /v1/backtest/jobs."""
     service = get_backtest_job_service()
     run_id = await service.submit(
         BacktestJobRequest(
@@ -140,6 +143,7 @@ async def submit_backtest(payload: BacktestSubmitPayload) -> dict[str, str]:
             start=payload.start,
             end=payload.end,
             limit=payload.limit,
+            timeframe=payload.timeframe,
             strategy=payload.strategy,
             context=payload.context,
             config=payload.config,
@@ -170,6 +174,7 @@ async def compare_strategies(payload: ComparePayload) -> dict[str, Any]:
                 start=payload.start,
                 end=payload.end,
                 limit=payload.limit,
+                timeframe=payload.timeframe,
                 strategy=f"example:{key}",
                 context=default_context,
                 config=payload.config,
@@ -179,16 +184,18 @@ async def compare_strategies(payload: ComparePayload) -> dict[str, Any]:
     return {"run_ids": run_ids, "status": "queued"}
 
 
-@router.get("/backtests/{run_id}/status")
+@router.get("/backtests/{run_id}/status", deprecated=True)
 async def backtest_status(run_id: str) -> dict[str, str]:
+    """DEPRECATED: use GET /v1/backtest/jobs/{run_id}."""
     status = await get_backtest_job_service().get_status(run_id)
     if status.get("status") == "not_found":
         raise HTTPException(status_code=404, detail="Backtest run not found")
     return status
 
 
-@router.get("/backtests/{run_id}/result")
+@router.get("/backtests/{run_id}/result", deprecated=True)
 async def backtest_result(run_id: str) -> dict[str, Any]:
+    """DEPRECATED: use GET /v1/backtest/jobs/{run_id}/result."""
     result = await get_backtest_job_service().get_result(run_id)
     if result.get("status") == "not_found":
         raise HTTPException(status_code=404, detail="Backtest run not found")
@@ -266,21 +273,55 @@ async def vectorized_backtest_sweep(payload: VectorizedSweepPayload) -> dict[str
     return {"symbol": payload.symbol, "market": payload.market, "strategy": strategy, "sweep": sweep}
 
 
-# Pro v1 compatibility endpoints (blueprint adapter layer)
-@router.post("/v1/backtest/submit", response_model=BacktestStatusResponse)
-async def v1_submit_backtest(payload: BacktestSubmitPayload) -> BacktestStatusResponse:
+# ─────────────────────────────────────────────────────────────────────────────
+# Canonical job API (issue #32): single contract used by the frontend for
+# submit, polling, and result retrieval.
+#   POST /api/v1/backtest/jobs                → submit → {run_id, status}
+#   GET  /api/v1/backtest/jobs/{run_id}       → status → {run_id, status}
+#   GET  /api/v1/backtest/jobs/{run_id}/result → {run_id, status, result, logs, error}
+# All other /backtests* and /v1/backtest* endpoints below are DEPRECATED
+# compatibility aliases and must not be used by new code.
+# ─────────────────────────────────────────────────────────────────────────────
+@router.post("/v1/backtest/jobs", response_model=BacktestStatusResponse)
+async def submit_backtest_job(payload: BacktestSubmitPayload) -> BacktestStatusResponse:
+    """Submit a backtest job (canonical contract)."""
     response = await submit_backtest(payload)
     return BacktestStatusResponse(**response)
 
 
-@router.get("/v1/backtest/status/{run_id}", response_model=BacktestStatusResponse)
-async def v1_backtest_status(run_id: str) -> BacktestStatusResponse:
+@router.get("/v1/backtest/jobs/{run_id}", response_model=BacktestStatusResponse)
+async def get_backtest_job_status(run_id: str) -> BacktestStatusResponse:
+    """Poll a backtest job's status (canonical contract)."""
     response = await backtest_status(run_id)
     return BacktestStatusResponse(**response)
 
 
-@router.get("/v1/backtest/result/{run_id}", response_model=BacktestResultResponse)
+@router.get("/v1/backtest/jobs/{run_id}/result", response_model=BacktestResultResponse)
+async def get_backtest_job_result(run_id: str) -> BacktestResultResponse:
+    """Fetch a completed backtest job's result (canonical contract)."""
+    response = await backtest_result(run_id)
+    return BacktestResultResponse(**response)
+
+
+# Pro v1 compatibility endpoints (blueprint adapter layer) — DEPRECATED.
+# Use the canonical /v1/backtest/jobs* contract above.
+@router.post("/v1/backtest/submit", response_model=BacktestStatusResponse, deprecated=True)
+async def v1_submit_backtest(payload: BacktestSubmitPayload) -> BacktestStatusResponse:
+    """DEPRECATED: use POST /v1/backtest/jobs."""
+    response = await submit_backtest(payload)
+    return BacktestStatusResponse(**response)
+
+
+@router.get("/v1/backtest/status/{run_id}", response_model=BacktestStatusResponse, deprecated=True)
+async def v1_backtest_status(run_id: str) -> BacktestStatusResponse:
+    """DEPRECATED: use GET /v1/backtest/jobs/{run_id}."""
+    response = await backtest_status(run_id)
+    return BacktestStatusResponse(**response)
+
+
+@router.get("/v1/backtest/result/{run_id}", response_model=BacktestResultResponse, deprecated=True)
 async def v1_backtest_result(run_id: str) -> BacktestResultResponse:
+    """DEPRECATED: use GET /v1/backtest/jobs/{run_id}/result."""
     response = await backtest_result(run_id)
     return BacktestResultResponse(**response)
 
