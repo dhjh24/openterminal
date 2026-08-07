@@ -8,19 +8,6 @@ source "$SCRIPT_DIR/lib/compose-env.sh"
 load_dotenv
 
 API_PORT_VAL="${API_PORT:-8105}"
-REDIS_PORT_VAL="${REDIS_HOST_PORT:-6382}"
-POSTGRES_PORT_VAL="${POSTGRES_HOST_PORT:-5436}"
-
-# Only check ports that this stack will publish.
-# Postgres host port is checked when the postgres profile is requested or already configured.
-CHECK_POSTGRES=0
-if [[ "${1:-}" == "--postgres" ]] || [[ "${USE_POSTGRES:-0}" == "1" ]]; then
-  CHECK_POSTGRES=1
-fi
-if docker compose ls --format json 2>/dev/null | grep -q "\"Name\":\"$(compose_project_name)\"" \
-  && compose_cmd ps --services 2>/dev/null | grep -qx postgres; then
-  CHECK_POSTGRES=1
-fi
 
 conflicts=0
 
@@ -85,7 +72,7 @@ owned_by_this_project() {
   project="$(compose_project_name)"
   docker ps --filter "label=com.docker.compose.project=${project}" \
     --format '{{.Ports}}' 2>/dev/null \
-    | grep -E "([^0-9]|^)${port}->|0\\.0\\.0\\.0:${port}|:::${port}" >/dev/null 2>&1
+    | grep -E "([^0-9]|^)${port}->|0\\.\\.0\\.0\\.0:${port}|:::${port}" >/dev/null 2>&1
 }
 
 report_conflict() {
@@ -116,31 +103,9 @@ check_port() {
 
 echo "Checking host ports for project $(compose_project_name)..."
 check_port "$API_PORT_VAL" "API_PORT"
-# Redis host publish comes from docker-compose.override.yml (dev default).
-check_port "$REDIS_PORT_VAL" "REDIS_HOST_PORT"
-if [[ "$CHECK_POSTGRES" -eq 1 ]]; then
-  check_port "$POSTGRES_PORT_VAL" "POSTGRES_HOST_PORT"
-else
-  echo "Port ${POSTGRES_PORT_VAL} (POSTGRES_HOST_PORT): skipped (postgres profile not enabled)"
-fi
 
-# Duplicate host ports within this project's .env
-declare -A seen=()
-for pair in \
-  "API_PORT:${API_PORT_VAL}" \
-  "REDIS_HOST_PORT:${REDIS_PORT_VAL}" \
-  "POSTGRES_HOST_PORT:${POSTGRES_PORT_VAL}"; do
-  key="${pair%%:*}"
-  val="${pair#*:}"
-  if [[ -n "${seen[$val]:-}" ]]; then
-    echo
-    echo "Duplicate host port ${val} configured for ${seen[$val]} and ${key}."
-    echo "Each published service needs a unique host port in .env."
-    conflicts=1
-  else
-    seen[$val]="$key"
-  fi
-done
+# PostgreSQL and Redis are remote (Neon / Redis VM) — no host ports to check.
+echo "Database and Redis use remote infrastructure (no local host ports)."
 
 if [[ "$conflicts" -ne 0 ]]; then
   echo

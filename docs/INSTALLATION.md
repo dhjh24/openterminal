@@ -17,17 +17,19 @@ cd OpenTerminalUI
 
 ```bash
 cp .env.example .env
-# Change API_PORT / REDIS_HOST_PORT / POSTGRES_HOST_PORT if those ports are taken
+# Change API_PORT if that port is taken
 ./scripts/check-ports.sh
 ```
 
-Default host ports:
+Default host port:
 
 | Service         | Env var              | Host | Container |
 | --------------- | -------------------- | ---: | --------: |
 | App (Web + API) | `API_PORT`           | 8105 |      8000 |
-| Redis (dev)     | `REDIS_HOST_PORT`    | 6382 |      6379 |
-| Postgres (dev)  | `POSTGRES_HOST_PORT` | 5436 |      5432 |
+
+PostgreSQL and Redis are **remote** in deployments (see `DATABASE_URL`,
+`DATABASE_DIRECT_URL`, and `REDIS_URL` in `.env.example`) — no local database
+services are started.
 
 ## 3) Start
 
@@ -42,7 +44,6 @@ Or scripts:
 
 ```bash
 ./scripts/start.sh
-./scripts/start.sh --postgres
 ```
 
 Or Compose directly:
@@ -55,7 +56,6 @@ Legacy helper (still supported):
 
 ```bash
 sh ./scripts/docker-up.sh
-sh ./scripts/docker-up.sh --postgres
 sh ./scripts/docker-up.sh --port 8110
 ```
 

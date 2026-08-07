@@ -175,7 +175,7 @@ run_docker() {
   if [[ -x "$ROOT_DIR/scripts/check-ports.sh" ]]; then
     green "    checking host ports..."
     "$ROOT_DIR/scripts/check-ports.sh" || {
-      yellow "    Port conflict detected. Edit API_PORT / REDIS_HOST_PORT / POSTGRES_HOST_PORT in .env"
+      yellow "    Port conflict detected. Edit API_PORT in .env"
       exit 1
     }
   fi
