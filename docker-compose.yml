@@ -1,7 +1,7 @@
 # OpenTerminalUI — isolated Compose stack
 # Project identity, ports, and credentials come from `.env` (see `.env.example`).
-# Production tip: publish only the app. Use `docker-compose.override.yml` (dev)
-# or `--profile host-ports` when you need Postgres/Redis on the host.
+# PostgreSQL and Redis are remote (Neon / Redis VM) — configured via
+# DATABASE_URL, DATABASE_DIRECT_URL, and REDIS_URL in the deployment env.
 
 name: ${COMPOSE_PROJECT_NAME:-openterminalui}
 
@@ -33,11 +33,11 @@ services:
       CACHE_SIGNING_KEY: "${CACHE_SIGNING_KEY:-}"
       BOOTSTRAP_ADMIN_EMAIL: "${BOOTSTRAP_ADMIN_EMAIL:-}"
       BOOTSTRAP_ADMIN_PASSWORD: "${BOOTSTRAP_ADMIN_PASSWORD:-}"
-      # Prefer explicit DATABASE_URL. For the postgres profile, set it to the
-      # Docker-network form: postgresql://USER:PASS@postgres:5432/DB
+      # Prefer explicit DATABASE_URL and DATABASE_DIRECT_URL from the deployment environment.
       DATABASE_URL: "${DATABASE_URL:-sqlite+aiosqlite:////data/openterminal.db}"
-      # Force the compose Redis service hostname. Host `.env` often sets localhost for non-Docker runs.
-      REDIS_URL: "redis://redis:6379/0"
+      DATABASE_DIRECT_URL: "${DATABASE_DIRECT_URL:-${DATABASE_URL:-sqlite+aiosqlite:////data/openterminal.db}}"
+      # Remote Redis is configured via the deployment environment; localhost remains a fallback for local non-Docker runs.
+      REDIS_URL: "${REDIS_URL:-redis://localhost:6379/0}"
       OPENTERMINALUI_PREFETCH_ENABLED: "${OPENTERMINALUI_PREFETCH_ENABLED:-${OPENSCREENS_PREFETCH_ENABLED:-0}}"
       OPENTERMINALUI_SQLITE_URL: "${OPENTERMINALUI_SQLITE_URL:-${OPENSCREENS_SQLITE_URL:-sqlite:////data/openterminalui.db}}"
       OPENTERMINALUI_CORS_ORIGINS: "${OPENTERMINALUI_CORS_ORIGINS:-${CORS_ORIGINS:-http://localhost:8105,http://127.0.0.1:8105,http://localhost:5173,http://127.0.0.1:5173}}"
@@ -62,12 +62,7 @@ services:
       - app_data:/data
     networks:
       - app_network
-    depends_on:
-      redis:
-        condition: service_healthy
-      postgres:
-        condition: service_healthy
-        required: false
+    depends_on: {}
     develop:
       watch:
         - action: rebuild
@@ -88,53 +83,13 @@ services:
       retries: 10
       start_period: 40s
 
-  redis:
-    image: redis:7-alpine
-    # Internal only by default — host publish lives in docker-compose.override.yml
-    expose:
-      - "6379"
-    volumes:
-      - redis_data:/data
-    networks:
-      - app_network
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-    restart: unless-stopped
-
-  postgres:
-    image: postgres:16-alpine
-    profiles: ["postgres"]
-    environment:
-      POSTGRES_DB: "${POSTGRES_DB:-openterminalui}"
-      POSTGRES_USER: "${POSTGRES_USER:-openterminalui_user}"
-      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-change-this-password}"
-    # Internal only by default — host publish lives in docker-compose.override.yml
-    expose:
-      - "5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    networks:
-      - app_network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-openterminalui_user} -d ${POSTGRES_DB:-openterminalui}"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-    restart: unless-stopped
 
 networks:
   app_network:
     driver: bridge
 
 volumes:
-  # Explicit project-prefixed names. App/Postgres keep the historical Compose
-  # names (`{project}_openterminalui_*`) so existing installs retain data.
+  # Explicit project-prefixed name keeps the historical Compose name
+  # (`{project}_openterminalui_data`) so existing installs retain data.
   app_data:
     name: ${COMPOSE_PROJECT_NAME:-openterminalui}_openterminalui_data
-  postgres_data:
-    name: ${COMPOSE_PROJECT_NAME:-openterminalui}_openterminalui_postgres_data
-  redis_data:
-    name: ${COMPOSE_PROJECT_NAME:-openterminalui}_redis_data

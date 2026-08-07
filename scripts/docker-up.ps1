@@ -1,6 +1,4 @@
 param(
-  [switch]$Redis,
-  [switch]$Postgres,
   [switch]$NoDetach,
   [int]$Port = 8000
 )
@@ -57,23 +55,7 @@ if ($portInUse) {
 
 $env:APP_PORT = "$Port"
 
-if ($Redis) {
-  $envLines = Get-Content ".env" -ErrorAction Stop
-  $hasRedis = $false
-  foreach ($line in $envLines) {
-    if ($line -match "^REDIS_URL=") {
-      $hasRedis = $true
-      break
-    }
-  }
-  if (-not $hasRedis) {
-    Add-Content ".env" "REDIS_URL=redis://redis:6379/0"
-  }
-}
-
 $args = @("compose")
-if ($Redis) { $args += @("--profile", "redis") }
-if ($Postgres) { $args += @("--profile", "postgres") }
 $args += @("up", "--build")
 if (-not $NoDetach) {
   $args += "-d"

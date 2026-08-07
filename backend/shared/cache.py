@@ -12,8 +12,7 @@ import threading
 import time
 from typing import Any, Optional, Tuple
 
-from redis import asyncio as aioredis
-
+from backend.config.redis import build_redis_client
 from backend.config.security import get_cache_signing_key
 
 logger = logging.getLogger(__name__)
@@ -24,7 +23,7 @@ class MultiTierCache:
         self.redis_url = redis_url or os.getenv("REDIS_URL")
         self.db_path = db_path
         self._l1_cache: dict[str, Tuple[float, Any]] = {}
-        self._redis: Optional[aioredis.Redis] = None
+        self._redis: Optional[Any] = None
         self._db_conn: Optional[sqlite3.Connection] = None
         self._db_lock = threading.Lock()
         key = get_cache_signing_key()
@@ -33,7 +32,7 @@ class MultiTierCache:
     async def initialize(self):
         if self.redis_url:
             try:
-                self._redis = aioredis.from_url(self.redis_url, decode_responses=False)
+                self._redis = build_redis_client(self.redis_url, decode_responses=False)
                 await self._redis.ping()
                 logger.info("L2 Cache (Redis) connected")
             except Exception as e:
@@ -62,15 +61,20 @@ class MultiTierCache:
             self._db_conn.close()
             self._db_conn = None
 
+    async def ping_redis(self, timeout: float = 2.0) -> bool:
+        if self._redis is None:
+            return False
+        try:
+            await asyncio.wait_for(self._redis.ping(), timeout=timeout)
+            return True
+        except Exception:
+            return False
+
     async def health(self) -> dict[str, Any]:
         """Report availability of each cache tier (used by /healthz)."""
         l2 = "disabled"
         if self._redis is not None:
-            try:
-                await self._redis.ping()
-                l2 = "ok"
-            except Exception:
-                l2 = "error"
+            l2 = "ok" if await self.ping_redis() else "error"
         return {
             "l1_memory": {"status": "ok", "entries": len(self._l1_cache)},
             "l2_redis": l2,

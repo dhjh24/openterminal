@@ -33,21 +33,13 @@ else
     config >/tmp/compose.base.yml
   pass "docker compose -f $COMPOSE_FILE config (base / production-like)"
 
-  docker compose \
-    --env-file "$EXAMPLE_ENV" \
-    -f "$COMPOSE_FILE" \
-    --profile postgres \
-    config >/tmp/compose.postgres.yml
-  pass "docker compose --profile postgres config"
-
   if [[ -f "$OVERRIDE_FILE" ]]; then
     docker compose \
       --env-file "$EXAMPLE_ENV" \
       -f "$COMPOSE_FILE" \
       -f "$OVERRIDE_FILE" \
-      --profile postgres \
       config >/tmp/compose.dev.yml
-    pass "docker compose with override + postgres config"
+    pass "docker compose with override config"
   fi
 fi
 
@@ -75,12 +67,13 @@ else
   pass "no external: true resources"
 fi
 
-# --- 5. Internal URLs must not use localhost for DB/Redis ------------------
-# REDIS_URL is forced in compose; DATABASE_URL default must not point at localhost host ports.
+# --- 5. DB/Redis URLs must not hardcode localhost -------------------------
+# Remote PostgreSQL (Neon) and remote Redis are configured via env; a
+# hardcoded localhost URL (no ${VAR:-...} interpolation) is a misconfiguration.
 if grep -nE 'REDIS_URL:[[:space:]]*["'\'']?redis://localhost' "$COMPOSE_FILE"; then
-  fail "compose REDIS_URL uses localhost (use redis:6379)"
+  fail "compose REDIS_URL hardcodes localhost (set REDIS_URL in the deployment env)"
 else
-  pass "compose REDIS_URL uses Docker service hostname"
+  pass "compose REDIS_URL is env-driven (localhost only as dev fallback)"
 fi
 
 if grep -nE '@localhost:(5432|5433|5436|6379|6380|6381)' "$COMPOSE_FILE" "$OVERRIDE_FILE" 2>/dev/null; then
@@ -91,21 +84,19 @@ fi
 
 # --- 6. Host ports come from env vars --------------------------------------
 grep -q 'API_PORT' "$COMPOSE_FILE" || fail "API_PORT not referenced in compose"
-grep -q 'REDIS_HOST_PORT' "$OVERRIDE_FILE" || fail "REDIS_HOST_PORT not in override"
-grep -q 'POSTGRES_HOST_PORT' "$OVERRIDE_FILE" || fail "POSTGRES_HOST_PORT not in override"
 pass "host ports are env-driven"
 
-# --- 7. Base compose keeps DB/Redis internal (expose, not publish) ---------
-if awk '/^  redis:/{in_redis=1} /^  [a-z]/{if($0 !~ /^  redis:/) in_redis=0} in_redis && /ports:/{found=1} END{exit found?0:1}' "$COMPOSE_FILE"; then
-  fail "base compose publishes redis ports — use expose + override instead"
+# --- 7. Base compose does not define local DB/Redis services --------------
+if grep -q '^  redis:' "$COMPOSE_FILE" "$OVERRIDE_FILE" 2>/dev/null; then
+  fail "base compose still defines a local redis service"
 else
-  pass "redis is expose-only in base compose"
+  pass "no local redis service"
 fi
 
-if awk '/^  postgres:/{in_pg=1} /^  [a-z]/{if($0 !~ /^  postgres:/) in_pg=0} in_pg && /ports:/{found=1} END{exit found?0:1}' "$COMPOSE_FILE"; then
-  fail "base compose publishes postgres ports — use expose + override instead"
+if grep -q '^  postgres:' "$COMPOSE_FILE" "$OVERRIDE_FILE" 2>/dev/null; then
+  fail "base compose still defines a local postgres service"
 else
-  pass "postgres is expose-only in base compose"
+  pass "no local postgres service"
 fi
 
 # --- 8. Duplicate host ports inside rendered config ------------------------
@@ -120,9 +111,7 @@ if [[ -f /tmp/compose.dev.yml ]]; then
   fi
 
   grep -q 'published: "8105"' /tmp/compose.dev.yml || fail "expected default API_PORT 8105"
-  grep -q 'published: "6382"' /tmp/compose.dev.yml || fail "expected default REDIS_HOST_PORT 6382"
-  grep -q 'published: "5436"' /tmp/compose.dev.yml || fail "expected default POSTGRES_HOST_PORT 5436"
-  pass "default host ports match .env.example (8105 / 6382 / 5436)"
+  pass "default host ports match .env.example (8105)"
 fi
 
 # --- 9. Secrets not committed ----------------------------------------------
@@ -149,9 +138,10 @@ done
 # --- 10. .env.example documents project identity ---------------------------
 grep -q '^COMPOSE_PROJECT_NAME=' "$EXAMPLE_ENV" || fail "COMPOSE_PROJECT_NAME missing from .env.example"
 grep -q '^API_PORT=' "$EXAMPLE_ENV" || fail "API_PORT missing from .env.example"
-grep -q '^POSTGRES_HOST_PORT=' "$EXAMPLE_ENV" || fail "POSTGRES_HOST_PORT missing from .env.example"
-grep -q '^REDIS_HOST_PORT=' "$EXAMPLE_ENV" || fail "REDIS_HOST_PORT missing from .env.example"
-pass ".env.example has isolation variables"
+grep -q '^DATABASE_URL=' "$EXAMPLE_ENV" || fail "DATABASE_URL missing from .env.example"
+grep -q '^DATABASE_DIRECT_URL=' "$EXAMPLE_ENV" || fail "DATABASE_DIRECT_URL missing from .env.example"
+grep -q '^REDIS_URL=' "$EXAMPLE_ENV" || fail "REDIS_URL missing from .env.example"
+pass ".env.example has remote DB/Redis variables"
 
 if [[ "$FAIL" -ne 0 ]]; then
   red "Compose isolation validation failed"

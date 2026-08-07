@@ -6,7 +6,7 @@ import logging
 import time
 from typing import Any, Callable, Dict, List, Optional, Set
 
-from redis import asyncio as aioredis
+from backend.config.redis import build_redis_client
 from backend.config.settings import get_settings
 
 logger = logging.getLogger(__name__)
@@ -14,8 +14,8 @@ logger = logging.getLogger(__name__)
 class RedisQuoteBus:
     def __init__(self):
         self.settings = get_settings()
-        self._redis: Optional[aioredis.Redis] = None
-        self._pubsub: Optional[aioredis.client.PubSub] = None
+        self._redis: Optional[Any] = None
+        self._pubsub: Optional[Any] = None
         self._local_listeners: Set[Callable[[str, Dict[str, Any]], Any]] = set()
         self._subscribed_channels: Set[str] = set()
         self._is_connected = False
@@ -28,14 +28,14 @@ class RedisQuoteBus:
 
         async with self._lock:
             try:
-                self._redis = aioredis.from_url(
+                self._redis = build_redis_client(
                     self.settings.redis_url,
+                    decode_responses=True,
                     max_connections=self.settings.redis_max_connections,
-                    decode_responses=True
                 )
                 await self._redis.ping()
                 self._is_connected = True
-                logger.info("Redis Quote Bus connected to %s", self.settings.redis_url)
+                logger.info("Redis Quote Bus connected")
                 return True
             except Exception as e:
                 logger.warning("Redis Quote Bus connection failed: %s. Falling back to in-memory.", e)

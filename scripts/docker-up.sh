@@ -5,7 +5,6 @@ SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 REPO_ROOT="$(dirname "$SCRIPT_DIR")"
 cd "$REPO_ROOT"
 
-POSTGRES=0
 DETACH=1
 API_PORT_ARG=""
 
@@ -18,14 +17,6 @@ require_arg_value() {
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    --redis)
-      # Redis is always part of the stack; flag kept for backward compatibility.
-      shift
-      ;;
-    --postgres)
-      POSTGRES=1
-      shift
-      ;;
     --no-detach)
       DETACH=0
       shift
@@ -37,7 +28,7 @@ while [ "$#" -gt 0 ]; do
       ;;
     *)
       echo "Unknown argument: $1"
-      echo "Usage: ./scripts/docker-up.sh [--postgres] [--no-detach] [--port <host_port>]"
+      echo "Usage: ./scripts/docker-up.sh [--no-detach] [--port <host_port>]"
       exit 1
       ;;
   esac
@@ -79,17 +70,10 @@ fi
 PROJECT_NAME="${PROJECT_NAME:-openterminalui}"
 
 if [ -x ./scripts/check-ports.sh ]; then
-  if [ "$POSTGRES" -eq 1 ]; then
-    USE_POSTGRES=1 ./scripts/check-ports.sh --postgres
-  else
-    ./scripts/check-ports.sh
-  fi
+  ./scripts/check-ports.sh
 fi
 
 set -- compose --project-name "$PROJECT_NAME" --env-file .env
-if [ "$POSTGRES" -eq 1 ]; then
-  set -- "$@" --profile postgres
-fi
 set -- "$@" up --build
 if [ "$DETACH" -eq 1 ]; then
   set -- "$@" -d

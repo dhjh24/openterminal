@@ -15,13 +15,9 @@ fi
 
 "$SCRIPT_DIR/check-ports.sh"
 
-PROFILES=()
-if [[ "${1:-}" == "--postgres" ]] || [[ "${USE_POSTGRES:-0}" == "1" ]]; then
-  PROFILES+=(--profile postgres)
-fi
-
+# PostgreSQL and Redis are remote (Neon / Redis VM) — no local services.
 echo "Starting Compose project: $(compose_project_name)"
-compose_cmd "${PROFILES[@]}" up -d --build
+compose_cmd up -d --build
 
 echo
 echo "App:     ${APP_URL:-http://localhost:${API_PORT:-8105}}"
